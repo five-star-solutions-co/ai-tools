@@ -50,9 +50,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 			chat_id: input.chat_id,
 			text: input.text
 		})
-		return {
-			message_id: result.message_id ?? result.space_id
-		}
+		return { message_id: result.message_id }
 	}
 
 	async editText(input: MessagingEditTextInput): Promise<MessagingMessageOutput> {
@@ -83,9 +81,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 			message_id: input.message_id,
 			emoji: input.emoji
 		})
-		return {
-			...(result.message_id && { message_id: result.message_id })
-		}
+		return { message_id: result.message_id }
 	}
 
 	/**
@@ -105,9 +101,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 			...(input.caption && { caption: input.caption }),
 			...(input.content_type && { content_type: input.content_type })
 		})
-		return {
-			message_id: result.message_id ?? result.space_id
-		}
+		return { message_id: result.message_id }
 	}
 
 	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {

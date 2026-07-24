@@ -2,7 +2,14 @@ import { describe, expect, test } from 'bun:test'
 import { isPlainObject } from 'es-toolkit'
 
 import { isToolError, runTool, validateModule, withAuth } from '../../src/core'
-import { MessagingClient, messagingModule } from '../../src/modules/messaging'
+import {
+	isMessagingDefiniteRejection,
+	isMessagingOutcomeUnknown,
+	MessagingClient,
+	messagingModule
+} from '../../src/modules/messaging'
+import { ImessageClientError } from '../../src/vendors/imessage'
+import { TelegramClientError } from '../../src/vendors/telegram'
 
 function asRecord(value: unknown): Record<string, unknown> {
 	if (!isPlainObject(value)) throw new Error('expected object')
@@ -109,6 +116,68 @@ describe('messaging seam', () => {
 		} finally {
 			restore()
 		}
+	})
+
+	test('imessage sendText missing message_id is outcome_unknown (not space_id fallback)', async () => {
+		const restore = mockFetch(() => {
+			return new Response(JSON.stringify({ ok: true, space_id: 'space-1' }), { status: 200 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({
+				provider: 'imessage',
+				base_url: 'https://proxy.example.com',
+				project_id: 'p',
+				project_secret: 's'
+			})
+			let error: unknown
+			try {
+				await client.sendText({ chat_id: 'space-1', text: 'hi' })
+			} catch (e) {
+				error = e
+			}
+			expect(error).toBeInstanceOf(ImessageClientError)
+			expect(isMessagingOutcomeUnknown(error)).toBe(true)
+			expect(isMessagingDefiniteRejection(error)).toBe(false)
+		} finally {
+			restore()
+		}
+	})
+
+	test('telegram network failure is outcome_unknown via seam classifiers', async () => {
+		const restore = mockFetch(async () => {
+			throw new TypeError('fetch failed')
+		})
+		try {
+			const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+			let error: unknown
+			try {
+				await client.sendText({ chat_id: '99', text: 'hello' })
+			} catch (e) {
+				error = e
+			}
+			expect(error).toBeInstanceOf(TelegramClientError)
+			expect(isMessagingOutcomeUnknown(error)).toBe(true)
+			expect(isMessagingDefiniteRejection(error)).toBe(false)
+		} finally {
+			restore()
+		}
+	})
+
+	test('seam classifiers recognize vendor client errors', () => {
+		const definite = new TelegramClientError({
+			message: 'bad',
+			failureKind: 'definite_rejection',
+			method: 'test'
+		})
+		const unknown = new TelegramClientError({
+			message: 'maybe',
+			failureKind: 'outcome_unknown',
+			method: 'test'
+		})
+		expect(isMessagingDefiniteRejection(definite)).toBe(true)
+		expect(isMessagingOutcomeUnknown(definite)).toBe(false)
+		expect(isMessagingOutcomeUnknown(unknown)).toBe(true)
+		expect(isMessagingDefiniteRejection(new Error('plain'))).toBe(false)
 	})
 
 	test('teams provider sendText after token', async () => {

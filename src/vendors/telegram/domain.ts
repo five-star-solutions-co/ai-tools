@@ -55,6 +55,18 @@ export function isTelegramOutcomeUnknown(error: unknown): boolean {
 	return error instanceof TelegramClientError && error.failureKind === 'outcome_unknown'
 }
 
+/** Network / abort / transport failures before a parseable Telegram envelope. */
+export function throwTelegramTransportError(method: string, error: unknown): never {
+	if (error instanceof TelegramClientError) throw error
+	const message = error instanceof Error ? error.message : `${method} request failed`
+	throw new TelegramClientError({
+		message,
+		failureKind: 'outcome_unknown',
+		method,
+		cause: error
+	})
+}
+
 function isDefiniteStatus(status: number): boolean {
 	return status === 400 || status === 401 || status === 403 || status === 404
 }

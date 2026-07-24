@@ -49,6 +49,17 @@ export function isImessageOutcomeUnknown(error: unknown): boolean {
 	return error instanceof ImessageClientError && error.failureKind === 'outcome_unknown'
 }
 
+/** Network / abort / transport failures before a parseable proxy envelope. */
+export function throwImessageTransportError(label: string, error: unknown): never {
+	if (error instanceof ImessageClientError) throw error
+	const message = error instanceof Error ? error.message : `${label} request failed`
+	throw new ImessageClientError({
+		message,
+		failureKind: 'outcome_unknown',
+		cause: error
+	})
+}
+
 function mapStatusToToolCode(status: number | undefined, proxyCode: string | undefined): ToolError['code'] {
 	if (status === 401) return 'bad_auth'
 	if (status === 403) return 'forbidden'
@@ -91,16 +102,29 @@ export function assertProxyOk(label: string, status: number, data: unknown): voi
 
 export function parseMessageResult(data: unknown): ImessageMessageOutput {
 	if (!isPlainObject(data) || data['ok'] !== true) {
-		throw new ToolError('iMessage proxy returned an unexpected send payload', { code: 'upstream' })
+		throw new ImessageClientError({
+			message: 'iMessage proxy returned an unexpected send payload',
+			failureKind: 'outcome_unknown'
+		})
 	}
 	const spaceId = data['space_id']
 	if (!isString(spaceId) || spaceId.length === 0) {
-		throw new ToolError('iMessage proxy response missing space_id', { code: 'upstream' })
+		throw new ImessageClientError({
+			message: 'iMessage proxy response missing space_id',
+			failureKind: 'outcome_unknown'
+		})
 	}
 	const messageId = data['message_id']
+	// Space id is not a message id. Missing id is outcome-unknown (delivery may have succeeded).
+	if (!isString(messageId) || messageId.length === 0) {
+		throw new ImessageClientError({
+			message: 'iMessage proxy response missing message_id',
+			failureKind: 'outcome_unknown'
+		})
+	}
 	return {
 		space_id: spaceId,
-		...(isString(messageId) && messageId.length > 0 && { message_id: messageId })
+		message_id: messageId
 	}
 }
 

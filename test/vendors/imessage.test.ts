@@ -47,6 +47,41 @@ describe('imessage', () => {
 		])
 	})
 
+	test('sendText without message_id is outcome_unknown', async () => {
+		const restore = mockFetch(() => new Response(JSON.stringify({ ok: true, space_id: 'space-only' }), { status: 200 }))
+		try {
+			const client = new ImessageClient(auth)
+			let error: unknown
+			try {
+				await client.sendText({ chat_id: 'space-only', text: 'hello' })
+			} catch (e) {
+				error = e
+			}
+			expect(isImessageOutcomeUnknown(error)).toBe(true)
+			expect(isImessageDefiniteRejection(error)).toBe(false)
+		} finally {
+			restore()
+		}
+	})
+
+	test('network failure on send is outcome_unknown', async () => {
+		const restore = mockFetch(async () => {
+			throw new TypeError('fetch failed')
+		})
+		try {
+			const client = new ImessageClient(auth)
+			let error: unknown
+			try {
+				await client.sendText({ chat_id: 'space-1', text: 'hello' })
+			} catch (e) {
+				error = e
+			}
+			expect(isImessageOutcomeUnknown(error)).toBe(true)
+		} finally {
+			restore()
+		}
+	})
+
 	test('sendText posts to proxy with spectrum headers', async () => {
 		const restore = mockFetch((url, init) => {
 			expect(url).toBe('https://proxy.example.com/v1/send')

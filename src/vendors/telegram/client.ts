@@ -39,7 +39,8 @@ import {
 	parseMessages,
 	parseOk,
 	parseResult,
-	TelegramClientError
+	TelegramClientError,
+	throwTelegramTransportError
 } from './domain'
 
 export type TelegramClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
@@ -73,8 +74,12 @@ export class TelegramClient {
 	}
 
 	async #post(path: string, body: FormData | Record<string, unknown>, label: string): Promise<unknown> {
-		const res = await this.#http.post(path, body, { label, noThrow: true })
-		return parseResult(label, res.status, res.data)
+		try {
+			const res = await this.#http.post(path, body, { label, noThrow: true })
+			return parseResult(label, res.status, res.data)
+		} catch (error) {
+			throwTelegramTransportError(label, error)
+		}
 	}
 
 	/** POST /bot{token}/sendMessage */
@@ -162,10 +167,15 @@ export class TelegramClient {
 			await this.#post(`/bot${this.#token}/getFile`, { file_id: input.file_id }, 'Telegram getFile')
 		)
 		const filePath = file.file_path.replace(/^\/+/, '')
-		const res = await this.#http.bytes('GET', `/file/bot${this.#token}/${filePath}`, {
-			label: 'Telegram downloadFile',
-			noThrow: true
-		})
+		let res: Awaited<ReturnType<HttpService['bytes']>>
+		try {
+			res = await this.#http.bytes('GET', `/file/bot${this.#token}/${filePath}`, {
+				label: 'Telegram downloadFile',
+				noThrow: true
+			})
+		} catch (error) {
+			throwTelegramTransportError('Telegram downloadFile', error)
+		}
 		if (!res.ok) {
 			throw new TelegramClientError({
 				message: `Telegram downloadFile failed with HTTP ${res.status}`,

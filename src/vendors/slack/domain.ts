@@ -56,6 +56,18 @@ export function isSlackOutcomeUnknown(error: unknown): boolean {
 	return error instanceof SlackClientError && error.failureKind === 'outcome_unknown'
 }
 
+/** Network / abort / transport failures before a parseable Slack envelope. */
+export function throwSlackTransportError(method: string, error: unknown): never {
+	if (error instanceof SlackClientError) throw error
+	const message = error instanceof Error ? error.message : `${method} request failed`
+	throw new SlackClientError({
+		message,
+		failureKind: 'outcome_unknown',
+		method,
+		cause: error
+	})
+}
+
 /** Client/auth/validation errors that should not be retried as if delivery might have succeeded. */
 const DEFINITE_SLACK_ERRORS = new Set([
 	'invalid_auth',

@@ -41,7 +41,7 @@ export const imessageSendTextInputSchema = z.object({
 })
 
 export const imessageMessageOutputSchema = z.object({
-	message_id: z.string().optional().describe('Provider message id when returned'),
+	message_id: z.string().min(1).describe('Provider message id (required for journaling; never a space id)'),
 	space_id: z.string().describe('Spectrum space id')
 })
 

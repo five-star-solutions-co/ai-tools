@@ -55,6 +55,30 @@ export function isTeamsOutcomeUnknown(error: unknown): boolean {
 	return error instanceof TeamsClientError && error.failureKind === 'outcome_unknown'
 }
 
+/** Network / abort / transport failures (and non-classified ToolError) before a parseable response. */
+export function throwTeamsTransportError(method: string, error: unknown): never {
+	if (error instanceof TeamsClientError) throw error
+	if (error instanceof ToolError) {
+		const status = error.details?.['status']
+		if (typeof status === 'number' && isDefiniteStatus(status)) {
+			throw new TeamsClientError({
+				message: error.message,
+				failureKind: 'definite_rejection',
+				method,
+				status,
+				cause: error
+			})
+		}
+	}
+	const message = error instanceof Error ? error.message : `${method} request failed`
+	throw new TeamsClientError({
+		message,
+		failureKind: 'outcome_unknown',
+		method,
+		cause: error
+	})
+}
+
 export function isDefiniteStatus(status: number): boolean {
 	return status === 400 || status === 401 || status === 403 || status === 404
 }

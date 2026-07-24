@@ -3,6 +3,10 @@
  */
 
 import { runBatchItems } from '../../shared/batch'
+import { isImessageDefiniteRejection, isImessageOutcomeUnknown } from '../../vendors/imessage'
+import { isSlackDefiniteRejection, isSlackOutcomeUnknown } from '../../vendors/slack'
+import { isTeamsDefiniteRejection, isTeamsOutcomeUnknown } from '../../vendors/teams'
+import { isTelegramDefiniteRejection, isTelegramOutcomeUnknown } from '../../vendors/telegram'
 import type {
 	MessagingMessageOutput,
 	MessagingSendMediaBatchInput,
@@ -17,6 +21,29 @@ import type {
  */
 export function warnUnsupportedMessagingOp(provider: string, op: string): void {
 	console.warn(`[messaging] ${provider} does not support ${op}; treating as no-op`)
+}
+
+/** Provider-neutral definite rejection (do not treat as possible delivery). */
+export function isMessagingDefiniteRejection(error: unknown): boolean {
+	return (
+		isTelegramDefiniteRejection(error) ||
+		isSlackDefiniteRejection(error) ||
+		isTeamsDefiniteRejection(error) ||
+		isImessageDefiniteRejection(error)
+	)
+}
+
+/**
+ * Provider-neutral outcome-unknown (retry may duplicate).
+ * Includes transport network/abort failures rethrown as vendor client errors.
+ */
+export function isMessagingOutcomeUnknown(error: unknown): boolean {
+	return (
+		isTelegramOutcomeUnknown(error) ||
+		isSlackOutcomeUnknown(error) ||
+		isTeamsOutcomeUnknown(error) ||
+		isImessageOutcomeUnknown(error)
+	)
 }
 
 /** Sequential sendMedia for channels without a native multi-file API. */

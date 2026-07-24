@@ -4,6 +4,7 @@
  */
 
 export { MessagingClient } from './client'
+export { isMessagingDefiniteRejection, isMessagingOutcomeUnknown } from './domain'
 export {
 	messagingAnswerCallbackTool,
 	messagingAuthSchema,

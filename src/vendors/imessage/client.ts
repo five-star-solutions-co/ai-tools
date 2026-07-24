@@ -34,7 +34,8 @@ import {
 	parseDownloadResult,
 	parseMessageResult,
 	parseOkResult,
-	spaceBody
+	spaceBody,
+	throwImessageTransportError
 } from './domain'
 
 export type ImessageClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
@@ -78,9 +79,13 @@ export class ImessageClient {
 	}
 
 	async #post(path: string, body: Record<string, unknown>, label: string): Promise<unknown> {
-		const res = await this.#http.post(path, body, { label, noThrow: true })
-		assertProxyOk(label, res.status, res.data)
-		return res.data
+		try {
+			const res = await this.#http.post(path, body, { label, noThrow: true })
+			assertProxyOk(label, res.status, res.data)
+			return res.data
+		} catch (error) {
+			throwImessageTransportError(label, error)
+		}
 	}
 
 	/** POST /v1/send */

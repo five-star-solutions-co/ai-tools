@@ -41,7 +41,8 @@ import {
 	parseSlackResult,
 	parseUploadComplete,
 	parseUploadUrl,
-	SlackClientError
+	SlackClientError,
+	throwSlackTransportError
 } from './domain'
 
 export type SlackClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
@@ -86,21 +87,29 @@ export class SlackClient {
 	}
 
 	async #api(method: string, body: Record<string, unknown>, label: string): Promise<Record<string, unknown>> {
-		const res = await this.#http.post(`/${method}`, body, { label, noThrow: true })
-		return parseSlackResult(label, res.status, res.data)
+		try {
+			const res = await this.#http.post(`/${method}`, body, { label, noThrow: true })
+			return parseSlackResult(label, res.status, res.data)
+		} catch (error) {
+			throwSlackTransportError(label, error)
+		}
 	}
 
 	/** Form-urlencoded Web API call (used where Slack documents form as primary, e.g. getUploadURLExternal). */
 	async #apiForm(method: string, body: URLSearchParams, label: string): Promise<Record<string, unknown>> {
-		const res = await this.#http.post(`/${method}`, body, {
-			label,
-			noThrow: true,
-			headers: {
-				Authorization: `Bearer ${this.#token}`,
-				'Content-Type': 'application/x-www-form-urlencoded'
-			}
-		})
-		return parseSlackResult(label, res.status, res.data)
+		try {
+			const res = await this.#http.post(`/${method}`, body, {
+				label,
+				noThrow: true,
+				headers: {
+					Authorization: `Bearer ${this.#token}`,
+					'Content-Type': 'application/x-www-form-urlencoded'
+				}
+			})
+			return parseSlackResult(label, res.status, res.data)
+		} catch (error) {
+			throwSlackTransportError(label, error)
+		}
 	}
 
 	/** POST chat.postMessage */
@@ -183,11 +192,16 @@ export class SlackClient {
 		const putHeaders: Record<string, string> = {
 			'Content-Type': input.content_type ?? 'application/octet-stream'
 		}
-		const put = await this.#external.post(upload.upload_url, body, {
-			label: 'Slack file upload POST',
-			noThrow: true,
-			headers: putHeaders
-		})
+		let put: Awaited<ReturnType<HttpService['post']>>
+		try {
+			put = await this.#external.post(upload.upload_url, body, {
+				label: 'Slack file upload POST',
+				noThrow: true,
+				headers: putHeaders
+			})
+		} catch (error) {
+			throwSlackTransportError('Slack file upload POST', error)
+		}
 		if (!put.ok) {
 			throw new SlackClientError({
 				message: `Slack file upload POST failed with HTTP ${put.status}`,
@@ -217,13 +231,18 @@ export class SlackClient {
 	/** POST files.info + GET url_private_download (Bearer). */
 	async downloadFile(input: SlackDownloadFileInput): Promise<SlackDownloadFileOutput> {
 		const file = parseFileInfo(await this.#api('files.info', { file: input.file_id }, 'Slack files.info'))
-		const res = await this.#http.bytes('GET', file.url_private_download, {
-			label: 'Slack downloadFile',
-			noThrow: true,
-			headers: {
-				Authorization: `Bearer ${this.#token}`
-			}
-		})
+		let res: Awaited<ReturnType<HttpService['bytes']>>
+		try {
+			res = await this.#http.bytes('GET', file.url_private_download, {
+				label: 'Slack downloadFile',
+				noThrow: true,
+				headers: {
+					Authorization: `Bearer ${this.#token}`
+				}
+			})
+		} catch (error) {
+			throwSlackTransportError('Slack downloadFile', error)
+		}
 		if (!res.ok) {
 			throw new SlackClientError({
 				message: `Slack downloadFile failed with HTTP ${res.status}`,
@@ -252,11 +271,16 @@ export class SlackClient {
 			response_type: 'ephemeral',
 			...(input.text && { text: input.text })
 		}
-		const res = await this.#external.post(input.callback_query_id, body, {
-			label: 'Slack response_url',
-			noThrow: true,
-			headers: { 'Content-Type': 'application/json' }
-		})
+		let res: Awaited<ReturnType<HttpService['post']>>
+		try {
+			res = await this.#external.post(input.callback_query_id, body, {
+				label: 'Slack response_url',
+				noThrow: true,
+				headers: { 'Content-Type': 'application/json' }
+			})
+		} catch (error) {
+			throwSlackTransportError('Slack response_url', error)
+		}
 		if (!res.ok) {
 			throw new SlackClientError({
 				message: `Slack response_url failed with HTTP ${res.status}`,

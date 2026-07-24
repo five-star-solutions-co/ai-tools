@@ -43,7 +43,8 @@ import {
 	parseActivityId,
 	parseDownload,
 	TeamsClientError,
-	throwForStatus
+	throwForStatus,
+	throwTeamsTransportError
 } from './domain'
 
 export type TeamsClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
@@ -82,18 +83,48 @@ export class TeamsClient {
 		if (this.#accessToken && now < this.#accessTokenExpiresAt - 60_000) {
 			return this.#accessToken
 		}
-		const { data } = await this.#http.post(
-			botframeworkTokenUrl(this.#auth.tenant_id),
-			botframeworkTokenBody(this.#auth),
-			{
-				label: 'Teams token',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-			}
-		)
-		const token = parseAccessToken(data)
-		this.#accessToken = token.access_token
-		this.#accessTokenExpiresAt = now + token.expires_in * 1000
-		return token.access_token
+		try {
+			const { data } = await this.#http.post(
+				botframeworkTokenUrl(this.#auth.tenant_id),
+				botframeworkTokenBody(this.#auth),
+				{
+					label: 'Teams token',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+				}
+			)
+			const token = parseAccessToken(data)
+			this.#accessToken = token.access_token
+			this.#accessTokenExpiresAt = now + token.expires_in * 1000
+			return token.access_token
+		} catch (error) {
+			throwTeamsTransportError('Teams token', error)
+		}
+	}
+
+	async #postActivity(
+		label: string,
+		url: string,
+		body: Record<string, unknown>,
+		headers: Record<string, string>
+	): Promise<Awaited<ReturnType<HttpService['post']>>> {
+		try {
+			return await this.#http.post(url, body, { label, headers, noThrow: true })
+		} catch (error) {
+			throwTeamsTransportError(label, error)
+		}
+	}
+
+	async #putActivity(
+		label: string,
+		url: string,
+		body: Record<string, unknown>,
+		headers: Record<string, string>
+	): Promise<Awaited<ReturnType<HttpService['put']>>> {
+		try {
+			return await this.#http.put(url, body, { label, headers, noThrow: true })
+		} catch (error) {
+			throwTeamsTransportError(label, error)
+		}
 	}
 
 	async #authHeaders(): Promise<Record<string, string>> {
@@ -113,11 +144,7 @@ export class TeamsClient {
 			...(input.reply_to_message_id && { reply_to_message_id: input.reply_to_message_id }),
 			...(input.reply_markup !== undefined && { reply_markup: input.reply_markup })
 		})
-		const res = await this.#http.post(url, body, {
-			label: 'Teams sendText',
-			headers,
-			noThrow: true
-		})
+		const res = await this.#postActivity('Teams sendText', url, body, headers)
 		if (!res.ok) throwForStatus('Teams sendText', res.status, res.data)
 		return parseActivityId(res.data)
 	}
@@ -130,11 +157,7 @@ export class TeamsClient {
 			text: input.text,
 			...(input.reply_markup !== undefined && { reply_markup: input.reply_markup })
 		})
-		const res = await this.#http.put(url, body, {
-			label: 'Teams editText',
-			headers,
-			noThrow: true
-		})
+		const res = await this.#putActivity('Teams editText', url, body, headers)
 		if (!res.ok) throwForStatus('Teams editText', res.status, res.data)
 		// Update may return empty body; preserve the edited activity id.
 		if (res.data === undefined || res.data === null || res.data === '') {
@@ -151,11 +174,7 @@ export class TeamsClient {
 	async sendChatAction(input: TeamsSendChatActionInput): Promise<void> {
 		const headers = await this.#authHeaders()
 		const url = conversationActivitiesPath(input.service_url, input.chat_id)
-		const res = await this.#http.post(url, buildTypingActivity(), {
-			label: 'Teams sendChatAction',
-			headers,
-			noThrow: true
-		})
+		const res = await this.#postActivity('Teams sendChatAction', url, buildTypingActivity(), headers)
 		if (!res.ok) throwForStatus('Teams sendChatAction', res.status, res.data)
 	}
 
@@ -179,11 +198,7 @@ export class TeamsClient {
 		const headers = await this.#authHeaders()
 		const url = conversationActivitiesPath(input.service_url, input.chat_id)
 		const body = buildMediaActivity(input)
-		const res = await this.#http.post(url, body, {
-			label: 'Teams sendMedia',
-			headers,
-			noThrow: true
-		})
+		const res = await this.#postActivity('Teams sendMedia', url, body, headers)
 		if (!res.ok) throwForStatus('Teams sendMedia', res.status, res.data)
 		return parseActivityId(res.data)
 	}
@@ -191,11 +206,16 @@ export class TeamsClient {
 	/** GET content URL (file_id) with bearer token; return body_base64. */
 	async downloadFile(input: TeamsDownloadFileInput): Promise<TeamsDownloadFileOutput> {
 		const token = await this.#ensureAccessToken()
-		const res = await this.#http.bytes('GET', input.file_id, {
-			label: 'Teams downloadFile',
-			headers: { Authorization: `Bearer ${token}` },
-			noThrow: true
-		})
+		let res: Awaited<ReturnType<HttpService['bytes']>>
+		try {
+			res = await this.#http.bytes('GET', input.file_id, {
+				label: 'Teams downloadFile',
+				headers: { Authorization: `Bearer ${token}` },
+				noThrow: true
+			})
+		} catch (error) {
+			throwTeamsTransportError('Teams downloadFile', error)
+		}
 		if (!res.ok) {
 			throw new TeamsClientError({
 				message: `Teams downloadFile failed with HTTP ${res.status}`,
@@ -224,11 +244,7 @@ export class TeamsClient {
 			...(input.text && { text: input.text }),
 			...(input.show_alert !== undefined && { show_alert: input.show_alert })
 		})
-		const res = await this.#http.post(input.callback_query_id, body, {
-			label: 'Teams answerCallback',
-			headers,
-			noThrow: true
-		})
+		const res = await this.#postActivity('Teams answerCallback', input.callback_query_id, body, headers)
 		if (!res.ok) throwForStatus('Teams answerCallback', res.status, res.data)
 	}
 
