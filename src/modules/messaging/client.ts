@@ -13,10 +13,16 @@ import type {
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
+	MessagingReactionOutput,
+	MessagingReadInput,
 	MessagingSendChatActionInput,
+	MessagingSendMediaBatchInput,
+	MessagingSendMediaBatchOutput,
 	MessagingSendMediaInput,
 	MessagingSendTextInput,
-	MessagingSetReactionInput
+	MessagingSetReactionInput,
+	MessagingStopTypingInput,
+	MessagingUnsendInput
 } from './contracts'
 import { messagingAuthSchema } from './contracts'
 import { ImessageMessagingProvider } from './providers/imessage'
@@ -73,7 +79,11 @@ export class MessagingClient implements MessagingOps {
 		return this.#ops.sendChatAction(input)
 	}
 
-	setReaction(input: MessagingSetReactionInput): Promise<void> {
+	stopTyping(input: MessagingStopTypingInput): Promise<void> {
+		return this.#ops.stopTyping(input)
+	}
+
+	setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {
 		return this.#ops.setReaction(input)
 	}
 
@@ -85,11 +95,23 @@ export class MessagingClient implements MessagingOps {
 		return this.#ops.sendMedia(input)
 	}
 
+	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+		return this.#ops.sendMediaBatch(input)
+	}
+
 	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
 		return this.#ops.downloadFile(input)
 	}
 
 	answerCallback(input: MessagingAnswerCallbackInput): Promise<void> {
 		return this.#ops.answerCallback(input)
+	}
+
+	read(input: MessagingReadInput): Promise<void> {
+		return this.#ops.read(input)
+	}
+
+	unsend(input: MessagingUnsendInput): Promise<void> {
+		return this.#ops.unsend(input)
 	}
 }

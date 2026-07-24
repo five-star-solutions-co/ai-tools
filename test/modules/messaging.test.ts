@@ -28,10 +28,14 @@ describe('messaging seam', () => {
 			'messaging-clear-reaction',
 			'messaging-download-file',
 			'messaging-edit-text',
+			'messaging-read',
 			'messaging-send-chat-action',
 			'messaging-send-media',
+			'messaging-send-media-batch',
 			'messaging-send-text',
-			'messaging-set-reaction'
+			'messaging-set-reaction',
+			'messaging-stop-typing',
+			'messaging-unsend'
 		])
 	})
 
@@ -129,6 +133,216 @@ describe('messaging seam', () => {
 				service_url: 'https://smba.trafficmanager.net/amer/'
 			})
 			expect(result.message_id).toBe('act-1')
+		} finally {
+			restore()
+		}
+	})
+
+	test('imessage setReaction returns reaction message_id', async () => {
+		const restore = mockFetch((url) => {
+			expect(url).toBe('https://proxy.example.com/v1/react')
+			return new Response(JSON.stringify({ ok: true, message_id: 'react-99', space_id: 'space-1' }), { status: 200 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({
+				provider: 'imessage',
+				base_url: 'https://proxy.example.com',
+				project_id: 'p',
+				project_secret: 's'
+			})
+			const result = await client.setReaction({
+				chat_id: 'space-1',
+				message_id: 'msg-1',
+				emoji: '👍'
+			})
+			expect(result.message_id).toBe('react-99')
+		} finally {
+			restore()
+		}
+	})
+
+	test('telegram setReaction returns empty object', async () => {
+		const restore = mockFetch((url) => {
+			expect(url).toContain('setMessageReaction')
+			return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+			const result = await client.setReaction({
+				chat_id: '99',
+				message_id: '42',
+				emoji: '👍'
+			})
+			expect(result.message_id).toBeUndefined()
+		} finally {
+			restore()
+		}
+	})
+
+	test('telegram stopTyping is a successful no-op', async () => {
+		const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+		await client.stopTyping({ chat_id: '99' })
+	})
+
+	test('telegram read warns and no-ops', async () => {
+		const warnings: string[] = []
+		const original = console.warn
+		console.warn = (...args: unknown[]) => {
+			warnings.push(args.map(String).join(' '))
+		}
+		try {
+			const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+			await client.read({ chat_id: '99', message_id: '1' })
+			expect(warnings.some((line) => line.includes('telegram') && line.includes('read'))).toBe(true)
+		} finally {
+			console.warn = original
+		}
+	})
+
+	test('telegram unsend warns and no-ops', async () => {
+		const warnings: string[] = []
+		const original = console.warn
+		console.warn = (...args: unknown[]) => {
+			warnings.push(args.map(String).join(' '))
+		}
+		try {
+			const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+			await client.unsend({ chat_id: '99', message_id: '1' })
+			expect(warnings.some((line) => line.includes('telegram') && line.includes('unsend'))).toBe(true)
+		} finally {
+			console.warn = original
+		}
+	})
+
+	test('imessage stopTyping / read / unsend hit proxy', async () => {
+		const seen: string[] = []
+		const restore = mockFetch((url) => {
+			seen.push(url)
+			return new Response(JSON.stringify({ ok: true }), { status: 200 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({
+				provider: 'imessage',
+				base_url: 'https://proxy.example.com',
+				project_id: 'p',
+				project_secret: 's'
+			})
+			await client.stopTyping({ chat_id: 'space-1' })
+			await client.read({ chat_id: 'space-1', message_id: 'in-1' })
+			await client.unsend({ chat_id: 'space-1', message_id: 'out-1' })
+			expect(seen).toEqual([
+				'https://proxy.example.com/v1/typing',
+				'https://proxy.example.com/v1/read',
+				'https://proxy.example.com/v1/unsend'
+			])
+		} finally {
+			restore()
+		}
+	})
+
+	test('imessage downloadFile uses chat_id without composite file_id', async () => {
+		const restore = mockFetch((url, init) => {
+			expect(url).toBe('https://proxy.example.com/v1/download')
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			expect(body).toMatchObject({ space_id: 'space-1', file_id: 'att-1' })
+			return new Response(
+				JSON.stringify({
+					ok: true,
+					file_name: 'a.png',
+					body_base64: Buffer.from('png').toString('base64')
+				}),
+				{ status: 200 }
+			)
+		})
+		try {
+			const client = MessagingClient.fromAuth({
+				provider: 'imessage',
+				base_url: 'https://proxy.example.com',
+				project_id: 'p',
+				project_secret: 's'
+			})
+			const out = await client.downloadFile({
+				chat_id: 'space-1',
+				file_id: 'att-1',
+				file_name: 'a.png'
+			})
+			expect(out.file_name).toBe('a.png')
+			expect(out.body_base64.length).toBeGreaterThan(0)
+		} finally {
+			restore()
+		}
+	})
+
+	test('slack sendMediaBatch sends sequentially', async () => {
+		let uploadSeq = 0
+		const restore = mockFetch((url) => {
+			if (url.includes('files.getUploadURLExternal')) {
+				uploadSeq += 1
+				return new Response(
+					JSON.stringify({
+						ok: true,
+						upload_url: 'https://files.example.com/upload',
+						file_id: `F${uploadSeq}`
+					}),
+					{ status: 200 }
+				)
+			}
+			if (url.includes('files.example.com')) {
+				return new Response(null, { status: 200 })
+			}
+			if (url.includes('files.completeUploadExternal')) {
+				return new Response(
+					JSON.stringify({
+						ok: true,
+						files: [{ id: `F${uploadSeq}`, permalink: 'https://slack.com/f' }]
+					}),
+					{ status: 200 }
+				)
+			}
+			return new Response(JSON.stringify({ ok: false, error: `unexpected ${url}` }), { status: 500 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({ provider: 'slack', bot_token: 'xoxb-test' })
+			const tiny = Buffer.from('x').toString('base64')
+			const batch = await client.sendMediaBatch({
+				chat_id: 'C1',
+				items: [
+					{ kind: 'document', body_base64: tiny, file_name: 'a.txt' },
+					{ kind: 'document', body_base64: tiny, file_name: 'b.txt' }
+				]
+			})
+			expect(batch.results.succeeded).toBe(2)
+			expect(batch.results.failed).toBe(0)
+			expect(batch.message_ids).toEqual(['F1', 'F2'])
+		} finally {
+			restore()
+		}
+	})
+
+	test('telegram sendMediaBatch uses sendMediaGroup for homogeneous 2+ photos', async () => {
+		const restore = mockFetch((url) => {
+			expect(url).toContain('sendMediaGroup')
+			return new Response(
+				JSON.stringify({
+					ok: true,
+					result: [{ message_id: 10 }, { message_id: 11 }]
+				}),
+				{ status: 200 }
+			)
+		})
+		try {
+			const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+			const tiny = Buffer.from('x').toString('base64')
+			const batch = await client.sendMediaBatch({
+				chat_id: '99',
+				items: [
+					{ kind: 'photo', body_base64: tiny, file_name: 'a.jpg' },
+					{ kind: 'photo', body_base64: tiny, file_name: 'b.jpg' }
+				]
+			})
+			expect(batch.message_ids).toEqual(['10', '11'])
+			expect(batch.results.succeeded).toBe(2)
+			expect(batch.results.failed).toBe(0)
 		} finally {
 			restore()
 		}

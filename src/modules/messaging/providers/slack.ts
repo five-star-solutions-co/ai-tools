@@ -13,12 +13,19 @@ import type {
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
+	MessagingReactionOutput,
+	MessagingReadInput,
 	MessagingSendChatActionInput,
+	MessagingSendMediaBatchInput,
+	MessagingSendMediaBatchOutput,
 	MessagingSendMediaInput,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
+	MessagingStopTypingInput,
+	MessagingUnsendInput,
 	SlackMessagingAuth
 } from '../contracts'
+import { sendMediaBatchSequential, warnUnsupportedMessagingOp } from '../domain'
 
 export type SlackMessagingProviderOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -55,12 +62,18 @@ export class SlackMessagingProvider implements MessagingOps {
 		})
 	}
 
-	setReaction(input: MessagingSetReactionInput): Promise<void> {
-		return this.#client.setReaction({
+	/** Slack has no typing stop API; successful no-op. */
+	async stopTyping(_input: MessagingStopTypingInput): Promise<void> {
+		return
+	}
+
+	async setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {
+		await this.#client.setReaction({
 			chat_id: input.chat_id,
 			message_id: input.message_id,
 			emoji: input.emoji
 		})
+		return {}
 	}
 
 	clearReaction(input: MessagingClearReactionInput): Promise<void> {
@@ -86,6 +99,10 @@ export class SlackMessagingProvider implements MessagingOps {
 		})
 	}
 
+	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+		return sendMediaBatchSequential((item) => this.sendMedia(item), input)
+	}
+
 	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
 		return this.#client.downloadFile({
 			file_id: input.file_id,
@@ -99,5 +116,13 @@ export class SlackMessagingProvider implements MessagingOps {
 			...(input.text && { text: input.text }),
 			...(input.show_alert !== undefined && { show_alert: input.show_alert })
 		})
+	}
+
+	async read(_input: MessagingReadInput): Promise<void> {
+		warnUnsupportedMessagingOp('slack', 'read')
+	}
+
+	async unsend(_input: MessagingUnsendInput): Promise<void> {
+		warnUnsupportedMessagingOp('slack', 'unsend')
 	}
 }

@@ -9,10 +9,16 @@ import {
 	messagingEditTextInputSchema,
 	messagingMessageOutputSchema,
 	messagingOkOutputSchema,
+	messagingReactionOutputSchema,
+	messagingReadInputSchema,
 	messagingSendChatActionInputSchema,
+	messagingSendMediaBatchInputSchema,
+	messagingSendMediaBatchOutputSchema,
 	messagingSendMediaInputSchema,
 	messagingSendTextInputSchema,
-	messagingSetReactionInputSchema
+	messagingSetReactionInputSchema,
+	messagingStopTypingInputSchema,
+	messagingUnsendInputSchema
 } from './contracts'
 
 export type { MessagingAuth } from './contracts'
@@ -56,24 +62,38 @@ export const messagingSendChatActionTool = defineTool({
 	}
 })
 
+export const messagingStopTypingTool = defineTool({
+	id: 'messaging-stop-typing',
+	name: 'messagingStopTyping',
+	description:
+		'Stop a typing indicator on the bound channel when supported (iMessage). Telegram/Slack/Teams treat this as a successful no-op.',
+	inputSchema: messagingStopTypingInputSchema,
+	outputSchema: messagingOkOutputSchema,
+	sideEffect: 'none',
+	runtime: 'both',
+	execute: async (input, ctx) => {
+		await MessagingClient.fromContext(ctx).stopTyping(input)
+		return { ok: true }
+	}
+})
+
 export const messagingSetReactionTool = defineTool({
 	id: 'messaging-set-reaction',
 	name: 'messagingSetReaction',
-	description: 'Set an emoji reaction on a message when the bound channel supports reactions.',
+	description:
+		'Set an emoji reaction on a message when the bound channel supports reactions. Returns optional message_id for channels that create a separate reaction message (iMessage); store it for clearReaction.',
 	inputSchema: messagingSetReactionInputSchema,
-	outputSchema: messagingOkOutputSchema,
+	outputSchema: messagingReactionOutputSchema,
 	sideEffect: 'write',
 	runtime: 'both',
-	execute: async (input, ctx) => {
-		await MessagingClient.fromContext(ctx).setReaction(input)
-		return { ok: true }
-	}
+	execute: async (input, ctx) => MessagingClient.fromContext(ctx).setReaction(input)
 })
 
 export const messagingClearReactionTool = defineTool({
 	id: 'messaging-clear-reaction',
 	name: 'messagingClearReaction',
-	description: 'Clear bot reactions on a message. Some channels require emoji to name which reaction to remove.',
+	description:
+		'Clear a reaction. Slack requires emoji. iMessage expects the reaction message_id from setReaction (not the target message).',
 	inputSchema: messagingClearReactionInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'write',
@@ -95,10 +115,23 @@ export const messagingSendMediaTool = defineTool({
 	execute: async (input, ctx) => MessagingClient.fromContext(ctx).sendMedia(input)
 })
 
+export const messagingSendMediaBatchTool = defineTool({
+	id: 'messaging-send-media-batch',
+	name: 'messagingSendMediaBatch',
+	description:
+		'Send 1–10 media items in order. Telegram uses a native media group when all items share the same kind (2–10); otherwise each channel sends sequentially. Partial failures are reported per item.',
+	inputSchema: messagingSendMediaBatchInputSchema,
+	outputSchema: messagingSendMediaBatchOutputSchema,
+	sideEffect: 'send',
+	runtime: 'both',
+	execute: async (input, ctx) => MessagingClient.fromContext(ctx).sendMediaBatch(input)
+})
+
 export const messagingDownloadFileTool = defineTool({
 	id: 'messaging-download-file',
 	name: 'messagingDownloadFile',
-	description: 'Download a file by provider file id or content URL and return the body as base64.',
+	description:
+		'Download a file by provider file id or content URL and return the body as base64. iMessage prefers chat_id plus attachment message id (legacy space_id::message_id still accepted).',
 	inputSchema: messagingDownloadFileInputSchema,
 	outputSchema: messagingDownloadFileOutputSchema,
 	sideEffect: 'read',
@@ -121,21 +154,55 @@ export const messagingAnswerCallbackTool = defineTool({
 	}
 })
 
+export const messagingReadTool = defineTool({
+	id: 'messaging-read',
+	name: 'messagingRead',
+	description:
+		'Mark messages as read up to message_id when the bound channel supports it (iMessage inbound only). Other providers log a warning and no-op.',
+	inputSchema: messagingReadInputSchema,
+	outputSchema: messagingOkOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	execute: async (input, ctx) => {
+		await MessagingClient.fromContext(ctx).read(input)
+		return { ok: true }
+	}
+})
+
+export const messagingUnsendTool = defineTool({
+	id: 'messaging-unsend',
+	name: 'messagingUnsend',
+	description:
+		'Unsend or delete a message when the bound channel supports it (iMessage). Other providers log a warning and no-op.',
+	inputSchema: messagingUnsendInputSchema,
+	outputSchema: messagingOkOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	execute: async (input, ctx) => {
+		await MessagingClient.fromContext(ctx).unsend(input)
+		return { ok: true }
+	}
+})
+
 export const messagingModule = defineModule({
 	id: 'messaging',
 	title: 'Messaging',
 	description:
-		'Multi-channel messaging seam: send and edit text, media, chat actions, reactions, file download, and callback answers via the host-bound channel provider (telegram, slack, teams, or imessage).',
+		'Multi-channel messaging seam: send and edit text, media (single and batch), chat actions, stop typing, reactions, file download, callback answers, read, and unsend via the host-bound channel provider (telegram, slack, teams, or imessage).',
 	runtime: 'both',
 	auth: { type: 'custom', schema: messagingAuthSchema },
 	tools: [
 		messagingSendTextTool,
 		messagingEditTextTool,
 		messagingSendChatActionTool,
+		messagingStopTypingTool,
 		messagingSetReactionTool,
 		messagingClearReactionTool,
 		messagingSendMediaTool,
+		messagingSendMediaBatchTool,
 		messagingDownloadFileTool,
-		messagingAnswerCallbackTool
+		messagingAnswerCallbackTool,
+		messagingReadTool,
+		messagingUnsendTool
 	]
 })

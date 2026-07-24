@@ -2,6 +2,7 @@
  * iMessage provider for the messaging seam. Wraps `ImessageClient` (proxy REST).
  */
 
+import { ToolError } from '../../../core/errors'
 import type { HttpServiceOptions } from '../../../transport/http-service'
 import { ImessageClient } from '../../../vendors/imessage'
 import type {
@@ -13,11 +14,18 @@ import type {
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
+	MessagingReactionOutput,
+	MessagingReadInput,
 	MessagingSendChatActionInput,
+	MessagingSendMediaBatchInput,
+	MessagingSendMediaBatchOutput,
 	MessagingSendMediaInput,
 	MessagingSendTextInput,
-	MessagingSetReactionInput
+	MessagingSetReactionInput,
+	MessagingStopTypingInput,
+	MessagingUnsendInput
 } from '../contracts'
+import { sendMediaBatchSequential } from '../domain'
 
 export type ImessageMessagingProviderOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -65,18 +73,24 @@ export class ImessageMessagingProvider implements MessagingOps {
 		})
 	}
 
-	async setReaction(input: MessagingSetReactionInput): Promise<void> {
-		await this.#client.setReaction({
+	stopTyping(input: MessagingStopTypingInput): Promise<void> {
+		return this.#client.stopTyping({ chat_id: input.chat_id })
+	}
+
+	async setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {
+		const result = await this.#client.setReaction({
 			chat_id: input.chat_id,
 			message_id: input.message_id,
 			emoji: input.emoji
 		})
+		return {
+			...(result.message_id && { message_id: result.message_id })
+		}
 	}
 
 	/**
 	 * Spectrum clears reactions by unsending the reaction Message.
-	 * Pass the reaction message_id returned by setReaction (vendor tool), not the target message id.
-	 * Messaging seam setReaction is void — store reaction ids at the host when clearing later.
+	 * Pass the reaction message_id returned by setReaction.
 	 */
 	clearReaction(input: MessagingClearReactionInput): Promise<void> {
 		return this.#client.clearReaction({ chat_id: input.chat_id, message_id: input.message_id })
@@ -96,33 +110,45 @@ export class ImessageMessagingProvider implements MessagingOps {
 		}
 	}
 
-	/**
-	 * `file_id` is the Spectrum message id of the attachment. Messaging seam has no chat_id on download;
-	 * pass space id in file_id as `space_id|message_id` is not used — host should use vendor download when needed.
-	 * When service_url is unused, require chat context via file_name optional and... actually messaging download only has file_id.
-	 *
-	 * For iMessage, chat_id must be known. We accept file_id as `space_id::message_id` composite, or
-	 * use chat_id if the messaging contract is extended. Prefer composite: space::file.
-	 */
+	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+		return sendMediaBatchSequential((item) => this.sendMedia(item), input)
+	}
+
 	async downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
-		const composite = splitImessageFileRef(input.file_id)
-		const result = await this.#client.downloadFile({
-			file_id: composite.file_id,
-			chat_id: composite.chat_id,
+		const chatId = input.chat_id ?? splitImessageFileRef(input.file_id).chat_id
+		const fileId = input.chat_id ? input.file_id : (splitImessageFileRef(input.file_id).file_id ?? input.file_id)
+		if (!chatId) {
+			throw new ToolError('iMessage downloadFile requires chat_id (space id), or file_id as space_id::message_id', {
+				code: 'bad_input'
+			})
+		}
+		return this.#client.downloadFile({
+			file_id: fileId,
+			chat_id: chatId,
 			...(input.file_name && { file_name: input.file_name })
 		})
-		return result
 	}
 
 	answerCallback(_input: MessagingAnswerCallbackInput): Promise<void> {
-		return this.#client.answerCallback(_input)
+		return this.#client.answerCallback({})
+	}
+
+	read(input: MessagingReadInput): Promise<void> {
+		return this.#client.read({
+			chat_id: input.chat_id,
+			message_id: input.message_id
+		})
+	}
+
+	unsend(input: MessagingUnsendInput): Promise<void> {
+		return this.#client.unsend({
+			chat_id: input.chat_id,
+			message_id: input.message_id
+		})
 	}
 }
 
-/**
- * Messaging download has no chat_id field. Encode space + message as `space_id::message_id`,
- * or pass a bare message_id only when the host cannot (then client requires chat_id and throws).
- */
+/** Legacy composite: `space_id::message_id` when chat_id is omitted. */
 function splitImessageFileRef(fileId: string): { chat_id?: string; file_id: string } {
 	const sep = '::'
 	const idx = fileId.indexOf(sep)

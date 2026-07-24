@@ -41,8 +41,15 @@ iMessage `chat_id` is the Spectrum **space id**; outbound goes through photon-re
 | Verb | Telegram | Slack | Teams | iMessage |
 | --- | --- | --- | --- | --- |
 | sendMedia | yes | yes | yes | yes (`/v1/media`) |
-| downloadFile | yes | yes | yes | yes — pass `file_id` as `space_id::message_id` |
-| clearReaction | empty list | emoji required | successful no-op | unsend **reaction** message id (from setReaction vendor tool) |
+| sendMediaBatch | native group when homogeneous 2–10 photos or documents; else sequential | sequential | sequential | sequential |
+| downloadFile | yes | yes | yes | prefer `chat_id` + attachment `file_id`; legacy `space_id::message_id` still accepted |
+| setReaction | yes (empty output) | yes (empty output) | yes (empty output) | returns reaction `message_id` for clear |
+| clearReaction | empty list | emoji required | successful no-op | unsend reaction message id from setReaction |
+| stopTyping | no-op | no-op | no-op | yes |
+| read | warn + no-op | warn + no-op | warn + no-op | inbound message id only |
+| unsend | warn + no-op | warn + no-op | warn + no-op | yes |
+
+Host owns durable claims, authz, journaling of returned ids, and Teams OneDrive/R2 attachment paths that are not pure channel verbs.
 
 ## Tools
 
@@ -51,11 +58,15 @@ iMessage `chat_id` is the Spectrum **space id**; outbound goes through photon-re
 | `messaging-send-text` | `sendText` |
 | `messaging-edit-text` | `editText` |
 | `messaging-send-chat-action` | `sendChatAction` |
+| `messaging-stop-typing` | `stopTyping` |
 | `messaging-set-reaction` | `setReaction` |
 | `messaging-clear-reaction` | `clearReaction` |
 | `messaging-send-media` | `sendMedia` |
+| `messaging-send-media-batch` | `sendMediaBatch` |
 | `messaging-download-file` | `downloadFile` |
 | `messaging-answer-callback` | `answerCallback` |
+| `messaging-read` | `read` |
+| `messaging-unsend` | `unsend` |
 
 ## Progressive text
 

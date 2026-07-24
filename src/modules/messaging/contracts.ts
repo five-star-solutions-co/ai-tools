@@ -4,10 +4,13 @@
 
 import { z } from 'zod'
 
+import { batchResultSchema } from '../../shared/batch'
 import { imessageAuthSchema } from '../../vendors/imessage'
 import { slackAuthSchema } from '../../vendors/slack'
 import { teamsAuthSchema } from '../../vendors/teams'
 import { telegramAuthSchema } from '../../vendors/telegram'
+
+export const MAX_MESSAGING_MEDIA_BATCH = 10
 
 export const messagingChatActionSchema = z.enum([
 	'typing',
@@ -68,8 +71,17 @@ export const messagingSendTextInputSchema = z.object({
 	service_url: serviceUrlOptional
 })
 
+/** Common send/edit/media result shell for journaling. */
 export const messagingMessageOutputSchema = z.object({
-	message_id: z.string().describe('Provider message id as string')
+	message_id: z.string().describe('Provider message id as string'),
+	file_id: z
+		.string()
+		.optional()
+		.describe('Provider file id when the send created a downloadable attachment (e.g. Telegram)'),
+	attachment_message_ids: z
+		.array(z.string())
+		.optional()
+		.describe('Additional attachment message ids when a single call produced more than one message')
 })
 
 export const messagingEditTextInputSchema = z.object({
@@ -86,15 +98,35 @@ export const messagingSendChatActionInputSchema = z.object({
 	service_url: serviceUrlOptional
 })
 
+export const messagingStopTypingInputSchema = z.object({
+	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
+	service_url: serviceUrlOptional
+})
+
 export const messagingSetReactionInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
 	message_id: z.string().min(1).describe('Message id to react to'),
 	emoji: z.string().min(1).max(64).describe('Any emoji the bound channel accepts')
 })
 
+/** Reaction result — store message_id for iMessage clearReaction. */
+export const messagingReactionOutputSchema = z.object({
+	message_id: z
+		.string()
+		.optional()
+		.describe(
+			'Reaction message id when the channel creates a separate reaction message (iMessage). Pass this to clearReaction on those channels.'
+		)
+})
+
 export const messagingClearReactionInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
-	message_id: z.string().min(1).describe('Message id to clear reactions on'),
+	message_id: z
+		.string()
+		.min(1)
+		.describe(
+			'Message id to clear. iMessage: reaction message id from setReaction. Telegram/Slack: target message id (Slack also needs emoji).'
+		),
 	emoji: z.string().min(1).max(64).optional().describe('Emoji to clear when the channel requires a name (e.g. Slack)')
 })
 
@@ -109,8 +141,31 @@ export const messagingSendMediaInputSchema = z.object({
 	service_url: serviceUrlOptional
 })
 
+export const messagingSendMediaBatchItemSchema = messagingSendMediaInputSchema.omit({
+	chat_id: true,
+	service_url: true,
+	reply_to_message_id: true
+})
+
+export const messagingSendMediaBatchInputSchema = z.object({
+	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
+	items: z
+		.array(messagingSendMediaBatchItemSchema)
+		.min(1)
+		.max(MAX_MESSAGING_MEDIA_BATCH)
+		.describe(`1–${MAX_MESSAGING_MEDIA_BATCH} media items in send order`),
+	reply_to_message_id: z.string().min(1).optional().describe('Optional reply / thread anchor for the batch'),
+	service_url: serviceUrlOptional
+})
+
+export const messagingSendMediaBatchOutputSchema = z.object({
+	message_ids: z.array(z.string()).describe('Successfully sent message ids in order'),
+	results: batchResultSchema(messagingMessageOutputSchema).describe('Per-item outcomes (partial failure allowed)')
+})
+
 export const messagingDownloadFileInputSchema = z.object({
-	file_id: z.string().min(1).describe('Provider file id or content URL'),
+	file_id: z.string().min(1).describe('Provider file id, content URL, or attachment message id'),
+	chat_id: z.string().min(1).optional().describe('Conversation / space id when required (iMessage Photon download)'),
 	file_name: z.string().min(1).optional().describe('Preferred file name'),
 	service_url: serviceUrlOptional
 })
@@ -128,6 +183,18 @@ export const messagingAnswerCallbackInputSchema = z.object({
 	service_url: serviceUrlOptional
 })
 
+export const messagingReadInputSchema = z.object({
+	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
+	message_id: z.string().min(1).describe('Inbound message id to mark read up to (iMessage/Photon requires inbound)'),
+	service_url: serviceUrlOptional
+})
+
+export const messagingUnsendInputSchema = z.object({
+	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
+	message_id: z.string().min(1).describe('Message id to unsend / delete'),
+	service_url: serviceUrlOptional
+})
+
 export const messagingOkOutputSchema = z.object({
 	ok: z.boolean()
 })
@@ -136,21 +203,31 @@ export type MessagingSendTextInput = z.infer<typeof messagingSendTextInputSchema
 export type MessagingMessageOutput = z.infer<typeof messagingMessageOutputSchema>
 export type MessagingEditTextInput = z.infer<typeof messagingEditTextInputSchema>
 export type MessagingSendChatActionInput = z.infer<typeof messagingSendChatActionInputSchema>
+export type MessagingStopTypingInput = z.infer<typeof messagingStopTypingInputSchema>
 export type MessagingSetReactionInput = z.infer<typeof messagingSetReactionInputSchema>
+export type MessagingReactionOutput = z.infer<typeof messagingReactionOutputSchema>
 export type MessagingClearReactionInput = z.infer<typeof messagingClearReactionInputSchema>
 export type MessagingSendMediaInput = z.infer<typeof messagingSendMediaInputSchema>
+export type MessagingSendMediaBatchInput = z.infer<typeof messagingSendMediaBatchInputSchema>
+export type MessagingSendMediaBatchOutput = z.infer<typeof messagingSendMediaBatchOutputSchema>
 export type MessagingDownloadFileInput = z.infer<typeof messagingDownloadFileInputSchema>
 export type MessagingDownloadFileOutput = z.infer<typeof messagingDownloadFileOutputSchema>
 export type MessagingAnswerCallbackInput = z.infer<typeof messagingAnswerCallbackInputSchema>
+export type MessagingReadInput = z.infer<typeof messagingReadInputSchema>
+export type MessagingUnsendInput = z.infer<typeof messagingUnsendInputSchema>
 
 /** Shared seam surface — provider classes implement this. */
 export type MessagingOps = {
 	sendText: (input: MessagingSendTextInput) => Promise<MessagingMessageOutput>
 	editText: (input: MessagingEditTextInput) => Promise<MessagingMessageOutput>
 	sendChatAction: (input: MessagingSendChatActionInput) => Promise<void>
-	setReaction: (input: MessagingSetReactionInput) => Promise<void>
+	stopTyping: (input: MessagingStopTypingInput) => Promise<void>
+	setReaction: (input: MessagingSetReactionInput) => Promise<MessagingReactionOutput>
 	clearReaction: (input: MessagingClearReactionInput) => Promise<void>
 	sendMedia: (input: MessagingSendMediaInput) => Promise<MessagingMessageOutput>
+	sendMediaBatch: (input: MessagingSendMediaBatchInput) => Promise<MessagingSendMediaBatchOutput>
 	downloadFile: (input: MessagingDownloadFileInput) => Promise<MessagingDownloadFileOutput>
 	answerCallback: (input: MessagingAnswerCallbackInput) => Promise<void>
+	read: (input: MessagingReadInput) => Promise<void>
+	unsend: (input: MessagingUnsendInput) => Promise<void>
 }

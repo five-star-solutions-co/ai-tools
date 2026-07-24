@@ -13,12 +13,19 @@ import type {
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
+	MessagingReactionOutput,
+	MessagingReadInput,
 	MessagingSendChatActionInput,
+	MessagingSendMediaBatchInput,
+	MessagingSendMediaBatchOutput,
 	MessagingSendMediaInput,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
+	MessagingStopTypingInput,
+	MessagingUnsendInput,
 	TeamsMessagingAuth
 } from '../contracts'
+import { sendMediaBatchSequential, warnUnsupportedMessagingOp } from '../domain'
 
 export type TeamsMessagingProviderOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -68,12 +75,18 @@ export class TeamsMessagingProvider implements MessagingOps {
 		})
 	}
 
-	setReaction(input: MessagingSetReactionInput): Promise<void> {
-		return this.#client.setReaction({
+	/** Teams typing is one-shot; stop is a successful no-op. */
+	async stopTyping(_input: MessagingStopTypingInput): Promise<void> {
+		return
+	}
+
+	async setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {
+		await this.#client.setReaction({
 			chat_id: input.chat_id,
 			message_id: input.message_id,
 			emoji: input.emoji
 		})
+		return {}
 	}
 
 	clearReaction(input: MessagingClearReactionInput): Promise<void> {
@@ -97,6 +110,10 @@ export class TeamsMessagingProvider implements MessagingOps {
 		})
 	}
 
+	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+		return sendMediaBatchSequential((item) => this.sendMedia(item), input)
+	}
+
 	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
 		return this.#client.downloadFile({
 			file_id: input.file_id,
@@ -112,5 +129,13 @@ export class TeamsMessagingProvider implements MessagingOps {
 			...(input.show_alert !== undefined && { show_alert: input.show_alert }),
 			...(input.service_url && { service_url: input.service_url })
 		})
+	}
+
+	async read(_input: MessagingReadInput): Promise<void> {
+		warnUnsupportedMessagingOp('teams', 'read')
+	}
+
+	async unsend(_input: MessagingUnsendInput): Promise<void> {
+		warnUnsupportedMessagingOp('teams', 'unsend')
 	}
 }
