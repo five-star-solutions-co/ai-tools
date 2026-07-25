@@ -8,7 +8,17 @@
 | **Client** | `ResendClient` |
 | **Tools** | `resend-send`, `resend-send-batch` |
 
-Full **Resend vendor pack**. Not a multi-provider email seam. Start surface is send; grow more Resend APIs here over time.
+**Resend vendor pack** (not a multi-provider email seam). Mapped surface today is **send only**; more Resend product APIs land here only when product asks.
+
+### Mapped vs not mapped
+
+| Mapped (this pack) | Not mapped (use Resend API / host / later) |
+| --- | --- |
+| Send one email (`POST /emails`) | Domains, API keys, audiences, contacts |
+| Send batch (max 20) | Templates, broadcasts, receiving / inbound |
+| | Email get / list / cancel, webhooks, metrics |
+
+Seam with shared send verbs: [email](../modules/email.md).
 
 ## Host (client)
 

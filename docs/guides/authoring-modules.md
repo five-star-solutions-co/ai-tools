@@ -27,6 +27,16 @@ docs/vendors/<kebab-key>.md   # vendor packs only
 
 Folder name = package subpath. Gold vendor: `src/vendors/resend/` + `docs/vendors/resend.md`. Gold seam: `src/modules/email/` + `docs/modules/email.md`.
 
+### Multi-provider seams
+
+- Auth union + `providers/*.ts` Ops classes + `switch` in the seam client.
+- Do **not** treat `defineProvider` / `resolveProvider` as required — they are optional unused helpers. See [provider-seam.md](../specs/provider-seam.md).
+
+### Chat vendor webhooks
+
+- Telegram / Slack / Teams: `webhook.ts` (verify + parse) when the pack owns inbound normalization.
+- iMessage: **outbound REST only** in-pack; Photon native inbound webhooks stay **host routes** (see [imessage.md](../vendors/imessage.md)).
+
 ## Scaffold
 
 ```bash

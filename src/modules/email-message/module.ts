@@ -15,7 +15,7 @@ const addressSchema = z.object({
 
 const attachmentOutSchema = z.object({
 	filename: z.string().optional(),
-	mimeType: z.string().optional(),
+	mime_type: z.string().optional().describe('Attachment MIME type when known'),
 	size: z.number().optional(),
 	disposition: z.enum(['attachment', 'inline']).optional(),
 	content_id: z.string().optional(),
@@ -189,7 +189,7 @@ export const parseEmailMessageTool = defineTool({
 					const contentId = isString(att.contentId) && att.contentId.length > 0 ? att.contentId : undefined
 					return {
 						filename,
-						mimeType: att.mimeType,
+						mime_type: att.mimeType,
 						size: encoded.size,
 						disposition,
 						content_id: contentId,

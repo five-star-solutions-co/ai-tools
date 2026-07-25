@@ -14,7 +14,7 @@ Package: `@harryy/ai-tools`
 
 ```ts
 {
-  store: 's3' | 'host'
+  store: 'object' | 'host'
   key: string
   media_type?: string
   filename?: string
@@ -24,13 +24,13 @@ Package: `@harryy/ai-tools`
 
 | Field | Meaning |
 | --- | --- |
-| `store` | Who owns bytes. **v1 extract/convert require `s3`** (Textract needs AWS S3; Transmute path uses S3 as the durable store). `host` reserved for host-mapped keys later. |
+| `store` | Who owns bytes. **`object`** = bound object store (S3-compatible keys for extract/convert/render). **`host`** reserved for host-mapped keys. |
 | `key` | Object key in the bound bucket (or host id later). |
 | `media_type` | Optional hint (extension or sniffed). Tools may fill if missing. |
 | `filename` | Optional display name. |
 | `byte_length` | Optional size hint. |
 
-Mime: prefer `s3-head-object` / `Content-Type`; otherwise filename extension; otherwise leave unset.
+Mime: prefer object head / `Content-Type`; otherwise filename extension; otherwise leave unset.
 
 ## Document extract (`@harryy/ai-tools/document-extract`)
 

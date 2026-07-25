@@ -100,7 +100,7 @@ src/modules|vendors/<kebab-key>/
 | `withAuth` | Bind credentials into every tool execute (closes auth) |
 | `runTool` | safeParse input → execute → safeParse output |
 | `requireAuth` / `resolveProvider` | Parse `ctx.auth`; pick provider by `auth.provider` |
-| `defineProvider` | Documented registry helper — **currently unused in modules** (see G-08) |
+| `defineProvider` | Optional unused helper — gold seams use switch + Ops (G-08 done) |
 | `ToolError` | Stable codes + retryable + details (no secrets) |
 | `validateTool` / `validateModule` | Model-copy, kebab id, field `.describe()` contracts |
 
@@ -461,7 +461,7 @@ Extract/convert/render use `ArtifactRef` so bytes stay out of the LLM. Chat pack
 
 ### G-07 — Vendor surface honesty: email ESPs still send-only (P2)
 
-**Status:** open  
+**Status:** done (2026-07-26) — mapped vs not-mapped tables on resend/cloudflare-email docs; module copy send-only.  
 **Severity:** product messaging oversells “full pack”  
 
 **Problem**  
@@ -489,7 +489,7 @@ Resend and Cloudflare Email packs (and email seam) only implement send + batch. 
 
 ### G-08 — `defineProvider` dead API: adopt or demote (P2)
 
-**Status:** open  
+**Status:** done (2026-07-26) — **demoted**: gold = auth union + provider Ops classes + switch; defineProvider optional unused helpers.  
 **Severity:** docs teach a registry pattern modules do not use  
 
 **Problem**  
@@ -524,7 +524,7 @@ Kernel exports `defineProvider` / `resolveProvider`. No module registers provide
 
 ### G-10 — iMessage inbound webhook surface missing (P2)
 
-**Status:** open  
+**Status:** done (2026-07-26) — **documented out of pack**: Photon inbound webhooks = host; pack is outbound REST only.  
 **Severity:** channel checklist incomplete for iMessage  
 
 **Problem**  
@@ -557,23 +557,8 @@ Telegram, Slack, Teams export `webhook.ts` (verify + parse → normalized inboun
 
 ### G-11 — Schema / contract consistency cleanup (P2)
 
-**Status:** open  
-**Severity:** small inconsistencies that accumulate agent mistakes  
-
-**Subtasks**
-
-| ID | Issue | Evidence | Fix |
-| --- | --- | --- | --- |
-| G-11a | Artifact store enum in docs vs code | Spec shows `store: 's3' \| 'host'`; code is `'object' \| 'host'` | Update `docs/specs/artifacts-extract-convert.md` (and any README mention) to `object` |
-| G-11b | `email-message` camelCase | Output `mimeType`; build path `contentType` mixing | Prefer snake_case (`mime_type`) with migration note if public |
-| G-11c | `unsupported` missing from errors guide | `src/core/errors.ts` has code; `docs/guides/errors.md` table omits it | Add row + usage (provider capability gaps) |
-| G-11d | `defineTool` does not validate output | Output only via `runTool`; direct `.execute` skips | Document intentional, or validate output in `defineTool` execute (double-check adapters still use `runTool`) |
-| G-11e | CHANGELOG quality | Duplicate headers, empty 1.x sections, outdated mime claims | Clean Unreleased / historical note; do not rewrite release history without process |
-
-**Acceptance**
-
-- [ ] Each subtask closed or explicitly deferred with reason
-- [ ] No remaining `store: 's3'` in artifact specs if code uses `object`
+**Status:** done (2026-07-26)  
+**Subtasks:** G-11a artifact `object` in spec; G-11b parse attachment `mime_type`; G-11c `unsupported` in errors guide; G-11d runTool validates output (docs); G-11e CHANGELOG Unreleased/historical note (empty 1.x sections left to semantic-release).
 
 **Related paths**
 
@@ -614,7 +599,7 @@ Architecture prefers self-hosted extract (tesseract/docling/…) and lists speec
 
 ### G-13 — Process: single source of truth for architecture locks (P2)
 
-**Status:** open  
+**Status:** done (2026-07-26) — authority order on docs/README + working roadmap; handoff linked from wiki hub.  
 **Severity:** overlapping docs with drift  
 
 **Problem**  
@@ -693,11 +678,11 @@ Other agent hygiene (G-03 mime, G-05 messaging no-ops, …) stays orthogonal.
 | 5 | **G-05** messaging no-op honesty | **Done** — unsend off seam; intentional no-ops documented |
 | 6 | **G-09** storage capability surface | **Cancelled** — storage seam removed |
 | 7 | **G-04** messaging ArtifactRef media | **Done** — source / destination_key on seam |
-| 8 | **G-11** consistency cleanup | Cheap doc/schema polish |
-| 9 | **G-08** defineProvider | Pattern clarity |
-| 10 | **G-07** email API honesty docs | Can parallel with 8–9 |
-| 11 | **G-10** iMessage webhook | Channel completeness |
-| 12 | **G-13** doc authority | After G-02 settled |
+| 8 | **G-11** consistency cleanup | **Done** |
+| 9 | **G-08** defineProvider | **Done** — demoted |
+| 10 | **G-07** email API honesty docs | **Done** |
+| 11 | **G-10** iMessage webhook | **Done** — host inbound |
+| 12 | **G-13** doc authority | **Done** |
 | 13 | **G-12** platform backlog | Product-driven only |
 | later | **§8 Host-integration** H-01… | After hygiene or when host-bind work is priority |
 
@@ -745,10 +730,10 @@ bun run build && bun run typecheck
 | No multi-provider email module | `src/modules/email` exists |
 | No multi-provider messaging seam | `src/modules/messaging` exists |
 | Email multi-provider Removed (working) | Reconciled: Done thin seam (G-02) |
-| Artifact `store: 's3'` | `store: 'object'` |
+| Artifact `store: 's3'` | Spec fixed to `store: 'object'` |
 | mime = parse/build (old CHANGELOG) | mime pack removed; email-message = parse/build |
 | All SigV4 via AwsService | S3 uses `AwsService` (G-01 done) |
-| defineProvider for seams | Unused; switch + classes |
+| defineProvider for seams | Demoted; gold = switch + Ops classes |
 | R-optional-spread | Prefer `...(x && {…})`; `!== undefined` when falsy-valid |
 
 ## Appendix C — Related existing handoffs

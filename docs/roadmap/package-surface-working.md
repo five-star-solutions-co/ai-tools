@@ -7,6 +7,8 @@ Provider seam (Lane A): [provider-seam.md](../specs/provider-seam.md)
 
 This is **not** a second architecture lock. It tracks inventory, migration, open questions, and slice checklists. When a decision changes, update the architecture spec first, then this doc.
 
+**Authority order** (when docs disagree): `AGENTS.md` → shipped code/gold files → `docs/specs/provider-seam.md` / http-aws ref → pack docs → `package-surface-architecture.md` + **this working doc**. Full gap backlog: [repo-review-standards-and-gaps.md](../handoffs/repo-review-standards-and-gaps.md).
+
 ---
 
 ## Doc split
@@ -46,7 +48,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `vendors/telegram` | Done | full pack + live message + webhook helpers |
 | `vendors/slack` | Done | Web API + webhook helpers + messaging seam provider |
 | `vendors/teams` | Done | Bot Framework pack + messaging seam provider |
-| `vendors/imessage` | Done | photon-rest-proxy pack + messaging seam provider |
+| `vendors/imessage` | Done | photon-rest-proxy **outbound** pack + messaging seam provider; inbound webhooks = host (no pack webhook.ts) |
 
 ### B. Host apps (what stays outside this package)
 

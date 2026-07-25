@@ -36,8 +36,7 @@ export const resendSendBatchTool = defineTool({
 export const resendModule = defineModule({
 	id: 'resend',
 	title: 'Resend',
-	description:
-		'Resend vendor pack: send transactional email (batch supported). Expand with more Resend APIs over time. Not a multi-provider email seam.',
+	description: 'Resend vendor pack: send one email or a batch (max 20). Not a multi-provider email seam.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: resendAuthSchema },
 	tools: [resendSendTool, resendSendBatchTool]

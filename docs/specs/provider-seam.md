@@ -16,18 +16,26 @@ Scope: **modules only** (`src/modules/*`). Vendors: [package-surface-architectur
 
 | API | Role |
 | --- | --- |
-| `defineProvider` | `{ id, title, authSchema, ops }` |
-| `resolveProvider` | Pick ops by `auth.provider` |
 | `requireAuth` | Parse `ctx.auth` with module union schema |
 | `withAuth` | Host bind (unchanged entry point) |
+| `defineProvider` / `resolveProvider` | **Optional helpers only** — exported from core but **not** the gold pattern. No shipped module registers providers with them. Prefer the layout below. |
+
+### Gold seam pattern (use this)
+
+1. Auth: Zod **discriminated union** on `provider` in `contracts.ts`.
+2. Ops: a shared `*Ops` type class; one **class per provider** under `providers/*.ts` wrapping the vendor client.
+3. Client: `switch (auth.provider)` (or equivalent) → provider instance; tools call `*Client.fromContext(ctx)`.
+
+Gold example: `src/modules/email/` (`providers/resend.ts`, `providers/cloudflare.ts`).
 
 ## Module layout
 
 ```text
 src/modules/<capability>/
-  contracts.ts      # Zod I/O + Ops type class
+  contracts.ts      # Zod I/O + Ops type class + auth union
+  client.ts         # switch provider → Ops
   module.ts         # generic tools + auth union
-  providers/*.ts    # vendor implementations
+  providers/*.ts    # thin wrap of vendors/* clients
   index.ts
 ```
 

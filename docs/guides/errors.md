@@ -36,6 +36,7 @@ throw new ToolError('Object not found', {
 | `upstream` | Provider/API failure |
 | `timeout` | Aborted or deadline exceeded |
 | `too_large` | Payload/object over package or provider limit |
+| `unsupported` | Capability not available for the bound provider or store (e.g. optional multipart path, host artifact store not resolved) |
 | `unsupported_runtime` | Missing fetch / wrong runtime |
 | `internal` | Unexpected local failure |
 

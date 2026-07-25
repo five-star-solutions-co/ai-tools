@@ -38,7 +38,7 @@ export const cloudflareEmailModule = defineModule({
 	id: 'cloudflare-email',
 	title: 'Cloudflare Email',
 	description:
-		'Cloudflare Email Sending vendor pack: send transactional email (batch supported). Host binds account_id and api_token. Expand with more Cloudflare email APIs over time. Not a multi-provider email seam.',
+		'Cloudflare Email Sending vendor pack: send one email or a batch (max 20). Not a multi-provider email seam.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: cloudflareEmailAuthSchema },
 	tools: [cloudflareEmailSendTool, cloudflareEmailSendBatchTool]

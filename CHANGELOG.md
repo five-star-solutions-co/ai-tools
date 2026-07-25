@@ -31,47 +31,21 @@ Releases are cut by semantic-release from conventional commits. See [docs/versio
 
 ## [Unreleased]
 
-### Added
+Notes for the next cut (hand-maintained until semantic-release rewrites on release). Empty `## [1.x.x]` sections above are produced by release automation.
 
-- **`vector-store` module** — seam over vendor packs; providers `qdrant`, `pinecone`, `supabase`, `mastra`.
-- **`vendors/qdrant`**, **`vendors/pinecone`**, **`vendors/supabase-vector`**, **`vendors/mastra-vector`** — vector backends (shared I/O in `vendors/_vector`; mastra = `@mastra/pg` PgVector, optional peer).
-- **`rag` module** — chunk + OpenAI-compatible embed route + nested vector-store (ingest / retrieve / delete).
-- Docs wiki under `docs/` (guides, brain packages, product modules).
-- Module scaffold writes `docs/modules/<key>.md` stub.
-- **semantic-release** on `main` (conventional commits → version, changelog, tag, npm OIDC).
-- **`web-fetch` module** — allowlisted HTTP client on **ofetch** (`web-fetch-get` / `web-fetch-request`).
-- **`document-extract`** — Textract text extract from S3 `ArtifactRef` with internal poll; `document-extract-status` for `job_id`.
-- **`file-convert`** — Transmute-backed convert for S3 artifacts.
-- Spec: `docs/specs/artifacts-extract-convert.md`.
+### Historical note
 
-### Changed
-
-- CI check workflow polish; repository URL `harryy2510/ai-tools`.
-- Replaced hand-rolled / token publish paths with `release.yml` + Trusted Publisher (`release.yml`).
+Early public notes under **0.0.1** below are archival. MIME parse/build is **`email-message`** (not a `mime` pack). Object store is **`s3`** (+ nested S3 on `files` / artifact media); there is no multi-provider `storage` seam or published `r2` / `supabase-storage` packs.
 
 ## [0.0.1] - 2026-07-21
 
-Initial public package surface.
+Initial public package surface (archival).
 
 ### Added
 
 - **Kernel (`@harryy/ai-tools/core`)** — `defineTool`, `defineModule`, `withAuth`, `runTool`, contracts, catalog, JSON Schema projection, stable `ToolError` codes.
-- **HTTP factory (`@harryy/ai-tools/http`)** — fixed-origin `defineHttpApi` / `httpRequest` helpers.
-- **Adapters** — Mastra, Vercel AI SDK, TanStack AI, Cloudflare Workers AI tool defs, MCP list/call + register.
-- **Module codegen** — oxc-parser discovery of `src/modules/*` → `package.json` exports, tsdown entries, manifest, module keys.
-- **Product modules**
-  - `cloudflare-email` — transactional send via Cloudflare Email Service REST API.
-  - `s3-storage` — list/get/put/delete/head/copy + presigned URLs (S3-compatible including R2/MinIO).
-  - `mime` — parse/build RFC 822 MIME messages (attachments, headers).
-- **Scaffold** — `bun run new-module <kebab-key>`.
-- **Tooling** — Bun, oxfmt, type-aware oxlint, lefthook, tsdown, `bun run check` gate.
-- **CI** — GitHub Actions check + build + pack dry-run on push/PR.
+- **HTTP** surface and framework adapters (Mastra, AI SDK, TanStack, Cloudflare, MCP).
+- Early product modules and tooling (see git history for full evolution).
 
-### Hardening (modules)
-
-- Email: 5 MiB preflight, richer upstream error mapping.
-- S3: object metadata on list, put size limit, copy, signed URLs, optional session token.
-- MIME: richer parse fields; build-time attachments and custom headers.
-
-[Unreleased]: https://github.com/harryy2510/ai-tools/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/harryy2510/ai-tools/compare/v1.6.1...HEAD
 [0.0.1]: https://github.com/harryy2510/ai-tools/releases/tag/v0.0.1

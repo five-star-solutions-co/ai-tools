@@ -8,7 +8,7 @@
 | **Providers** | `resend`, `cloudflare` |
 | **Tools** | `email-send`, `email-send-batch` |
 
-Shared send contract over [Resend](../vendors/resend.md) and [Cloudflare Email](../vendors/cloudflare-email.md). For full vendor APIs beyond send, use the vendor pack directly.
+Thin **send/batch only** seam over [Resend](../vendors/resend.md) and [Cloudflare Email](../vendors/cloudflare-email.md). Domains, templates, receiving, webhooks, and other ESP APIs are **not** on this seam (and mostly not on the vendor packs yet — see each vendor’s mapped table).
 
 ## Bind
 

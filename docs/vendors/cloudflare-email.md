@@ -8,7 +8,17 @@
 | **Client** | `CloudflareEmailClient` |
 | **Tools** | `cloudflare-email-send`, `cloudflare-email-send-batch` |
 
-Full **Cloudflare Email Sending** pack: host class client + agent tools on the same implementation.
+**Cloudflare Email Sending** vendor pack: host class client + agent tools on the same implementation. Mapped surface today is **send only**.
+
+### Mapped vs not mapped
+
+| Mapped (this pack) | Not mapped (use Cloudflare API / host / later) |
+| --- | --- |
+| Send one email | Domains / routing / DNS setup |
+| Send batch (max 20) | Receiving / workers email routing, lists, analytics |
+| | Full Email Routing / Email Security product surface |
+
+Seam with shared send verbs: [email](../modules/email.md).
 
 ## Host (class client)
 

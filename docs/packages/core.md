@@ -38,7 +38,7 @@ import {
 | `runtime` | optional | `both` \| `edge` \| `node` |
 | `tags` | optional | free-form tags |
 
-`defineTool` wraps execute so input is validated before your function runs.
+`defineTool` wraps execute so **input** is validated before your function runs. **Output** is validated by `runTool` (and adapters that use `runTool`), not by calling `.execute` directly — intentional so adapters and tests can share one path.
 
 ## `defineModule`
 

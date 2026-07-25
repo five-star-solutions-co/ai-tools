@@ -10,7 +10,12 @@
 
 Outbound iMessage via a hosted **[photon-rest-proxy](https://github.com/harryy2510)** (or your deploy of `~/Desktop/hariom/photon-rest-proxy`). The pack never talks to Photon gRPC directly.
 
-**Inbound:** Photon native webhooks → your host (not this pack’s HTTP client).
+### Inbound (out of pack scope)
+
+Photon / Spectrum **native webhooks** terminate on the **host** (HTTP route + secret storage + tenant map). This pack does **not** export `webhook.ts` verify/parse helpers: the inbound shape is product-specific and host-owned. Compare Telegram/Slack/Teams packs, which normalize bot platform webhooks for agent tools.
+
+**Pack owns:** outbound REST via photon-rest-proxy (`ImessageClient` + tools).  
+**Host owns:** inbound webhook HTTP, signature/secret handling, and durable turn/outbox.
 
 ## Auth
 

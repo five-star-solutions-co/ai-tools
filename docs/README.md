@@ -13,6 +13,10 @@ Documentation hub. Root [README](../README.md) is the short entry point; this tr
 | [Errors](./guides/errors.md) | `ToolError` codes and retry signals |
 | [Versioning](./versioning.md) | semantic-release + conventional commits |
 | [Changelog](../CHANGELOG.md) | Released notes |
+| [Repo review / gap backlog](./handoffs/repo-review-standards-and-gaps.md) | Standards dump + G-task backlog (not an architecture lock) |
+| [Working inventory](./roadmap/package-surface-working.md) | Delivery status board |
+
+**Authority when docs disagree:** `AGENTS.md` → shipped code + gold files → specs (`provider-seam`, http/aws) → pack docs → architecture + working roadmap.
 
 ## Brain
 

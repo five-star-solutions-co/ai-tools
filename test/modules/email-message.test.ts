@@ -40,7 +40,7 @@ describe('email-message', () => {
 		expect(parsed.headers?.some((h) => h.key === 'x-trace' && h.value.includes('trace-1'))).toBe(true)
 		expect(parsed.attachments.length).toBeGreaterThanOrEqual(1)
 		const att = parsed.attachments.find((a) => a.filename === 'note.txt')
-		expect(att?.mimeType).toContain('text/plain')
+		expect(att?.mime_type).toContain('text/plain')
 		expect(att?.content_base64).toBeDefined()
 		expect(parseEmailMessageTool.id).toBe('email-message-parse')
 		expect(buildEmailMessageTool.id).toBe('email-message-build')
