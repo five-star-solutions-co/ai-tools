@@ -13,7 +13,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 
 | Doc | Holds | Does not hold |
 | --- | --- | --- |
-| **Architecture spec** | Locked lanes, ownership, patterns, non-goals | Task board, FSS file paths, API map progress |
+| **Architecture spec** | Locked lanes, ownership, patterns, non-goals | Task board, API map progress |
 | **This working doc** | Inventory, adapters, backlog, questions, status | Competing architecture |
 
 ---
@@ -47,38 +47,15 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `vendors/teams` | Done | Bot Framework pack + messaging seam provider |
 | `vendors/imessage` | Done | photon-rest-proxy pack + messaging seam provider |
 
-### B. Five Star host — custom tools (`packages/tools/src/custom`)
+### B. Host apps (what stays outside this package)
 
-| Custom key | Actions (summary) | Future home |
+| Concern | Owner | Notes |
 | --- | --- | --- |
-| `email_sender` | `send_email` | Adapter → `resend` or `cloudflare-email` vendor pack |
-| `read_document` / textract | `extract_text` | Adapter → `document-extract` + `files`/storage ArtifactRef |
-| `document_renderer` | `render_pdf`, `render_screenshot` | Adapter → `document-render` |
-| `organization_files` | `list_items`, `search_items`, `get_item` | Adapter → `files` (root_prefix) |
-| `amazon_sp_api` | inventory, orders, reports, … | Lift → `vendors/amazon-sp-api` |
-| `katana` | sales-order queries | Lift → `vendors/katana` |
-| `woocommerce` | orders/products | Lift → `vendors/woocommerce` |
-
-### C. Five Star host — capabilities (`packages/capabilities`)
-
-Control plane only (stay in host): `whoami`, workflows, runs/artifacts, agents, connection intents, readiness, agent update proposals. **Not** candidates for this package.
-
-### D. Five Star host — connector catalog (Composio / Nango)
-
-Logical tools (Gmail, Sheets, Drive, QBO, Zoom, ads, CRMs, …) stay on the **connector-provider-seam**. Do not reimplement in ai-tools unless a first-party vendor pack is explicitly preferred over Composio for that app.
-
-### E. Five Star host — channels (product, currently scattered)
-
-| Channel | Product role | Package home |
-| --- | --- | --- |
-| Telegram | P0 production | `vendors/telegram` |
-| Slack | P1 | `vendors/slack` |
-| iMessage (Photon) | Specced | `vendors/imessage` |
-| Teams | Later | `vendors/teams` |
-| WhatsApp | Later | `vendors/whatsapp` |
-| Email as channel | Delivery + tools | `email` module + host inbound |
-
-Host still owns: webhook HTTP routes, secret storage, chat→org/agent map, durable outbox, accessLevel, audit.
+| Control plane (whoami, workflows, runs, agents, readiness) | **Host** | Not candidates for this package |
+| SaaS OAuth / connector catalogs (Composio, Nango, …) | **Host** | Do not reimplement unless a first-party vendor pack is preferred |
+| Webhook HTTP routes, secret storage, tenant→chat map | **Host** | Packs supply verify/parse helpers only |
+| Durable outbox, authZ, audit, confirmation UX | **Host** | Optional pure helpers only in package |
+| Thin adapters over pack tool ids | **Host** | Map legacy host names → package kebab ids |
 
 ---
 
@@ -130,7 +107,7 @@ Host files are reference only for *what* exists, never for *what to call things*
 | Webhook verify + Update parse | host route | pure verify/parse in pack |
 | Tenant / grants / FIFO / send claim | host | **host only** |
 
-**Naming anti-patterns (do not ship):** `sendTelegramMessage`, `setTelegramMessageReaction`, `createEditedTextStream`, host-only emoji unions, `AcceptedTurn*`, `permanentOperation`, FSS RPC names.
+**Naming anti-patterns (do not ship):** `sendTelegramMessage`, `setTelegramMessageReaction`, `createEditedTextStream`, host-only emoji unions, host RPC/lifecycle type names.
 
 Slice 3 done when: this capability map is implemented under `src/channels/telegram` with **package names**, tests, docs; host can thin-adapt without reimplementing Bot API.
 
@@ -145,7 +122,7 @@ Slice 3 done when: this capability map is implemented under `src/channels/telegr
 | API map doc in vendor README | What is mapped / not mapped |
 | Ship first action group | e.g. Woo: list/get order + list/get product |
 | Expand by demand | Amazon reports, etc. |
-| FSS custom thin adapter | Or replace custom module when ready |
+| Host thin adapter | Host maps old names onto pack tools when ready |
 
 ### Initial vendor API map stubs
 
@@ -196,16 +173,6 @@ Slice 3 done when: this capability map is implemented under `src/channels/telegr
 | 9 | `vendors/imessage` (photon-rest-proxy) | Done | HTTP pack; gRPC only in hosted proxy |
 | 10 | Remaining platform (speech, browser, pdf, image, queue, webhook, crypto, calendar) | Backlog | product-driven |
 
-### FSS adapter work (host repo — track here for visibility)
-
-| Adapter | Depends on | Status |
-| --- | --- | --- |
-| email_sender → `email` | Done in package | Pending host |
-| document_renderer → `document-render` | Slice 1 | Pending |
-| organization_files → `files` | Slice 2 | Pending |
-| read_document → extract + files/storage | Slice 2 + extract | Pending |
-| custom commerce → vendor packs | Slices 4–6 | Pending |
-
 ---
 
 ## Knowledge / Mastra memory (detail)
@@ -227,7 +194,7 @@ Record answers here; promote locked answers into the architecture spec.
 1. **Codegen:** one manifest for all lanes, or separate manifests? (Default: one discovery root list.)  
 2. ~~**messaging vs channels only**~~ → **Locked:** both. Full packs (A) + thin shared seam (B). Shared client method names (`sendText`, `editText`, `sendChatAction`, `setReaction`, `clearReaction`, `sendMedia`, `downloadFile`, `answerCallback`) so seam is wiring. Ship Telegram pack first with those names; `messaging` module can follow once 2+ packs exist.
 3. **Amazon auth model:** host always supplies LWA tokens, or package documents refresh helpers?  
-4. **document-render ArtifactRef:** always write PDF/PNG to storage, or allow base64 for tiny screenshots? (Default: storage for anything agent-facing in FSS.)  
+4. **document-render ArtifactRef:** always write PDF/PNG to storage, or allow base64 for tiny screenshots? (Default: storage for agent-facing outputs.)  
 5. **iMessage:** Photon as only provider under `channels/imessage`?  
 6. **SMS:** under `messaging` providers (Twilio) vs separate `sms` module? (Default: `messaging` providers.)  
 

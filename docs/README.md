@@ -86,6 +86,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | Doc | Purpose |
 | --- | --- |
 | [package-surface-architecture](./specs/package-surface-architecture.md) | modules vs vendors layout and import rules |
+| [host-integration-kernel](./specs/host-integration-kernel.md) | bind/context/hooks/catalog; not an agent brain |
 | [provider-seam](./specs/provider-seam.md) | Multi-provider capability modules |
 | [artifacts-extract-convert](./specs/artifacts-extract-convert.md) | ArtifactRef extract / convert / render |
 | [http-and-aws-services](./reference/http-and-aws-services.md) | Transport classes |
@@ -95,20 +96,22 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 ## Mental model
 
 ```text
-Host app
-  ├── owns secrets / vaults
+Host app  (agent brain / policy / tenancy — NOT this package)
+  ├── owns secrets / vaults / allowlists / confirmation / durable runs
   ├── new VendorClient(auth)          // host DX
-  ├── withAuth(module, credentials)   // closes auth into tools
+  ├── withAuth / bindModule(...)      // closes auth + context into tools
   └── adapter projector               // Mastra | AI SDK | TanStack | CF | MCP | runTool
         └── kernel ToolDefinition     // id, schemas, execute
               └── pack client.fromContext(ctx)
 ```
 
+- This package is **tool packs + host-integration kernel**, not an agent runtime.
 - **Kernel** is the only place tools are authored.
 - **Adapters** only project; they never re-implement vendor calls.
 - **Auth schemas** are host-facing; model-facing tool inputs never include keys.
 - **Codegen** owns package exports for packs under `src/modules|vendors/<key>/` with `index.ts`.
 - Auth and domain fields that mirror APIs use **snake_case**.
+- Optional **catalog / on-demand discovery** over host-registered tools is in scope; Composio SaaS catalogs are not (see [host-integration-kernel](./specs/host-integration-kernel.md)).
 
 ## Contributing
 

@@ -1,5 +1,5 @@
 # Local Supabase for ai-tools integration tests.
-# Non-default ports so this does not clash with a normal `supabase start` or FSS.
+# Non-default ports so this does not clash with a normal `supabase start`.
 #
 #   supabase start
 #   supabase status   # fill service_role into .env if needed

@@ -28,7 +28,7 @@ Optional peer of `@harryy/ai-tools` (same idea as `@mastra/core` for the adapter
   default_index?: 'organization_knowledge',
   dimension?: 1024,                  // needed if auto_create_index
   auto_create_index?: false,
-  disable_init?: true,               // FSS-style: host manages init
+  disable_init?: true,               // host manages store init when true
 }
 ```
 
@@ -50,7 +50,7 @@ Optional peer of `@harryy/ai-tools` (same idea as `@mastra/core` for the adapter
 withAuth(vectorStoreModule, {
   provider: 'mastra',
   connection_string: process.env.SUPABASE_DB_URL!,
-  id: 'five-star-solutions-organization-knowledge',
+  id: 'org-knowledge-vectors',
   schema_name: 'agent',
   default_index: 'organization_knowledge',
   disable_init: true,

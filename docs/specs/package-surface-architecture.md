@@ -9,14 +9,16 @@ Related:
 - [provider-seam.md](./provider-seam.md) — multi-provider capability modules only  
 - [artifacts-extract-convert.md](./artifacts-extract-convert.md) — ArtifactRef pipelines  
 - [http-and-aws-services.md](../reference/http-and-aws-services.md) — HTTP / SigV4 transport  
+- [host-integration-kernel.md](./host-integration-kernel.md) — bind/context/hooks/catalog; **not** an agent brain  
 - **Working delivery board:** [package-surface-working.md](../roadmap/package-surface-working.md) — inventory, migration, checklists, open questions  
-- Host product context (Five Star): connector seam (Composio + Nango), channel productionization specs  
+- Host product context: connector seam (Composio + Nango where used), channel productionization  
+
 
 ### What this doc is vs is not
 
 | This architecture spec | Working doc |
 | --- | --- |
-| Locked lanes, ownership, patterns, non-goals, build preference | Living inventory, slice status, FSS migration map, open questions |
+| Locked lanes, ownership, patterns, non-goals, build preference | Living inventory, slice status, open questions |
 | Change only when a product decision changes | Update every delivered slice |
 
 ---
@@ -27,13 +29,15 @@ Related:
 2. Keep **Composio / Nango** as the OAuth SaaS catalog and PHI routing path; this package owns first-party HTTP/SigV4, self-hostable services, and channels the host operates.
 3. Make **channel messaging** complete: not “webhook only” — inbound parse, outbound tools, media, edits, and host-owned durable delivery.
 4. Prefer **self-hostable providers** for document render, convert, extract, speech, browser, and vectors, with managed clouds as optional providers.
-5. Preserve kernel rules: auth host-bound, adapters generic, ofetch/aws4fetch services, stable tool ids.
+5. Preserve kernel rules: auth host-bound, adapters generic, `HttpService` / `AwsService`, stable tool ids.
+6. Remain a **reusable tool-pack library + host-integration kernel** — never an agent brain/runtime (see [host-integration-kernel.md](./host-integration-kernel.md)).
 
 ---
 
 ## Non-goals
 
-- Replacing Composio/Nango for broad SaaS OAuth catalogs.
+- Becoming an **agent brain**, agent runtime, or product control plane (confirmation UX, model routing, chat delivery, durable product orchestration).
+- Replacing Composio/Nango for broad SaaS OAuth catalogs or Composio-style connector “meta tools.”
 - Encoding tenant RLS, org membership, agent allowlists, or PHI policy in this package (host owns those).
 - Forcing huge APIs (Amazon SP-API, full Slack API) into a five-tool generic “commerce” or “chat” facade.
 - Owning Mastra Memory / pgvector product schema (host owns stores; package exposes tools/clients).
@@ -206,7 +210,7 @@ src/vendors/<vendor-key>/
 | Vendor key | Domains to map (incremental) | Notes |
 | --- | --- | --- |
 | `woocommerce` | orders, products | REST + consumer key/secret |
-| `katana` | sales orders, related reads | Lift from FSS custom client over time |
+| `katana` | sales orders, related reads | Expand by product demand |
 | `amazon-sp-api` | orders, inventory, reports, documents, … | Large surface; ship action groups deliberately |
 
 Tool ids **may** be vendor-prefixed (`woocommerce-list-orders`, `amazon-sp-api-create-report`). That is intentional for this lane.
@@ -243,7 +247,7 @@ So: **every feature the product channel uses for transport/presentation lives in
 
 ### Naming and API design (locked)
 
-Product hosts (including Five Star) are **capability inventories only**. They are **not** the naming authority.
+Product hosts are **capability inventories only**. They are **not** the naming authority.
 
 | Rule | Detail |
 | --- | --- |
@@ -397,4 +401,4 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 - Chat: full packs under `vendors/*` + thin `modules/messaging` seam.  
 - Email: full packs under `vendors/*` + thin `modules/email` seam.  
 - Codegen discovers `modules` + `vendors`.  
-- FSS `packages/tools/src/custom/*` can become thin adapters over platform/vendor modules over time without a big-bang rewrite.
+- Host apps can thin-adapt existing custom tools over platform/vendor packs without a big-bang rewrite.

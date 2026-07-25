@@ -14,6 +14,7 @@ This document is the full dump from an end-to-end read of the package: architect
 3. `docs/specs/provider-seam.md`, `docs/reference/http-and-aws-services.md`
 4. README / pack docs under `docs/modules|vendors/`
 5. `docs/specs/package-surface-architecture.md` + `docs/roadmap/package-surface-working.md` (reconciled 2026-07-26 for email/messaging dual surface — G-02)
+6. `docs/specs/host-integration-kernel.md` — bind/context/hooks/catalog; **not** an agent brain
 
 ---
 
@@ -26,8 +27,9 @@ This document is the full dump from an end-to-end read of the package: architect
 5. [Gold files to clone](#5-gold-files-to-clone)
 6. [What is solid](#6-what-is-solid)
 7. [Gap tasks (backlog)](#7-gap-tasks-backlog)
-8. [Suggested execution order](#8-suggested-execution-order)
-9. [Verification rules for any fix](#9-verification-rules-for-any-fix)
+8. [Host-integration epic (later)](#8-host-integration-epic-later)
+9. [Suggested execution order](#9-suggested-execution-order)
+10. [Verification rules for any fix](#10-verification-rules-for-any-fix)
 
 ---
 
@@ -205,7 +207,7 @@ These override convenience, host inventory code, and “I’ll clean it up later
 | Tool ids | kebab-case; seams capability-prefixed (`storage-get-object`); vendors vendor-prefixed (`telegram-send-text`) |
 | Auth / domain fields | snake_case (`api_key`, `access_key_id`, `bot_token`) unless already shipped camelCase for that surface |
 | Model-facing copy | what / when / bounds only — no API keys, env names, vault, install, host wiring |
-| Package names | Package-owned; host (e.g. Five Star) is inventory only — never copy host symbols |
+| Package names | Package-owned; host is inventory only — never copy host symbols |
 
 ### 3.3 Type safety (`src/`)
 
@@ -258,7 +260,7 @@ If public surface / build emit changed: also `bun run build` and `bun run typech
 - Hand-edited codegen surface
 - New layout/naming schemes when a gold file exists
 - Public kit dumpster of parse helpers on `_storage` / `_vector` barrels (schemas/types only on barrel)
-- Host-name inheritance (`sendTelegramMessage`, host emoji enums, FSS RPC names)
+- Host-name inheritance (`sendTelegramMessage`, host emoji enums, host-only RPC names)
 
 ### Never skip
 
@@ -762,12 +764,53 @@ Multiple “authority” docs: AGENTS, package-surface-architecture, provider-se
 
 ---
 
-## 8. Suggested execution order
+## 8. Host-integration epic (later)
+
+Full lock: [`docs/specs/host-integration-kernel.md`](../specs/host-integration-kernel.md).  
+**Package = tool packs + host-integration kernel. Host = agent brain / policy / tenancy.** Never rebrand this package as the brain.
+
+### Framed decisions (do not invent product)
+
+| Decision | Status |
+| --- | --- |
+| Not an agent runtime; no PHI/RLS/confirmation/durable product orchestration here | **Locked** |
+| Composio/Nango SaaS connector catalogs stay host | **Locked** |
+| On-demand discovery over **host-registered ai-tools packs** (search/read, optional execute-by-id) | **Yes — tabled** until after bind/context/hooks |
+| Composio-style cross-app “meta tools” | **Out of scope** forever |
+
+### Kernel backlog (implement when product asks; after hygiene G-03…)
+
+| ID | Item | Notes |
+| --- | --- | --- |
+| H-01 | Dynamic bind | `bindModule({ resolveAuth, resolveContext })` beside static `withAuth` |
+| H-02 | Adapter context factory | Mastra (and peers) pass more than `AbortSignal` — extras, progress, host ids |
+| H-03 | Generic hooks | `beforeExecute` / `afterExecute` / `onError` pipes only; host injects policy |
+| H-04 | Richer `ToolMeta` | Additive host facts: idempotent, longRunning, cancel/progress, network, artifacts, confirmation **hint** |
+| H-05 | Registry + catalog discovery | **Tabled.** Search/read over registered tools; prefer names `catalog-search-tools` / `catalog-read-tool` (not “meta tools”) |
+| H-06 | Public artifacts surface | `@harryy/ai-tools/artifacts` + bounded files reads (range/lines/create artifact) — related to G-04 |
+| H-07 | Task contracts | Package Zod + tools only; host supplies backend (no host DB/deploy code in package) |
+| H-08 | Scheduler + EventBridge provider | Model schedules task **refs**, not ARNs/IAM |
+| H-09 | Bedrock AgentCore packs | Code Interpreter / Browser as **vendors** when product wants AWS sandboxes |
+| H-10 | Skills defs (portable) | Instructions + required tool ids/tags; org assignment stays host |
+| H-11 | Host adoption | Loader: registry → bind → hooks → adapter; map legacy host tool ids → kebab ids |
+
+### Prefer order when un-tabling host work
+
+1. H-01 → H-02 → H-03 → H-04  
+2. Host import of **existing** packs (H-11) in parallel once bind works  
+3. H-05 catalog discovery  
+4. H-06 artifacts; then H-07–H-10 product-driven  
+
+Other agent hygiene (G-03 mime, G-05 messaging no-ops, …) stays orthogonal.
+
+---
+
+## 9. Suggested execution order
 
 | Order | Task | Why first |
 | --- | --- | --- |
-| 1 | **G-02** docs reconcile | Stops future agents fighting shipped seams |
-| 2 | **G-01** S3 → AwsService | Standards integrity; largest transport outlier |
+| 1 | **G-02** docs reconcile | Done |
+| 2 | **G-01** S3 → AwsService | Done |
 | 3 | **G-03** mime stub | Public surface honesty |
 | 4 | **G-06** optional-spread policy | Unblocks clean client refactors |
 | 5 | **G-05** messaging no-op honesty | Agent correctness |
@@ -779,10 +822,11 @@ Multiple “authority” docs: AGENTS, package-surface-architecture, provider-se
 | 11 | **G-10** iMessage webhook | Channel completeness |
 | 12 | **G-13** doc authority | After G-02 settled |
 | 13 | **G-12** platform backlog | Product-driven only |
+| later | **§8 Host-integration** H-01… | After hygiene or when host-bind work is priority |
 
 ---
 
-## 9. Verification rules for any fix
+## 10. Verification rules for any fix
 
 1. Read `AGENTS.md` + relevant gold file first.
 2. Small vertical slice: contracts → client/tools → tests → `bun run check`.

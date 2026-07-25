@@ -39,8 +39,7 @@ function embedAuth() {
 async function assertRagRoundTrip(auth: RagAuth): Promise<void> {
 	const rag = RagClient.fromAuth(auth)
 	const documentId = uniqueId('doc')
-	const text =
-		'Integration test document: the refund window for Five Star Solutions is exactly thirty days from purchase.'
+	const text = 'Integration test document: the refund window for Acme Corp is exactly thirty days from purchase.'
 
 	const ingested = await rag.ingest({ document_id: documentId, text })
 	expect(ingested.chunk_count).toBeGreaterThan(0)

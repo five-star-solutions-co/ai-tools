@@ -37,7 +37,7 @@ Do not invent a new layout, naming scheme, or HTTP stack.
 ### R1 — Consistency over invention
 
 - **Same problem → same shape.** Copy the gold file. Do not invent a second pattern.
-- Host repos (e.g. Five Star) are **capability inventory only**. Never copy their layouts, names, or fetch wrappers.
+- Host apps are **capability inventory only**. Never copy their layouts, names, or fetch wrappers.
 - No `json`/`form`/`methodJson` dual helpers or dynamic `/${method}` routers on ofetch.
 - No parallel HTTP stacks (`TelegramHttp`, raw `fetch` loops, custom retry frameworks) unless the user explicitly orders that design.
 
@@ -251,8 +251,10 @@ If public surface / build emit changed: also `bun run build` and `bun run typech
 
 ## Out of scope for this package
 
+- **Agent brain / agent runtime** — this package is tool packs + host-integration kernel only (see `docs/specs/host-integration-kernel.md`)  
 - Multi-tenant policy, PHI routing, vaults, WORM/audit products  
-- Agent runtimes, allowlists, confirmation UX (host)  
+- Agent allowlists, confirmation UX (host)  
+- Composio/Nango SaaS OAuth catalogs and connector-style “meta tools”  
 - Live network as default CI  
 - Starting long-lived servers for verification  
 
