@@ -18,30 +18,34 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 
 ---
 
-## Inventory: what exists where (as of 2026-07-22)
+## Inventory: what exists where (as of 2026-07-26)
 
 ### A. `@harryy/ai-tools` (this package)
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| Kernel + adapters | Done | core, ofetch services, Mastra/AI SDK/MCP/… |
+| Kernel + adapters | Done | core, HttpService/AwsService, Mastra/AI SDK/MCP/… |
 | Provider seam | Done | Lane A modules |
-| `email` (Lane A multi-provider) | **Removed** | Split to vendor packs |
-| `vendors/resend` | Done | full pack (send surface first) |
-| `vendors/cloudflare-email` | Done | full pack (send surface first) |
+| `email` (Lane A multi-provider) | **Done** | Thin seam over resend + cloudflare; send/batch only |
+| `vendors/resend` | Done | full pack (send surface first; expand over time) |
+| `vendors/cloudflare-email` | Done | full pack (send surface first; expand over time) |
 | `storage` | Done | s3 (+ multipart + signed URL), r2 REST, supabase |
 | `document-extract` | Done | textract only |
 | `file-convert` | Done | transmute only |
-| `web-fetch` | Done | allowlisted ofetch |
-| `mime` / `content-type` | Done | pure |
+| `web-fetch` | Done | allowlisted HttpService |
+| `mime` | Stub | `mime-ping` only; real MIME is `email-message` / `content-type` |
+| `content-type` | Done | pure type ↔ extension |
+| `email-message` | Done | pure parse/build MIME |
 | `files` | Done | path root over storage: list/search/stat/get/put/delete/copy/move/mkdir + multipart (S3) |
 | `document-render` | Done | gotenberg + cloudflare-browser |
-| `vector-store` / `rag` | Done | qdrant+pinecone+supabase; chunk/embed/retrieve |
-| thin multi-send messaging seam | Not planned | full messaging packs only |
+| `vector-store` / `rag` | Done | qdrant+pinecone+supabase+mastra; chunk/embed/retrieve |
+| `messaging` (thin multi-provider seam) | **Done** | Shared verbs; wraps telegram/slack/teams/imessage vendors |
 | `speech` / `pdf` / `image` / `browser` / `queue` / `webhook` / `crypto` / `calendar` | Not started | |
 | Codegen multi-lane | Done | discovers modules + vendors |
 | `vendors/telegram` | Done | full pack + live message + webhook helpers |
-| `vendors/*` chat (others) | Not started | slack / imessage / … |
+| `vendors/slack` | Done | Web API + webhook helpers + messaging seam provider |
+| `vendors/teams` | Done | Bot Framework pack + messaging seam provider |
+| `vendors/imessage` | Done | photon-rest-proxy pack + messaging seam provider |
 
 ### B. Five Star host — custom tools (`packages/tools/src/custom`)
 
@@ -182,7 +186,7 @@ Slice 3 done when: this capability map is implemented under `src/channels/telegr
 | 1 | `document-render` + gotenberg + cloudflare-browser | Done | PDF + screenshot; ArtifactRef out; tests |
 | 2 | `files` (root_prefix + storage auth) | Done | list/search/stat relative keys; tests |
 | 3 | `vendors/telegram` | Done | Full pack; tools + live message + webhook helpers |
-| 3b | `vendors/resend` + `vendors/cloudflare-email` | Done | Lane B email ESPs (no multi-provider email seam) |
+| 3b | `vendors/resend` + `vendors/cloudflare-email` + `modules/email` | Done | Lane B email ESPs + thin multi-provider email seam |
 | 4 | `vendors/woocommerce` (first action group) | Done | orders + products list/get |
 | 5 | `vendors/katana` | Done | sales order list/get |
 | 6 | `vendors/amazon-sp-api` (first action group) | Done | orders + FBA inventory summaries |
@@ -190,7 +194,7 @@ Slice 3 done when: this capability map is implemented under `src/channels/telegr
 | 8 | `vendors/slack` + messaging seam | Done | Web API pack + multi-provider messaging |
 | 8b | `vendors/teams` | Done | Bot Framework pack in messaging seam |
 | 9 | `vendors/imessage` (photon-rest-proxy) | Done | HTTP pack; gRPC only in hosted proxy |
-| 10 | Remaining platform (speech, browser, pdf, image, queue, webhook, crypto, calendar, messaging) | Backlog | product-driven |
+| 10 | Remaining platform (speech, browser, pdf, image, queue, webhook, crypto, calendar) | Backlog | product-driven |
 
 ### FSS adapter work (host repo — track here for visibility)
 
@@ -233,12 +237,14 @@ Record answers here; promote locked answers into the architecture spec.
 
 | Date | Decision |
 | --- | --- |
-| 2026-07-22 | Three lanes: modules / vendors / channels |
+| 2026-07-22 | Two roots: modules / vendors (+ underscore vertical kits) |
 | 2026-07-22 | Fat APIs are vendor packs, not forced commerce facades |
 | 2026-07-22 | Channels include tools + webhook tooling; host owns durability |
 | 2026-07-22 | Channel packs = full transport/presentation surface (typing, reactions, stream edit/final, media groups, …), not thin send |
 | 2026-07-22 | Channel naming is package-owned; host is capability inventory only; reactions any emoji (not host enum); capability ≥ host |
-| 2026-07-22 | Channels dual access: A full packs + B thin shared seam; aligned client method names for seam wiring |
+| 2026-07-22 | Dual access: full vendor packs + thin shared seams (`messaging`, `email`); aligned client method names for seam wiring |
+| 2026-07-26 | Architecture + inventory docs reconciled: email + messaging seams are **shipped** thin wrappers (not removed / not “not planned”) |
+| 2026-07-26 | S3 vendor client uses `AwsService` (no raw `AwsClient` soup in product clients) |
 | 2026-07-22 | document-render ≠ file-convert; self-host first (Gotenberg) |
 | 2026-07-22 | org files → path-scoped `files` over storage |
 | 2026-07-22 | Composio/Nango remain SaaS OAuth + PHI catalog |

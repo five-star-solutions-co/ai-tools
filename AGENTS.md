@@ -30,7 +30,7 @@ These override convenience, host inventory code, and “I’ll clean it up later
 4. **Clone a gold file:**
    - Vendor pack: `src/vendors/resend/` (`client.ts`, `module.ts`, `contracts.ts`)
    - Multi-provider seam: `src/modules/storage/providers/supabase.ts`
-   - SigV4 only: `src/modules/storage/providers/s3.ts`
+   - SigV4 product client: `src/vendors/textract/client.ts` or `src/vendors/s3/client.ts` (`AwsService` only — no raw `AwsClient`)
 
 Do not invent a new layout, naming scheme, or HTTP stack.
 

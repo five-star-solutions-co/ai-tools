@@ -1,17 +1,17 @@
 /**
- * S3 / S3-compatible object-store client (aws4fetch SigV4).
+ * S3 / S3-compatible object-store client (AwsService SigV4).
  * Host: `new S3Client(auth)`. Agent tools: `fromContext(ctx)`.
  */
 
-import { AwsClient } from 'aws4fetch'
 import { isNil, isString } from 'es-toolkit'
 
-import { ToolError } from '../../core/errors'
+import { isToolError, ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
-import type { FetchLike, ToolContext } from '../../core/types'
+import type { ToolContext } from '../../core/types'
 import { base64ToBytes, bytesToBase64, bytesToUtf8, toArrayBuffer, utf8ToBytes } from '../../shared/bytes'
+import { AwsService } from '../../transport/aws-service'
+import type { AwsServiceOptions } from '../../transport/aws-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
-import { throwHttpStatus } from '../../transport/errors'
 import type {
 	AbortMultipartUploadInput,
 	AbortMultipartUploadOutput,
@@ -42,11 +42,18 @@ import { copySourceHeader, firstXmlText, listUrl, objectUrl, parseListResult, st
 
 export type S3ClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
+function objectNotFound(): never {
+	throw new ToolError('Object not found', { code: 'not_found' })
+}
+
+function remapNotFound(error: unknown): never {
+	if (isToolError(error) && error.code === 'not_found') objectNotFound()
+	throw error
+}
+
 export class S3Client {
 	readonly #auth: S3Auth
-	readonly #aws: AwsClient
-	readonly #fetch: FetchLike
-	readonly #signal: AbortSignal | undefined
+	readonly #aws: AwsService
 
 	constructor(auth: S3Auth, options: S3ClientOptions = {}) {
 		const parsed = s3AuthSchema.safeParse(auth)
@@ -57,24 +64,26 @@ export class S3Client {
 			})
 		}
 		this.#auth = parsed.data
-		this.#signal = options.signal
-		this.#fetch = options.fetch ?? globalThis.fetch
-		this.#aws = new AwsClient({
+
+		const awsOptions: AwsServiceOptions = {
 			accessKeyId: this.#auth.access_key_id,
 			secretAccessKey: this.#auth.secret_access_key,
 			region: this.#auth.region,
 			service: 's3',
-			retries: 0,
-			...(this.#auth.session_token && { sessionToken: this.#auth.session_token })
-		})
+			label: 'S3'
+		}
+		if (options.fetch) awsOptions.fetch = options.fetch
+		if (options.signal) awsOptions.signal = options.signal
+		if (this.#auth.session_token) awsOptions.sessionToken = this.#auth.session_token
+		this.#aws = new AwsService(awsOptions)
 	}
 
 	static fromContext(ctx: ToolContext): S3Client {
 		const auth = requireAuth(ctx, s3AuthSchema)
-		return new S3Client(auth, {
-			...(ctx.fetch && { fetch: ctx.fetch }),
-			...(ctx.signal && { signal: ctx.signal })
-		})
+		const options: S3ClientOptions = {}
+		if (ctx.fetch) options.fetch = ctx.fetch
+		if (ctx.signal) options.signal = ctx.signal
+		return new S3Client(auth, options)
 	}
 
 	async list(input: ListObjectsInput): Promise<ListObjectsOutput> {
@@ -84,25 +93,27 @@ export class S3Client {
 		if (input.cursor) params.set('continuation-token', input.cursor)
 		if (input.limit !== undefined) params.set('max-keys', String(input.limit))
 
-		const response = await this.#signedFetch(listUrl(this.#auth, params), { method: 'GET' })
-		if (!response.ok) throwHttpStatus('S3 list', response.status)
-		const xml = await response.text()
-		const listed = parseListResult(xml)
-		return {
+		const { bytes } = await this.#aws.bytes('GET', listUrl(this.#auth, params), { label: 'S3 list' })
+		const listed = parseListResult(bytesToUtf8(bytes))
+		const out: ListObjectsOutput = {
 			keys: listed.items.map((o) => o.key),
 			items: listed.items,
-			truncated: listed.truncated,
-			...(listed.common_prefixes && listed.common_prefixes.length > 0 && { common_prefixes: listed.common_prefixes }),
-			...(listed.next_cursor && { next_cursor: listed.next_cursor })
+			truncated: listed.truncated
 		}
+		if (listed.common_prefixes && listed.common_prefixes.length > 0) {
+			out.common_prefixes = listed.common_prefixes
+		}
+		if (listed.next_cursor) out.next_cursor = listed.next_cursor
+		return out
 	}
 
 	async get(input: GetObjectInput): Promise<GetObjectOutput> {
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key), { method: 'GET' })
-		if (response.status === 404) {
-			throw new ToolError('Object not found', { code: 'not_found' })
+		let response
+		try {
+			response = await this.#aws.bytes('GET', objectUrl(this.#auth, input.key), { label: 'S3 get' })
+		} catch (error) {
+			remapNotFound(error)
 		}
-		if (!response.ok) throwHttpStatus('S3 get', response.status)
 		const lengthHeader = response.headers.get('content-length')
 		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : undefined
 		if (!isNil(contentLength) && Number.isFinite(contentLength) && contentLength > MAX_OBJECT_BYTES) {
@@ -111,25 +122,24 @@ export class S3Client {
 				details: { max_bytes: MAX_OBJECT_BYTES, content_length: contentLength }
 			})
 		}
-		const bytes = new Uint8Array(await response.arrayBuffer())
-		if (bytes.byteLength > MAX_OBJECT_BYTES) {
+		const bodyBytes = response.bytes
+		if (bodyBytes.byteLength > MAX_OBJECT_BYTES) {
 			throw new ToolError('Object exceeds 5 MiB download limit', {
 				code: 'too_large',
-				details: { max_bytes: MAX_OBJECT_BYTES, content_length: bytes.byteLength }
+				details: { max_bytes: MAX_OBJECT_BYTES, content_length: bodyBytes.byteLength }
 			})
 		}
 		const encoding = input.encoding ?? 'base64'
-		const body = encoding === 'utf8' ? bytesToUtf8(bytes) : bytesToBase64(bytes)
+		const body = encoding === 'utf8' ? bytesToUtf8(bodyBytes) : bytesToBase64(bodyBytes)
 		const contentType = response.headers.get('content-type')
-		return {
+		const out: GetObjectOutput = {
 			key: input.key,
 			body,
-			encoding,
-			...(isString(contentType) && { content_type: contentType }),
-			...(isNil(contentLength) || !Number.isFinite(contentLength)
-				? { content_length: bytes.byteLength }
-				: { content_length: contentLength })
+			encoding
 		}
+		if (isString(contentType)) out.content_type = contentType
+		out.content_length = isNil(contentLength) || !Number.isFinite(contentLength) ? bodyBytes.byteLength : contentLength
+		return out
 	}
 
 	async put(input: PutObjectInput): Promise<PutObjectOutput> {
@@ -152,96 +162,91 @@ export class S3Client {
 		const headers: Record<string, string> = {}
 		if (input.content_type) headers['Content-Type'] = input.content_type
 
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key), {
-			method: 'PUT',
-			body: toArrayBuffer(bodyBytes),
+		const response = await this.#aws.put(objectUrl(this.#auth, input.key), toArrayBuffer(bodyBytes), {
+			label: 'S3 put',
 			headers
 		})
-		if (!response.ok) throwHttpStatus('S3 put', response.status)
 		const etag = response.headers.get('etag')
-		return {
+		const out: PutObjectOutput = {
 			key: input.key,
-			content_length: bodyBytes.byteLength,
-			...(isString(etag) && { etag: stripEtagQuotes(etag) })
+			content_length: bodyBytes.byteLength
 		}
+		if (isString(etag)) out.etag = stripEtagQuotes(etag)
+		return out
 	}
 
 	async delete(input: DeleteObjectInput): Promise<DeleteObjectOutput> {
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key), { method: 'DELETE' })
-		if (!response.ok && response.status !== 404) throwHttpStatus('S3 delete', response.status)
+		await this.#aws.delete(objectUrl(this.#auth, input.key), {
+			label: 'S3 delete',
+			allowStatuses: [404]
+		})
 		return { key: input.key, deleted: true }
 	}
 
 	async head(input: HeadObjectInput): Promise<HeadObjectOutput> {
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key), { method: 'HEAD' })
+		const response = await this.#aws.head(objectUrl(this.#auth, input.key), {
+			label: 'S3 head',
+			allowStatuses: [404]
+		})
 		if (response.status === 404) {
 			return { key: input.key, exists: false }
 		}
-		if (!response.ok) throwHttpStatus('S3 head', response.status)
 		const contentType = response.headers.get('content-type')
 		const lengthHeader = response.headers.get('content-length')
 		const etag = response.headers.get('etag')
 		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : undefined
-		return {
+		const out: HeadObjectOutput = {
 			key: input.key,
-			exists: true,
-			...(isString(contentType) && { content_type: contentType }),
-			...(!isNil(contentLength) && Number.isFinite(contentLength) && { content_length: contentLength }),
-			...(isString(etag) && { etag: stripEtagQuotes(etag) })
+			exists: true
 		}
+		if (isString(contentType)) out.content_type = contentType
+		if (!isNil(contentLength) && Number.isFinite(contentLength)) out.content_length = contentLength
+		if (isString(etag)) out.etag = stripEtagQuotes(etag)
+		return out
 	}
 
 	async copy(input: CopyObjectInput): Promise<CopyObjectOutput> {
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.destination_key), {
-			method: 'PUT',
+		const response = await this.#aws.bytes('PUT', objectUrl(this.#auth, input.destination_key), {
+			label: 'S3 copy',
 			headers: {
 				'x-amz-copy-source': copySourceHeader(this.#auth, input.source_key, input.source_bucket)
 			}
 		})
-		if (!response.ok) throwHttpStatus('S3 copy', response.status)
-		const xml = await response.text()
+		const xml = bytesToUtf8(response.bytes)
 		const etagRaw = firstXmlText(xml, 'ETag')
 		const headerEtag = response.headers.get('etag')
 		const etag = etagRaw ? stripEtagQuotes(etagRaw) : isString(headerEtag) ? stripEtagQuotes(headerEtag) : undefined
-		return {
+		const out: CopyObjectOutput = {
 			source_key: input.source_key,
-			destination_key: input.destination_key,
-			...(etag && { etag })
+			destination_key: input.destination_key
 		}
+		if (etag) out.etag = etag
+		return out
 	}
 
 	async createSignedUrl(input: SignedUrlInput): Promise<SignedUrlOutput> {
 		const method = input.method ?? 'GET'
 		const expiresIn = input.expires_in ?? DEFAULT_SIGNED_URL_SECONDS
 		const url = objectUrl(this.#auth, input.key, `X-Amz-Expires=${expiresIn}`)
-		try {
-			const signed = await this.#aws.sign(url, {
-				method,
-				aws: { signQuery: true }
-			})
-			return {
-				url: signed.url,
-				method,
-				expires_in: expiresIn
-			}
-		} catch (error) {
-			throw new ToolError('Failed to create signed URL', {
-				code: 'internal',
-				cause: error
-			})
+		const signed = await this.#aws.sign(url, {
+			method,
+			signQuery: true
+		})
+		return {
+			url: signed.url,
+			method,
+			expires_in: expiresIn
 		}
 	}
 
 	async createMultipartUpload(input: CreateMultipartUploadInput): Promise<CreateMultipartUploadOutput> {
 		const headers: Record<string, string> = {}
 		if (input.content_type) headers['Content-Type'] = input.content_type
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key, 'uploads'), {
-			method: 'POST',
+		const { bytes } = await this.#aws.bytes('POST', objectUrl(this.#auth, input.key, 'uploads'), {
+			label: 'S3 create multipart upload',
 			headers
 		})
-		if (!response.ok) throwHttpStatus('S3 create multipart upload', response.status)
-		const xml = await response.text()
-		const uploadIdRaw = firstXmlText(xml, 'UploadId')
+		const uploadIdRaw = firstXmlText(bytesToUtf8(bytes), 'UploadId')
 		if (!uploadIdRaw) {
 			throw new ToolError('S3 create multipart upload returned no UploadId', { code: 'upstream' })
 		}
@@ -275,11 +280,9 @@ export class S3Client {
 			partNumber: String(input.part_number),
 			uploadId: input.upload_id
 		})
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key, query.toString()), {
-			method: 'PUT',
-			body: toArrayBuffer(bodyBytes)
+		const response = await this.#aws.put(objectUrl(this.#auth, input.key, query.toString()), toArrayBuffer(bodyBytes), {
+			label: 'S3 upload part'
 		})
-		if (!response.ok) throwHttpStatus('S3 upload part', response.status)
 		const etagHeader = response.headers.get('etag')
 		if (!isString(etagHeader) || etagHeader.length === 0) {
 			throw new ToolError('S3 upload part returned no ETag', { code: 'upstream' })
@@ -303,72 +306,49 @@ export class S3Client {
 			.join('')
 		const body = `<CompleteMultipartUpload>${partsXml}</CompleteMultipartUpload>`
 		const query = new URLSearchParams({ uploadId: input.upload_id })
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key, query.toString()), {
-			method: 'POST',
+		const response = await this.#aws.bytes('POST', objectUrl(this.#auth, input.key, query.toString()), {
+			label: 'S3 complete multipart upload',
 			body,
 			headers: { 'Content-Type': 'application/xml' }
 		})
-		if (!response.ok) throwHttpStatus('S3 complete multipart upload', response.status)
-		const xml = await response.text()
+		const xml = bytesToUtf8(response.bytes)
 		const etagRaw = firstXmlText(xml, 'ETag')
 		const headerEtag = response.headers.get('etag')
 		const etag = etagRaw ? stripEtagQuotes(etagRaw) : isString(headerEtag) ? stripEtagQuotes(headerEtag) : undefined
-		return {
+		const out: CompleteMultipartUploadOutput = {
 			key: input.key,
-			upload_id: input.upload_id,
-			...(etag && { etag })
+			upload_id: input.upload_id
 		}
+		if (etag) out.etag = etag
+		return out
 	}
 
 	async abortMultipartUpload(input: AbortMultipartUploadInput): Promise<AbortMultipartUploadOutput> {
 		const query = new URLSearchParams({ uploadId: input.upload_id })
-		const response = await this.#signedFetch(objectUrl(this.#auth, input.key, query.toString()), {
-			method: 'DELETE'
+		await this.#aws.delete(objectUrl(this.#auth, input.key, query.toString()), {
+			label: 'S3 abort multipart upload',
+			allowStatuses: [404]
 		})
-		if (!response.ok && response.status !== 404) throwHttpStatus('S3 abort multipart upload', response.status)
 		return { key: input.key, upload_id: input.upload_id, aborted: true }
 	}
 
 	/** Host-facing raw download (no size cap). */
 	async getBytes(key: string): Promise<Uint8Array> {
-		const response = await this.#signedFetch(objectUrl(this.#auth, key), { method: 'GET' })
-		if (response.status === 404) throw new ToolError('Object not found', { code: 'not_found' })
-		if (!response.ok) throwHttpStatus('S3 get', response.status)
-		return new Uint8Array(await response.arrayBuffer())
+		try {
+			const { bytes } = await this.#aws.bytes('GET', objectUrl(this.#auth, key), { label: 'S3 get' })
+			return bytes
+		} catch (error) {
+			remapNotFound(error)
+		}
 	}
 
 	/** Host-facing raw upload. */
 	async putBytes(key: string, bytes: Uint8Array, contentType?: string): Promise<void> {
 		const headers: Record<string, string> = {}
 		if (isString(contentType) && contentType.length > 0) headers['Content-Type'] = contentType
-		const response = await this.#signedFetch(objectUrl(this.#auth, key), {
-			method: 'PUT',
-			body: toArrayBuffer(bytes),
+		await this.#aws.put(objectUrl(this.#auth, key), toArrayBuffer(bytes), {
+			label: 'S3 put',
 			headers
 		})
-		if (!response.ok) throwHttpStatus('S3 put', response.status)
-	}
-
-	async #signedFetch(url: string, init: RequestInit = {}): Promise<Response> {
-		try {
-			const signed = await this.#aws.sign(url, {
-				...init,
-				...(this.#signal && { signal: this.#signal })
-			})
-			return await this.#fetch(signed)
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') {
-				throw new ToolError('S3 request was aborted', {
-					code: 'timeout',
-					retryable: true,
-					cause: error
-				})
-			}
-			throw new ToolError('S3 request failed', {
-				code: 'upstream',
-				retryable: true,
-				cause: error
-			})
-		}
 	}
 }
