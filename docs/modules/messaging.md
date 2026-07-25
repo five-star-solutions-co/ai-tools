@@ -50,13 +50,13 @@ iMessage `chat_id` is the Spectrum **space id**; outbound goes through **photon-
 | downloadFile | yes | yes | yes | prefer `chat_id` + attachment `file_id`; legacy `space_id::message_id` still accepted |
 | setReaction | yes (empty output) | yes (empty output) | **presentation no-op** (host may use Graph `app.api.reactions`) | returns reaction `message_id` for clear |
 | clearReaction | empty list | emoji required | **presentation no-op** | unsend reaction message id from setReaction |
-| sendChatAction / stopTyping | typing / no-op stop | **no-ops** (host may keep Slack Assistant status) | typing / no-op stop | real typing start/stop |
+| sendChatAction / stopTyping | typing / no-op stop | **assistant.threads.setStatus** when `reply_to_message_id` = thread_ts; else no-op; stop clears status | typing / no-op stop | real typing start/stop |
 | read | warn + no-op | warn + no-op | warn + no-op | inbound message id only |
 | unsend | warn + no-op | warn + no-op | warn + no-op | yes |
 
 **Batch:** max **10** items (`MAX_MESSAGING_MEDIA_BATCH`). Hosts needing more must chunk. Sequential batches may return **partial** success (`results`); replaying the whole batch after a mid-batch failure can duplicate earlier items — hosts should retry only failed indexes or use their own durable claim strategy.
 
-Host owns durable claims, authz, journaling of returned ids, Teams OneDrive/R2 attachment paths, Slack Assistant working status, and any Graph reaction path beyond the seam no-ops.
+Host owns durable claims, authz, journaling of returned ids, Teams OneDrive/R2 attachment paths, and any Graph reaction path beyond the seam no-ops. For Slack busy UI, pass the thread root ts as `reply_to_message_id` on `sendChatAction` / `stopTyping`.
 
 ## Failure classification
 

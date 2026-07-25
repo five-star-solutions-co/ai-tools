@@ -18,7 +18,8 @@ export {
 	slackSendChatActionInputSchema,
 	slackSendMediaInputSchema,
 	slackSendTextInputSchema,
-	slackSetReactionInputSchema
+	slackSetReactionInputSchema,
+	slackStopTypingInputSchema
 } from './contracts'
 export type {
 	SlackAnswerCallbackInput,
@@ -35,7 +36,8 @@ export type {
 	SlackSendChatActionInput,
 	SlackSendMediaInput,
 	SlackSendTextInput,
-	SlackSetReactionInput
+	SlackSetReactionInput,
+	SlackStopTypingInput
 } from './contracts'
 export {
 	slackAnswerCallbackTool,

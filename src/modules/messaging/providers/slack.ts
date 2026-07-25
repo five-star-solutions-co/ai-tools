@@ -56,15 +56,19 @@ export class SlackMessagingProvider implements MessagingOps {
 	}
 
 	sendChatAction(input: MessagingSendChatActionInput): Promise<void> {
-		return this.#client.sendChatAction({
+		const body: Parameters<SlackClient['sendChatAction']>[0] = {
 			chat_id: input.chat_id,
 			action: input.action
-		})
+		}
+		if (input.reply_to_message_id) body.reply_to_message_id = input.reply_to_message_id
+		return this.#client.sendChatAction(body)
 	}
 
-	/** Slack has no typing stop API; successful no-op. */
-	async stopTyping(_input: MessagingStopTypingInput): Promise<void> {
-		return
+	/** Clear assistant.threads.setStatus when reply_to_message_id (thread_ts) is set. */
+	stopTyping(input: MessagingStopTypingInput): Promise<void> {
+		const body: Parameters<SlackClient['stopTyping']>[0] = { chat_id: input.chat_id }
+		if (input.reply_to_message_id) body.reply_to_message_id = input.reply_to_message_id
+		return this.#client.stopTyping(body)
 	}
 
 	async setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {

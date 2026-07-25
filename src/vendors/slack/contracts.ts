@@ -42,7 +42,26 @@ export const slackEditTextInputSchema = z.object({
 
 export const slackSendChatActionInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Slack channel or conversation id'),
-	action: slackChatActionSchema.describe('Chat action shown to the user (presentation only on Slack)')
+	action: slackChatActionSchema.describe(
+		'Chat action. With reply_to_message_id (thread_ts), maps to assistant.threads.setStatus loading text.'
+	),
+	reply_to_message_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Thread root ts (thread_ts). Required for assistant status; without it sendChatAction is a no-op on Slack.'
+		)
+})
+
+/** Clear assistant thread status (empty status). Needs the same thread_ts as set. */
+export const slackStopTypingInputSchema = z.object({
+	chat_id: z.string().min(1).describe('Slack channel or conversation id'),
+	reply_to_message_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Thread root ts (thread_ts). Required to clear assistant status; without it stop is a no-op.')
 })
 
 export const slackSetReactionInputSchema = z.object({
@@ -132,6 +151,7 @@ export type SlackSendTextInput = z.infer<typeof slackSendTextInputSchema>
 export type SlackMessageOutput = z.infer<typeof slackMessageOutputSchema>
 export type SlackEditTextInput = z.infer<typeof slackEditTextInputSchema>
 export type SlackSendChatActionInput = z.infer<typeof slackSendChatActionInputSchema>
+export type SlackStopTypingInput = z.infer<typeof slackStopTypingInputSchema>
 export type SlackSetReactionInput = z.infer<typeof slackSetReactionInputSchema>
 export type SlackClearReactionInput = z.infer<typeof slackClearReactionInputSchema>
 export type SlackSendMediaInput = z.infer<typeof slackSendMediaInputSchema>

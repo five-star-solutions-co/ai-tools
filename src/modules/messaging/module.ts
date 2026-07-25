@@ -51,7 +51,7 @@ export const messagingSendChatActionTool = defineTool({
 	id: 'messaging-send-chat-action',
 	name: 'messagingSendChatAction',
 	description:
-		'Show a chat action (typing, upload, …) on the bound channel when supported. Some channels treat this as presentation-only.',
+		'Show a chat action (typing, upload, …) on the bound channel when supported. Slack: pass reply_to_message_id as thread root ts for assistant.threads.setStatus; without it this is a no-op. Telegram/Teams/iMessage use native typing indicators.',
 	inputSchema: messagingSendChatActionInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'none',
@@ -66,7 +66,7 @@ export const messagingStopTypingTool = defineTool({
 	id: 'messaging-stop-typing',
 	name: 'messagingStopTyping',
 	description:
-		'Stop a typing indicator on the bound channel when supported (iMessage). Telegram/Slack/Teams treat this as a successful no-op.',
+		'Stop a typing / busy indicator when supported. iMessage: native stop. Slack: pass reply_to_message_id (thread_ts) to clear assistant status; without it no-op. Telegram/Teams: successful no-op.',
 	inputSchema: messagingStopTypingInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'none',

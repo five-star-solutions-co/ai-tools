@@ -181,12 +181,67 @@ describe('slack module', () => {
 		}
 	})
 
-	test('sendChatAction is a no-op success', async () => {
+	test('sendChatAction without thread is a no-op success', async () => {
 		const bound = withAuth(slackModule, { bot_token: 'xoxb-test' })
 		const tool = bound.tools.find((t) => t.id === 'slack-send-chat-action')
 		if (!tool) throw new Error('missing tool')
 		const result = asRecord(await runTool(tool, { chat_id: 'C1', action: 'typing' }))
 		expect(result['ok']).toBe(true)
+	})
+
+	test('sendChatAction with reply_to_message_id sets assistant.threads.setStatus', async () => {
+		const bound = withAuth(slackModule, { bot_token: 'xoxb-test' })
+		const tool = bound.tools.find((t) => t.id === 'slack-send-chat-action')
+		if (!tool) throw new Error('missing tool')
+
+		const original = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+			expect(url).toBe('https://slack.com/api/assistant.threads.setStatus')
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			expect(body.channel_id).toBe('D1')
+			expect(body.thread_ts).toBe('1724264405.531769')
+			expect(body.status).toBe('is checking the request…')
+			return new Response(JSON.stringify({ ok: true }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			})
+		}) as typeof globalThis.fetch
+
+		try {
+			const result = asRecord(
+				await runTool(tool, {
+					chat_id: 'D1',
+					action: 'typing',
+					reply_to_message_id: '1724264405.531769'
+				})
+			)
+			expect(result['ok']).toBe(true)
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('client stopTyping clears assistant status when thread_ts set', async () => {
+		const original = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+			expect(url).toBe('https://slack.com/api/assistant.threads.setStatus')
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			expect(body.status).toBe('')
+			expect(body.thread_ts).toBe('1.0')
+			return new Response(JSON.stringify({ ok: true }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			})
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new SlackClient({ bot_token: 'xoxb-test' })
+			await client.stopTyping({ chat_id: 'D1', reply_to_message_id: '1.0' })
+		} finally {
+			globalThis.fetch = original
+		}
 	})
 
 	test('client maps definite rejection from ok false', async () => {

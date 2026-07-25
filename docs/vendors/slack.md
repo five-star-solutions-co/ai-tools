@@ -24,7 +24,8 @@ const client = new SlackClient({ bot_token: 'xoxb-…' })
 | --- | --- | --- |
 | `sendText` | `slack-send-text` | `chat.postMessage` |
 | `editText` | `slack-edit-text` | `chat.update` |
-| `sendChatAction` | `slack-send-chat-action` | no-op (presentation parity) |
+| `sendChatAction` | `slack-send-chat-action` | `assistant.threads.setStatus` when `reply_to_message_id` is thread_ts; else no-op |
+| `stopTyping` | client only (seam: `messaging-stop-typing`) | `assistant.threads.setStatus` with empty status when thread_ts set |
 | `setReaction` | `slack-set-reaction` | `reactions.add` |
 | `clearReaction` | `slack-clear-reaction` | `reactions.remove` (emoji required) |
 | `sendMedia` | `slack-send-media` | `files.getUploadURLExternal` + PUT + `files.completeUploadExternal` |

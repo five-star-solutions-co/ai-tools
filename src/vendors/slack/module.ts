@@ -47,7 +47,7 @@ export const slackSendChatActionTool = defineTool({
 	id: 'slack-send-chat-action',
 	name: 'slackSendChatAction',
 	description:
-		'Chat action placeholder for channel parity (typing, upload_photo, …). Slack has no general typing API; this resolves successfully without a network call.',
+		'Show busy status on a Slack assistant thread. Pass reply_to_message_id as the thread root ts (thread_ts) to call assistant.threads.setStatus (e.g. “is checking the request…”). Without reply_to_message_id this is a no-op (no channel-level typing API).',
 	inputSchema: slackSendChatActionInputSchema,
 	outputSchema: slackOkOutputSchema,
 	sideEffect: 'none',

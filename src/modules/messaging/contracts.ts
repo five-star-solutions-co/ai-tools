@@ -95,11 +95,25 @@ export const messagingEditTextInputSchema = z.object({
 export const messagingSendChatActionInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
 	action: messagingChatActionSchema.describe('Chat action (typing, upload_document, …)'),
+	reply_to_message_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Optional thread / reply anchor. Slack: thread root ts for assistant.threads.setStatus. Other channels ignore.'
+		),
 	service_url: serviceUrlOptional
 })
 
 export const messagingStopTypingInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
+	reply_to_message_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Optional thread / reply anchor. Slack: thread root ts to clear assistant status. Other channels ignore.'
+		),
 	service_url: serviceUrlOptional
 })
 

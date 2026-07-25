@@ -328,6 +328,31 @@ export function isHttpsUrl(value: string): boolean {
 	return value.startsWith('https://') || value.startsWith('http://')
 }
 
+/**
+ * Map shared chat-action enum → assistant.threads.setStatus status text.
+ * Slack renders as "{App Name} {status}" (do not include the app name).
+ */
+export function assistantStatusFromChatAction(action: string): string {
+	switch (action) {
+		case 'upload_photo':
+		case 'upload_video':
+		case 'upload_voice':
+		case 'upload_document':
+		case 'upload_video_note':
+			return 'is uploading a file…'
+		case 'record_video':
+		case 'record_voice':
+		case 'record_video_note':
+			return 'is recording…'
+		case 'choose_sticker':
+		case 'find_location':
+			return 'is working on your request…'
+		case 'typing':
+		default:
+			return 'is checking the request…'
+	}
+}
+
 function firstString(...values: unknown[]): string | undefined {
 	for (const value of values) {
 		if (isString(value) && value.length > 0) return value

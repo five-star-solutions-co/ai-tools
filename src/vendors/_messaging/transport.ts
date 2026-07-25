@@ -37,6 +37,8 @@ export type ChannelEditTextInput = {
 export type ChannelSendChatActionInput = {
 	chat_id: string
 	action: ChannelChatAction
+	/** Thread / reply anchor (Slack: thread_ts for assistant.threads.setStatus). */
+	reply_to_message_id?: string
 }
 
 export type ChannelSetReactionInput = {
@@ -241,22 +243,45 @@ export type TypingPulse = {
 	stop: () => void
 }
 
-/** Renew chat-action (typing) while a turn is active. */
+/**
+ * Renew chat-action (typing) while a turn is active.
+ * Sends once immediately on start, then again only after each interval (no double pulse).
+ */
 export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 	const intervalMs = deps.intervalMs ?? DEFAULT_TYPING_INTERVAL_MS
 	const sleep = deps.sleep ?? sleepMs
 	let active = false
 	let loop: Promise<void> | null = null
+	let wakeSleep: (() => void) | undefined
 
+	const pulseOnce = async () => {
+		try {
+			await deps.send()
+		} catch {
+			// Typing is presentation only.
+		}
+	}
+
+	/** Sleep that stop() can interrupt so the renew loop exits promptly. */
+	const waitInterval = () =>
+		new Promise<void>((resolve) => {
+			let settled = false
+			const done = () => {
+				if (settled) return
+				settled = true
+				if (wakeSleep === done) wakeSleep = undefined
+				resolve()
+			}
+			wakeSleep = done
+			void sleep(intervalMs).then(done)
+		})
+
+	/** After the initial pulse: sleep, then send, repeat until stop. */
 	const run = async () => {
 		while (active) {
-			try {
-				await deps.send()
-			} catch {
-				// Typing is presentation only.
-			}
+			await waitInterval()
 			if (!active) return
-			await sleep(intervalMs)
+			await pulseOnce()
 		}
 	}
 
@@ -264,11 +289,8 @@ export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 		start: async () => {
 			if (active) return
 			active = true
-			try {
-				await deps.send()
-			} catch {
-				// First pulse failure should not block the turn.
-			}
+			await pulseOnce()
+			if (!active) return
 			if (loop === null) {
 				loop = run().finally(() => {
 					loop = null
@@ -277,6 +299,7 @@ export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 		},
 		stop: () => {
 			active = false
+			wakeSleep?.()
 		}
 	}
 }

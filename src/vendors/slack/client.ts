@@ -23,10 +23,12 @@ import type {
 	SlackSendChatActionInput,
 	SlackSendMediaInput,
 	SlackSendTextInput,
-	SlackSetReactionInput
+	SlackSetReactionInput,
+	SlackStopTypingInput
 } from './contracts'
 import { slackAuthSchema } from './contracts'
 import {
+	assistantStatusFromChatAction,
 	isHttpsUrl,
 	isSlackDefiniteRejection,
 	isSlackOutcomeUnknown,
@@ -135,11 +137,45 @@ export class SlackClient {
 	}
 
 	/**
-	 * Chat action (typing / upload_*). Slack Web API has no general typing indicator;
-	 * resolves immediately as presentation-only parity with channel transport.
+	 * Chat action (typing / upload_*).
+	 * With `reply_to_message_id` (thread_ts): `assistant.threads.setStatus` loading line.
+	 * Without thread_ts: no-op (Slack has no channel-level typing API).
+	 * @see https://docs.slack.dev/reference/methods/assistant.threads.setStatus
 	 */
-	async sendChatAction(_input: SlackSendChatActionInput): Promise<void> {
-		return
+	async sendChatAction(input: SlackSendChatActionInput): Promise<void> {
+		const threadTs = input.reply_to_message_id
+		if (!threadTs) return
+		parseOk(
+			await this.#api(
+				'assistant.threads.setStatus',
+				{
+					channel_id: input.chat_id,
+					thread_ts: threadTs,
+					status: assistantStatusFromChatAction(input.action)
+				},
+				'Slack assistant.threads.setStatus'
+			)
+		)
+	}
+
+	/**
+	 * Clear assistant thread status (`status: ""`).
+	 * Requires `reply_to_message_id` (thread_ts); otherwise no-op.
+	 */
+	async stopTyping(input: SlackStopTypingInput): Promise<void> {
+		const threadTs = input.reply_to_message_id
+		if (!threadTs) return
+		parseOk(
+			await this.#api(
+				'assistant.threads.setStatus',
+				{
+					channel_id: input.chat_id,
+					thread_ts: threadTs,
+					status: ''
+				},
+				'Slack assistant.threads.setStatus clear'
+			)
+		)
 	}
 
 	/** POST reactions.add */
