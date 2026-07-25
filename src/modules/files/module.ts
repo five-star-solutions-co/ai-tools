@@ -157,7 +157,7 @@ export const filesMultipartUploadPartTool = defineTool({
 	id: 'files-multipart-upload-part',
 	name: 'uploadFileMultipartPart',
 	description:
-		'Upload one part of an in-progress multipart upload under the bound workspace root. Part bodies up to 25 MiB. S3 requires each part except the last to be at least 5 MiB. Returns etag required for complete.',
+		'Upload one part of an in-progress multipart upload under the bound workspace root. Part bodies up to 25 MiB. Some object stores require each part except the last to be at least 5 MiB. Returns etag required for complete.',
 	inputSchema: filesMultipartUploadPartInputSchema,
 	outputSchema: filesMultipartUploadPartOutputSchema,
 	sideEffect: 'write',
@@ -193,7 +193,7 @@ export const filesModule = defineModule({
 	id: 'files',
 	title: 'Files',
 	description:
-		'Manage files under a host-bound S3-compatible object storage root prefix. Paths are relative to that root. List, search, stat, get, put, delete, copy, move, mkdir, and multipart stay inside the root; host maps tenant to prefix and S3 credentials.',
+		'Manage files under a host-bound object storage root prefix. Paths are relative to that root. List, search, stat, get, put, delete, copy, move, mkdir, and multipart stay inside the root; host maps tenant to prefix and storage credentials.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: filesAuthSchema },
 	tools: [

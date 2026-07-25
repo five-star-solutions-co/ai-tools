@@ -17,7 +17,7 @@ export const ragIngestTool = defineTool({
 	id: 'rag-ingest',
 	name: 'ragIngest',
 	description:
-		'Chunk text, embed via the host-bound OpenAI-compatible route, and upsert vectors. Returns chunk ids for later delete. Stores chunk text in metadata for retrieve.',
+		'Chunk text, embed via the host-bound embed route, and upsert vectors. Returns chunk ids for later delete. Stores chunk text in metadata for retrieve.',
 	inputSchema: ragIngestInputSchema,
 	outputSchema: ragIngestOutputSchema,
 	sideEffect: 'write',
@@ -52,7 +52,7 @@ export const ragModule = defineModule({
 	id: 'rag',
 	title: 'RAG',
 	description:
-		'Retrieve-augmented generation helpers: chunk, embed (host route), store, retrieve, delete. Host binds OpenAI-compatible embeddings + vector-store credentials. Does not own classification/PHI policy.',
+		'Retrieve-augmented generation helpers: chunk, embed (host route), store, retrieve, delete. Host binds embed credentials and vector-store credentials. Does not own classification or access policy.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: ragAuthSchema },
 	tools: [ragIngestTool, ragRetrieveTool, ragDeleteTool]

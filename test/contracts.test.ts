@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 
-import { defineTool, validateModule, validateTool } from '../src/core'
+import { defineModule, defineTool, validateModule, validateTool } from '../src/core'
 import { echoModule, echoTool } from './fixtures/echo-module'
 
 describe('contracts', () => {
@@ -50,5 +50,42 @@ describe('contracts', () => {
 			execute: async () => ({ ok: true })
 		})
 		expect(validateTool(bad).issues.some((i) => i.code === 'empty_field_description')).toBe(true)
+	})
+
+	test('seam modules reject vendor brand names in model-facing copy', () => {
+		const tool = defineTool({
+			id: 'messaging-read',
+			name: 'messagingRead',
+			description: 'Mark read on Telegram and no-op on Slack.',
+			inputSchema: z.object({
+				chat_id: z.string().describe('Chat id')
+			}),
+			outputSchema: z.object({ ok: z.boolean() }),
+			execute: async () => ({ ok: true })
+		})
+		const mod = defineModule({
+			id: 'messaging',
+			title: 'Messaging',
+			description: 'Channel messaging tools.',
+			auth: { type: 'none' },
+			tools: [tool]
+		})
+		const result = validateModule(mod)
+		expect(result.ok).toBe(false)
+		expect(result.issues.some((i) => i.code === 'forbidden_model_copy')).toBe(true)
+	})
+
+	test('vendor modules may name their product in descriptions', () => {
+		const tool = defineTool({
+			id: 'telegram-send-text',
+			name: 'telegramSendText',
+			description: 'Send a text message via Telegram Bot API.',
+			inputSchema: z.object({
+				chat_id: z.string().describe('Telegram chat id')
+			}),
+			outputSchema: z.object({ ok: z.boolean() }),
+			execute: async () => ({ ok: true })
+		})
+		expect(validateTool(tool).ok).toBe(true)
 	})
 })

@@ -184,10 +184,24 @@ Product clients **own** the transport instance (constructor), not free sibling `
 ### R7 — Auth and naming
 
 - Auth only via client constructor / `withAuth` / `ctx.auth` / `requireAuth`. **Never** on tool inputs.
-- Tool ids: stable kebab-case. Seams: capability-prefixed (`storage-get-object`). Vendors: vendor-prefixed (`resend-send`, `telegram-send-text`).
-- Model-facing copy: what/when/bounds only — no secrets, env, vault, host wiring.
+- Tool ids: stable kebab-case. Seams: capability-prefixed (`messaging-send-text`). Vendors: vendor-prefixed (`resend-send`, `telegram-send-text`).
 - Prefer **snake_case** on host auth and domain fields that mirror APIs (`api_key`, `account_id`) unless an existing pack already shipped camelCase for that surface.
 - Host is inventory only for product behavior; package owns clean names.
+
+### R7b — Model-facing copy (agent / tool descriptions) — gold bar
+
+Applies to **tool `description`**, module `description` when projected, and every tool input `.describe()`.
+
+| Rule | Detail |
+| --- | --- |
+| **What/when/bounds only** | What the tool does, when to use it, limits. No install steps, env, vault, host wiring, `withAuth`. |
+| **No secrets language** | No API keys, bearer tokens, `process.env` (enforced by `validateTool` / `forbidden_model_copy`). |
+| **Seams: no vendor brand names** | Capability modules (`messaging`, `email`, `files`, `vector-store`, …) must **not** name products (Telegram, Slack, Teams, iMessage, Resend, S3, Pinecone, …). Use **channel**, **bound store**, **bound provider**, **conversation**. Provider gaps live in host docs / pack docs — **not** agent tool text. |
+| **Vendors: product name OK** | Vendor packs may say “Resend” / “Telegram” — the tool id is already vendor-prefixed. Still no secrets/env/vault. |
+| **No provider comparison lists** | Do not write “works on A; no-op on B/C” in seam tool descriptions. Prefer capability language; no-ops stay silent or generic (“when supported”). |
+| **Auth field describes** | Host-facing schemas may mention provider-specific credential shapes; still prefer clean names. |
+
+Enforced for seam module ids in `src/core/contracts.ts` (`SEAM_MODULE_IDS` + brand regex).
 
 ### R8 — Before writing new code
 

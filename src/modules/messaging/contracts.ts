@@ -61,7 +61,7 @@ const serviceUrlOptional = z
 	.string()
 	.min(1)
 	.optional()
-	.describe('Bot Framework service URL (required when provider is teams)')
+	.describe('Activity service base URL when the bound channel requires it for this call')
 
 export const messagingSendTextInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
@@ -74,10 +74,7 @@ export const messagingSendTextInputSchema = z.object({
 /** Common send/edit/media result shell for journaling. */
 export const messagingMessageOutputSchema = z.object({
 	message_id: z.string().describe('Provider message id as string'),
-	file_id: z
-		.string()
-		.optional()
-		.describe('Provider file id when the send created a downloadable attachment (e.g. Telegram)'),
+	file_id: z.string().optional().describe('File id when the send created a downloadable attachment'),
 	attachment_message_ids: z
 		.array(z.string())
 		.optional()

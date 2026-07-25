@@ -73,7 +73,7 @@ export const ragIngestInputSchema = z.object({
 		.describe(`Document text to chunk, embed, and store (max ${MAX_INGEST_CHARS} characters)`),
 	metadata: vectorMetadataSchema.optional().describe('Metadata copied onto every chunk'),
 	collection: z.string().min(1).optional().describe('Collection / index override'),
-	namespace: z.string().min(1).optional().describe('Optional Pinecone namespace'),
+	namespace: z.string().min(1).optional().describe('Optional vector namespace when the bound store supports it'),
 	chunk: ragChunkOptionsSchema.optional().describe('Per-call chunking override')
 })
 
@@ -88,8 +88,8 @@ export const ragRetrieveInputSchema = z.object({
 	query: z.string().min(1).describe('Natural-language query to embed and search'),
 	top_k: z.number().int().min(1).max(100).optional().describe('Number of chunks to return (default 8)'),
 	collection: z.string().min(1).optional().describe('Collection / index override'),
-	namespace: z.string().min(1).optional().describe('Optional Pinecone namespace'),
-	filter: z.record(z.string(), z.unknown()).optional().describe('Optional provider-native metadata filter')
+	namespace: z.string().min(1).optional().describe('Optional vector namespace when the bound store supports it'),
+	filter: z.record(z.string(), z.unknown()).optional().describe('Optional store-native metadata filter')
 })
 
 export const ragRetrievedChunkSchema = z.object({
@@ -113,7 +113,7 @@ export const ragDeleteInputSchema = z.object({
 		.max(100)
 		.describe('Chunk / vector ids to delete (from a prior rag-ingest)'),
 	collection: z.string().min(1).optional().describe('Collection / index override'),
-	namespace: z.string().min(1).optional().describe('Optional Pinecone namespace')
+	namespace: z.string().min(1).optional().describe('Optional vector namespace when the bound store supports it')
 })
 
 export const ragDeleteOutputSchema = z.object({

@@ -61,8 +61,10 @@ export const resendSendTool = defineTool({
 
 ## Contracts checklist
 
-- Tool `id`: stable **kebab-case**. Vendors: vendor-prefixed (`telegram-send-text`). Seams: capability-prefixed (`storage-get-object`).
-- `description` and input `.describe()`: **model selection and argument filling only**.
+- Tool `id`: stable **kebab-case**. Vendors: vendor-prefixed (`telegram-send-text`). Seams: capability-prefixed (`messaging-send-text`).
+- `description` and input `.describe()`: **model selection and argument filling only** (what / when / bounds).
+- **Seams: no vendor brand names** in tool or module descriptions (no Telegram/Slack/Resend/S3/…). Use channel / bound store language. See AGENTS **R7b**.
+- **Vendors:** product name OK; still no secrets/env/vault language.
 - Auth and domain fields: **snake_case**.
 - `runtime`: honest (`node` | `edge` | `both`).
 - `sideEffect`: `none` | `read` | `write` | `delete` | `send`.

@@ -51,7 +51,7 @@ export const vectorStoreDeleteTool = defineTool({
 export const vectorStoreModule = defineModule({
 	id: 'vector-store',
 	title: 'Vector Store',
-	description: 'Upsert, query, and delete embedding vectors. Providers: qdrant, pinecone, supabase, mastra (PgVector).',
+	description: 'Upsert, query, and delete embedding vectors in the host-bound vector store.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: vectorStoreAuthSchema },
 	tools: [vectorStoreUpsertTool, vectorStoreQueryTool, vectorStoreDeleteTool]
