@@ -21,8 +21,7 @@ import type {
 	MessagingSendMediaInput,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
-	MessagingStopTypingInput,
-	MessagingUnsendInput
+	MessagingStopTypingInput
 } from './contracts'
 import { messagingAuthSchema } from './contracts'
 import { ImessageMessagingProvider } from './providers/imessage'
@@ -109,9 +108,5 @@ export class MessagingClient implements MessagingOps {
 
 	read(input: MessagingReadInput): Promise<void> {
 		return this.#ops.read(input)
-	}
-
-	unsend(input: MessagingUnsendInput): Promise<void> {
-		return this.#ops.unsend(input)
 	}
 }

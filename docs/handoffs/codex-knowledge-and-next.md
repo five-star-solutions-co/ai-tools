@@ -64,16 +64,19 @@ vendors/foo/client.ts             →  owns HttpService + vendor API
 - `HttpService` already does `trimEnd(baseURL, '/')` — **do not** re-strip trailing slashes on every client.
 - Strip/join only when **string-concatenating** paths yourself (e.g. `` `${origin}/rest/v1` ``).
 
-### exactOptionalPropertyTypes
+### Optional spreads (AGENTS R-optional-spread)
 
 ```ts
-// BANNED
+// Preferred
+...(ctx.fetch && { fetch: ctx.fetch }),
+...(limit !== undefined && { limit }), // when 0 is valid
+
+// BANNED ternary empty-object soup
 ...(x === undefined ? {} : { key: x })
 
-// OK
+// Also OK
 const o: Options = { baseURL, headers, label }
 if (options.fetch) o.fetch = options.fetch
-if (options.signal) o.signal = options.signal
 ```
 
 ### Auth / tools

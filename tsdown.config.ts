@@ -25,7 +25,6 @@ export default defineConfig({
 		'vendors/katana/index': 'src/vendors/katana/index.ts',
 		'vendors/mastra-vector/index': 'src/vendors/mastra-vector/index.ts',
 		'modules/messaging/index': 'src/modules/messaging/index.ts',
-		'modules/mime/index': 'src/modules/mime/index.ts',
 		'vendors/pinecone/index': 'src/vendors/pinecone/index.ts',
 		'vendors/qdrant/index': 'src/vendors/qdrant/index.ts',
 		'modules/rag/index': 'src/modules/rag/index.ts',

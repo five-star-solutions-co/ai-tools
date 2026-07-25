@@ -21,7 +21,6 @@ import type {
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput,
-	MessagingUnsendInput,
 	TelegramMessagingAuth
 } from '../contracts'
 import { sendMediaBatchSequential, warnUnsupportedMessagingOp } from '../domain'
@@ -148,10 +147,7 @@ export class TelegramMessagingProvider implements MessagingOps {
 	}
 
 	async read(_input: MessagingReadInput): Promise<void> {
+		// No mark-as-read API; intentional lifecycle no-op for multi-channel hosts.
 		warnUnsupportedMessagingOp('telegram', 'read')
-	}
-
-	async unsend(_input: MessagingUnsendInput): Promise<void> {
-		warnUnsupportedMessagingOp('telegram', 'unsend')
 	}
 }

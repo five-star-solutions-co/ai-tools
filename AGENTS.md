@@ -41,34 +41,47 @@ Do not invent a new layout, naming scheme, or HTTP stack.
 - No `json`/`form`/`methodJson` dual helpers or dynamic `/${method}` routers on ofetch.
 - No parallel HTTP stacks (`TelegramHttp`, raw `fetch` loops, custom retry frameworks) unless the user explicitly orders that design.
 
-### R-no-spread-undefined — NEVER write this pattern
+### R-optional-spread — preferred optional object fields
 
-**Forbidden** (exactOptionalPropertyTypes workarounds by spread):
+**Preferred** (truthy optional bags — house style on `fromContext` / transport options):
 
 ```ts
-// BANNED — never write this again
+...(ctx.fetch && { fetch: ctx.fetch }),
+...(ctx.signal && { signal: ctx.signal }),
+...(input.caption && { caption: input.caption }),
+```
+
+**When the value can be falsy but valid** (e.g. `0`, `false`, `''`):
+
+```ts
+...(limit !== undefined && { limit }),
+...(enabled !== undefined && { enabled }),
+```
+
+**Forbidden** (ternary empty-object soup for exactOptionalPropertyTypes):
+
+```ts
+// BANNED
 ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
 ...(x === undefined ? {} : { key: x }),
 ```
 
-**Required instead:**
+**Also fine:** pass optionals straight into constructors when types allow `| undefined`, or assign with `if`:
 
 ```ts
-// Pass optionals normally (types allow `| undefined` where needed)
 new HttpService({ baseURL, headers, label, fetch: options.fetch, signal: options.signal })
 
-// Or assign after base object
 const out: Result = { success: true }
 if (id !== undefined) out.id = id
 ```
 
-If TypeScript complains about `undefined` on an optional prop, fix the **type** (`prop?: T | undefined`) or assign with `if`, do **not** invent spread soup.
+If TypeScript complains about `undefined` on an optional prop, fix the **type** (`prop?: T | undefined`) or use the preferred spreads / `if` assign — do **not** invent ternary empty-object soup.
 
 ### R2 — Two source roots (modules vs vendors)
 
 | Root | Holds | Rule |
 | --- | --- | --- |
-| **`src/modules/*`** | **Our seams** | We own the contract; backends swappable when real (`email`, `messaging`, `files`, `document-render`, pure helpers like `mime`) |
+| **`src/modules/*`** | **Our seams** | We own the contract; backends swappable when real (`email`, `messaging`, `files`, `document-render`, pure helpers like `content-type`) |
 | **`src/vendors/*`** | **3rd-party products** | Full API of one vendor; grow over time (`resend`, `cloudflare-email`, `telegram`, `slack`, `woocommerce`, …) |
 
 - **Seams → modules.** Multi-provider only when 2+ backends share the same verbs (`defineProvider` + auth `{ provider, … }`).
@@ -113,7 +126,7 @@ defineTool / defineModule  (kernel — only real tool definitions)
 | **Tools** | `defineTool` on `defineModule`; execute → `Client.fromContext(ctx).method(...)` | Agent / model surface |
 | **Adapters** | Generic projectors only | Never re-implement HTTP or per-pack factories |
 | **Pure helpers** | Functions | `createLiveMessage`, webhook verify/parse, pure mime helpers |
-| **Tiny pure packs** | Tools only (class optional) | e.g. `mime`, `content-type` |
+| **Tiny pure packs** | Tools only (class optional) | e.g. `content-type`, `email-message` |
 
 **Forbidden:** tools calling ofetch/paths; adapters owning business logic; second tool systems; making tools the only public API when a host client is needed.
 

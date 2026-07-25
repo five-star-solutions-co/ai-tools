@@ -45,7 +45,7 @@ async function expectWarnNoOp(run: () => Promise<void>, fragments: string[]): Pr
 
 runTg('live seam messaging (telegram)', () => {
 	test(
-		'full surface: send edit action stopTyping react media download batch read/unsend gaps',
+		'full surface: send edit action stopTyping react media download batch read no-op',
 		async () => {
 			const client = MessagingClient.fromAuth({
 				provider: 'telegram',
@@ -119,9 +119,8 @@ runTg('live seam messaging (telegram)', () => {
 			expect(batch.results.succeeded).toBe(2)
 			expect(batch.results.failed).toBe(0)
 
-			// Optional lifecycle verbs: warn + no-op (not throws).
+			// Lifecycle read: intentional successful no-op on Telegram.
 			await expectWarnNoOp(() => client.read({ chat_id, message_id: msg.message_id }), ['telegram', 'read'])
-			await expectWarnNoOp(() => client.unsend({ chat_id, message_id: msg.message_id }), ['telegram', 'unsend'])
 		},
 		{ timeout: 60_000 }
 	)
@@ -129,7 +128,7 @@ runTg('live seam messaging (telegram)', () => {
 
 runSlack('live seam messaging (slack)', () => {
 	test(
-		'full surface: send edit action stopTyping react media batch read/unsend gaps',
+		'full surface: send edit action stopTyping react media batch read no-op',
 		async () => {
 			const client = MessagingClient.fromAuth({
 				provider: 'slack',
@@ -196,7 +195,6 @@ runSlack('live seam messaging (slack)', () => {
 			expect(batch.results.failed).toBe(0)
 
 			await expectWarnNoOp(() => client.read({ chat_id, message_id: msg.message_id }), ['slack', 'read'])
-			await expectWarnNoOp(() => client.unsend({ chat_id, message_id: msg.message_id }), ['slack', 'unsend'])
 		},
 		{ timeout: 60_000 }
 	)
@@ -204,7 +202,7 @@ runSlack('live seam messaging (slack)', () => {
 
 runIm('live seam messaging (imessage)', () => {
 	test(
-		'full surface: send edit typing stopTyping react clear media batch unsend read contract',
+		'full surface: send edit typing stopTyping react clear media batch read contract',
 		async () => {
 			const client = MessagingClient.fromAuth({
 				provider: 'imessage',
@@ -293,16 +291,9 @@ runIm('live seam messaging (imessage)', () => {
 			expect(batch.results.succeeded).toBe(2)
 			expect(batch.results.failed).toBe(0)
 			expect(batch.message_ids.length).toBe(2)
+			expect(media.message_id).toBeTruthy()
 
-			// Unsend batch items then single media (when ids present).
-			for (const message_id of batch.message_ids) {
-				await client.unsend({ chat_id, message_id })
-			}
-			if (media.message_id) {
-				await client.unsend({ chat_id, message_id: media.message_id })
-			}
-
-			// Pure no-op on iMessage (no interactive callbacks).
+			// Pure no-op on iMessage (no interactive callbacks). Unsend is vendor-only (imessage pack).
 			await client.answerCallback({ callback_query_id: 'n/a' })
 		},
 		{ timeout: 120_000 }
@@ -311,7 +302,7 @@ runIm('live seam messaging (imessage)', () => {
 
 runTeams('live seam messaging (teams)', () => {
 	test(
-		'full surface: send edit action stopTyping react media batch read/unsend gaps',
+		'full surface: send edit action stopTyping react media batch read no-op',
 		async () => {
 			const client = MessagingClient.fromAuth({
 				provider: 'teams',
@@ -383,10 +374,6 @@ runTeams('live seam messaging (teams)', () => {
 			expect(batch.results.failed).toBe(0)
 
 			await expectWarnNoOp(() => client.read({ chat_id, message_id: msg.message_id, service_url }), ['teams', 'read'])
-			await expectWarnNoOp(
-				() => client.unsend({ chat_id, message_id: msg.message_id, service_url }),
-				['teams', 'unsend']
-			)
 		},
 		{ timeout: 60_000 }
 	)

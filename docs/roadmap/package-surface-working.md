@@ -34,7 +34,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `document-extract` | Done | textract only |
 | `file-convert` | Done | transmute only |
 | `web-fetch` | Done | allowlisted HttpService |
-| `mime` | Stub | `mime-ping` only; real MIME is `email-message` / `content-type` |
+| `mime` | **Removed** | Stub pack deleted; use `email-message` / `content-type` |
 | `content-type` | Done | pure type ↔ extension |
 | `email-message` | Done | pure parse/build MIME |
 | `files` | Done | path root over nested S3: list/search/stat/get/put/delete/copy/move/mkdir + multipart |

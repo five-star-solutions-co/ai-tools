@@ -15,12 +15,12 @@ import type {
 } from './contracts'
 
 /**
- * Channel gap that stays callable: log once per call, then succeed as a no-op.
- * Prefer this over throwing `unsupported` for optional presentation/lifecycle verbs
- * so multi-channel hosts can call one surface without branching.
+ * Intentional lifecycle no-op (e.g. read when the channel has no mark-as-read API).
+ * Succeeds so multi-channel hosts can call one surface without branching.
+ * Destructive gaps (unsend) must not live on the seam — use the vendor pack.
  */
 export function warnUnsupportedMessagingOp(provider: string, op: string): void {
-	console.warn(`[messaging] ${provider} does not support ${op}; treating as no-op`)
+	console.warn(`[messaging] ${provider}: ${op} is a successful no-op (not needed / not applicable on this channel)`)
 }
 
 /** Provider-neutral definite rejection (do not treat as possible delivery). */

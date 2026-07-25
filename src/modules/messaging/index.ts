@@ -18,8 +18,7 @@ export {
 	messagingSendMediaTool,
 	messagingSendTextTool,
 	messagingSetReactionTool,
-	messagingStopTypingTool,
-	messagingUnsendTool
+	messagingStopTypingTool
 } from './module'
 export type { MessagingAuth } from './module'
 export type {
@@ -38,7 +37,6 @@ export type {
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput,
-	MessagingUnsendInput,
 	ImessageMessagingAuth,
 	SlackMessagingAuth,
 	TeamsMessagingAuth,
@@ -63,8 +61,7 @@ export {
 	messagingSendMediaInputSchema,
 	messagingSendTextInputSchema,
 	messagingSetReactionInputSchema,
-	messagingStopTypingInputSchema,
-	messagingUnsendInputSchema
+	messagingStopTypingInputSchema
 } from './contracts'
 export { createLiveMessage, createTypingPulse } from '../../vendors/_messaging'
 export type { LiveMessage, LiveMessageDeps, TypingPulse, TypingPulseDeps } from '../../vendors/_messaging'

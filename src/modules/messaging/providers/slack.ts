@@ -22,7 +22,6 @@ import type {
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput,
-	MessagingUnsendInput,
 	SlackMessagingAuth
 } from '../contracts'
 import { sendMediaBatchSequential, warnUnsupportedMessagingOp } from '../domain'
@@ -123,10 +122,7 @@ export class SlackMessagingProvider implements MessagingOps {
 	}
 
 	async read(_input: MessagingReadInput): Promise<void> {
+		// No mark-as-read API; intentional lifecycle no-op for multi-channel hosts.
 		warnUnsupportedMessagingOp('slack', 'read')
-	}
-
-	async unsend(_input: MessagingUnsendInput): Promise<void> {
-		warnUnsupportedMessagingOp('slack', 'unsend')
 	}
 }

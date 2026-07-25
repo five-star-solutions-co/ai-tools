@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-25T22:17:29.906Z",
+	"generatedAt": "2026-07-25T22:24:31.843Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -657,7 +657,6 @@
 				"MessagingSendTextInput",
 				"MessagingSetReactionInput",
 				"MessagingStopTypingInput",
-				"MessagingUnsendInput",
 				"SlackMessagingAuth",
 				"TeamsMessagingAuth",
 				"TelegramMessagingAuth",
@@ -697,21 +696,10 @@
 				"messagingSetReactionInputSchema",
 				"messagingSetReactionTool",
 				"messagingStopTypingInputSchema",
-				"messagingStopTypingTool",
-				"messagingUnsendInputSchema",
-				"messagingUnsendTool"
+				"messagingStopTypingTool"
 			],
 			"moduleId": "messaging",
 			"moduleIdSource": "src/modules/messaging/module.ts"
-		},
-		{
-			"key": "mime",
-			"lane": "modules",
-			"entry": "src/modules/mime/index.ts",
-			"entryKey": "modules/mime/index",
-			"exportNames": ["mimeModule", "mimePingTool"],
-			"moduleId": "mime",
-			"moduleIdSource": "src/modules/mime/module.ts"
 		},
 		{
 			"key": "pinecone",

@@ -22,8 +22,7 @@ import type {
 	MessagingSendMediaInput,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
-	MessagingStopTypingInput,
-	MessagingUnsendInput
+	MessagingStopTypingInput
 } from '../contracts'
 import { sendMediaBatchSequential } from '../domain'
 
@@ -129,13 +128,6 @@ export class ImessageMessagingProvider implements MessagingOps {
 
 	read(input: MessagingReadInput): Promise<void> {
 		return this.#client.read({
-			chat_id: input.chat_id,
-			message_id: input.message_id
-		})
-	}
-
-	unsend(input: MessagingUnsendInput): Promise<void> {
-		return this.#client.unsend({
 			chat_id: input.chat_id,
 			message_id: input.message_id
 		})

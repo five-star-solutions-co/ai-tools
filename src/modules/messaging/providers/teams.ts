@@ -22,7 +22,6 @@ import type {
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput,
-	MessagingUnsendInput,
 	TeamsMessagingAuth
 } from '../contracts'
 import { sendMediaBatchSequential, warnUnsupportedMessagingOp } from '../domain'
@@ -80,6 +79,7 @@ export class TeamsMessagingProvider implements MessagingOps {
 		return
 	}
 
+	/** Presentation no-op via TeamsClient (Bot Framework has no bot reaction API). */
 	async setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {
 		await this.#client.setReaction({
 			chat_id: input.chat_id,
@@ -89,6 +89,7 @@ export class TeamsMessagingProvider implements MessagingOps {
 		return {}
 	}
 
+	/** Presentation no-op — see setReaction. */
 	clearReaction(input: MessagingClearReactionInput): Promise<void> {
 		return this.#client.clearReaction({
 			chat_id: input.chat_id,
@@ -132,10 +133,7 @@ export class TeamsMessagingProvider implements MessagingOps {
 	}
 
 	async read(_input: MessagingReadInput): Promise<void> {
+		// No mark-as-read API; intentional lifecycle no-op for multi-channel hosts.
 		warnUnsupportedMessagingOp('teams', 'read')
-	}
-
-	async unsend(_input: MessagingUnsendInput): Promise<void> {
-		warnUnsupportedMessagingOp('teams', 'unsend')
 	}
 }

@@ -17,8 +17,7 @@ import {
 	messagingSendMediaInputSchema,
 	messagingSendTextInputSchema,
 	messagingSetReactionInputSchema,
-	messagingStopTypingInputSchema,
-	messagingUnsendInputSchema
+	messagingStopTypingInputSchema
 } from './contracts'
 
 export type { MessagingAuth } from './contracts'
@@ -51,7 +50,7 @@ export const messagingSendChatActionTool = defineTool({
 	id: 'messaging-send-chat-action',
 	name: 'messagingSendChatAction',
 	description:
-		'Show a chat action (typing, upload, …) on the bound channel when supported. Slack: pass reply_to_message_id as thread root ts for assistant.threads.setStatus; without it this is a no-op. Telegram/Teams/iMessage use native typing indicators.',
+		'Show a chat action on the conversation (typing, upload_photo, upload_document, …). Optional reply_to_message_id anchors a thread when the channel uses thread-scoped status.',
 	inputSchema: messagingSendChatActionInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'none',
@@ -66,7 +65,7 @@ export const messagingStopTypingTool = defineTool({
 	id: 'messaging-stop-typing',
 	name: 'messagingStopTyping',
 	description:
-		'Stop a typing / busy indicator when supported. iMessage: native stop. Slack: pass reply_to_message_id (thread_ts) to clear assistant status; without it no-op. Telegram/Teams: successful no-op.',
+		'Stop a typing or busy indicator on the conversation. Optional reply_to_message_id clears thread-scoped status when the channel uses it.',
 	inputSchema: messagingStopTypingInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'none',
@@ -81,7 +80,7 @@ export const messagingSetReactionTool = defineTool({
 	id: 'messaging-set-reaction',
 	name: 'messagingSetReaction',
 	description:
-		'Set an emoji reaction on a message when the bound channel supports reactions. Returns optional message_id for channels that create a separate reaction message (iMessage); store it for clearReaction.',
+		'Set an emoji reaction on a message. Returns optional message_id when the channel creates a separate reaction message — store it for clearReaction.',
 	inputSchema: messagingSetReactionInputSchema,
 	outputSchema: messagingReactionOutputSchema,
 	sideEffect: 'write',
@@ -93,7 +92,7 @@ export const messagingClearReactionTool = defineTool({
 	id: 'messaging-clear-reaction',
 	name: 'messagingClearReaction',
 	description:
-		'Clear a reaction. Slack requires emoji. iMessage expects the reaction message_id from setReaction (not the target message).',
+		'Clear a reaction on a message. Pass emoji when required. When setReaction returned a message_id, pass that id instead of the target message id.',
 	inputSchema: messagingClearReactionInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'write',
@@ -119,7 +118,7 @@ export const messagingSendMediaBatchTool = defineTool({
 	id: 'messaging-send-media-batch',
 	name: 'messagingSendMediaBatch',
 	description:
-		'Send 1–10 media items in order. Telegram uses a native media group when all items share the same kind (2–10); otherwise each channel sends sequentially. Partial failures are reported per item.',
+		'Send 1–10 media items in order. May use a native album when all items share the same kind (2–10); otherwise sequential. Partial failures are reported per item.',
 	inputSchema: messagingSendMediaBatchInputSchema,
 	outputSchema: messagingSendMediaBatchOutputSchema,
 	sideEffect: 'send',
@@ -130,8 +129,7 @@ export const messagingSendMediaBatchTool = defineTool({
 export const messagingDownloadFileTool = defineTool({
 	id: 'messaging-download-file',
 	name: 'messagingDownloadFile',
-	description:
-		'Download a file by provider file id or content URL and return the body as base64. iMessage prefers chat_id plus attachment message id (legacy space_id::message_id still accepted).',
+	description: 'Download a file by file_id (and optional chat_id / file_name) and return the body as base64.',
 	inputSchema: messagingDownloadFileInputSchema,
 	outputSchema: messagingDownloadFileOutputSchema,
 	sideEffect: 'read',
@@ -142,8 +140,7 @@ export const messagingDownloadFileTool = defineTool({
 export const messagingAnswerCallbackTool = defineTool({
 	id: 'messaging-answer-callback',
 	name: 'messagingAnswerCallback',
-	description:
-		'Acknowledge an inbound interactive callback when the bound channel supports it (toast, alert, or response URL).',
+	description: 'Acknowledge an inbound interactive callback (toast, alert, or response URL).',
 	inputSchema: messagingAnswerCallbackInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'write',
@@ -157,8 +154,7 @@ export const messagingAnswerCallbackTool = defineTool({
 export const messagingReadTool = defineTool({
 	id: 'messaging-read',
 	name: 'messagingRead',
-	description:
-		'Mark messages as read up to message_id when the bound channel supports it (iMessage inbound only). Other providers log a warning and no-op.',
+	description: 'Mark conversation messages as read up to message_id.',
 	inputSchema: messagingReadInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'write',
@@ -169,26 +165,11 @@ export const messagingReadTool = defineTool({
 	}
 })
 
-export const messagingUnsendTool = defineTool({
-	id: 'messaging-unsend',
-	name: 'messagingUnsend',
-	description:
-		'Unsend or delete a message when the bound channel supports it (iMessage). Other providers log a warning and no-op.',
-	inputSchema: messagingUnsendInputSchema,
-	outputSchema: messagingOkOutputSchema,
-	sideEffect: 'write',
-	runtime: 'both',
-	execute: async (input, ctx) => {
-		await MessagingClient.fromContext(ctx).unsend(input)
-		return { ok: true }
-	}
-})
-
 export const messagingModule = defineModule({
 	id: 'messaging',
 	title: 'Messaging',
 	description:
-		'Multi-channel messaging seam: send and edit text, media (single and batch), chat actions, stop typing, reactions, file download, callback answers, read, and unsend via the host-bound channel provider (telegram, slack, teams, or imessage).',
+		'Send and edit text, media (single and batch), chat actions, reactions, file download, callback answers, and read on the bound messaging channel.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: messagingAuthSchema },
 	tools: [
@@ -202,7 +183,6 @@ export const messagingModule = defineModule({
 		messagingSendMediaBatchTool,
 		messagingDownloadFileTool,
 		messagingAnswerCallbackTool,
-		messagingReadTool,
-		messagingUnsendTool
+		messagingReadTool
 	]
 })

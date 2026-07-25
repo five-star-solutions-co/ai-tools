@@ -41,8 +41,7 @@ describe('messaging seam', () => {
 			'messaging-send-media-batch',
 			'messaging-send-text',
 			'messaging-set-reaction',
-			'messaging-stop-typing',
-			'messaging-unsend'
+			'messaging-stop-typing'
 		])
 	})
 
@@ -268,22 +267,7 @@ describe('messaging seam', () => {
 		}
 	})
 
-	test('telegram unsend warns and no-ops', async () => {
-		const warnings: string[] = []
-		const original = console.warn
-		console.warn = (...args: unknown[]) => {
-			warnings.push(args.map(String).join(' '))
-		}
-		try {
-			const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
-			await client.unsend({ chat_id: '99', message_id: '1' })
-			expect(warnings.some((line) => line.includes('telegram') && line.includes('unsend'))).toBe(true)
-		} finally {
-			console.warn = original
-		}
-	})
-
-	test('imessage stopTyping / read / unsend hit proxy', async () => {
+	test('imessage stopTyping / read hit proxy', async () => {
 		const seen: string[] = []
 		const restore = mockFetch((url) => {
 			seen.push(url)
@@ -298,12 +282,7 @@ describe('messaging seam', () => {
 			})
 			await client.stopTyping({ chat_id: 'space-1' })
 			await client.read({ chat_id: 'space-1', message_id: 'in-1' })
-			await client.unsend({ chat_id: 'space-1', message_id: 'out-1' })
-			expect(seen).toEqual([
-				'https://proxy.example.com/v1/typing',
-				'https://proxy.example.com/v1/read',
-				'https://proxy.example.com/v1/unsend'
-			])
+			expect(seen).toEqual(['https://proxy.example.com/v1/typing', 'https://proxy.example.com/v1/read'])
 		} finally {
 			restore()
 		}

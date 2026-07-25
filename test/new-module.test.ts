@@ -31,7 +31,7 @@ describe('new-module scaffold', () => {
 	})
 
 	test('refuses existing modules', async () => {
-		const proc = Bun.spawn(['bun', 'scripts/new-module.ts', 'mime'], {
+		const proc = Bun.spawn(['bun', 'scripts/new-module.ts', 'content-type'], {
 			cwd: repoRoot,
 			stdout: 'pipe',
 			stderr: 'pipe'

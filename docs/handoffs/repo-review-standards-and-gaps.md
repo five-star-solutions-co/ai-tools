@@ -157,7 +157,7 @@ Extract / convert / render accept ArtifactRef so large payloads do not enter the
 | `rag` | nested | chunk + OpenAI-compatible embed + nested vector-store |
 | `email-message` | pure (no auth) | parse/build MIME |
 | `content-type` | pure (no auth) | media type ↔ extension |
-| `mime` | pure (no auth) | **stub** `mime-ping` only — see G-03 |
+
 
 ### 2.3 Vendors (`src/vendors/`)
 
@@ -402,40 +402,7 @@ Shipped product has multi-provider `email` and `messaging` seams (thin wrappers 
 
 ### G-03 — Remove or replace published `mime` stub pack (P1)
 
-**Status:** open  
-**Severity:** public export of a scaffold ping tool  
-
-**Problem**  
-`src/modules/mime` only exports `mime-ping` (“Connectivity check”). Docs say replace with real tools. Real MIME work lives in `email-message` (parse/build) and `content-type` (type ↔ extension). CHANGELOG historically claimed `mime` was parse/build.
-
-**Evidence**
-
-- `src/modules/mime/module.ts` — single ping tool
-- `docs/modules/mime.md` — scaffold language
-- `src/modules/email-message/`, `src/modules/content-type/` — real implementations
-- `package.json` exports `./mime`
-
-**Options (user decides)**
-
-| Option | Action |
-| --- | --- |
-| A — Remove | Delete pack, docs, tests; run codegen; changelog BREAKING if public |
-| B — Alias | Re-export content-type (or email-message helpers) under clear docs; deprecate ping |
-| C — Keep private | Unexport from public surface; keep only as internal scaffold example |
-
-**Acceptance**
-
-- [ ] Chosen option implemented with docs + tests
-- [ ] No published pack that is only `mime-ping` without intentional product meaning
-- [ ] `bun run codegen` + `bun run check`
-- [ ] README / docs wiki tables updated
-
-**Related paths**
-
-- `src/modules/mime/**`
-- `test/modules/mime.test.ts`, `test/integration/seams/mime.live.test.ts`
-- `docs/modules/mime.md`, `docs/README.md`, root README
-- Codegen-owned exports after change
+**Status:** done (2026-07-26) — **removed** pack, docs, tests; real MIME is `email-message` / `content-type`.
 
 ---
 
@@ -479,76 +446,16 @@ Extract/convert/render use `ArtifactRef` so bytes stay out of the LLM. Chat pack
 
 ### G-05 — Messaging unsupported ops: stop silent success no-ops (P1)
 
-**Status:** open  
-**Severity:** agents believe actions succeeded when they did not  
-
-**Problem**  
-`warnUnsupportedMessagingOp` logs `console.warn` and returns success for unsupported verbs (e.g. Teams reactions, read/unsend on most channels, Slack typing). Multi-channel hosts call one surface without branching and get false success.
-
-**Evidence**
-
-- `src/modules/messaging/domain.ts` — `warnUnsupportedMessagingOp` → `console.warn` + no-op design comment
-- `docs/modules/messaging.md` — provider gaps table (no-ops documented for humans; tools still return ok)
-- Providers: teams reactions, imessage/slack/telegram gaps for read/unsend/stopTyping
-
-**Fix direction (pick one product policy)**
-
-| Policy | Behavior |
-| --- | --- |
-| A — Fail closed | Throw `ToolError` `{ code: 'unsupported' }` for unsupported verbs |
-| B — Structured noop | Return `{ ok: true, noop: true, reason: '…' }` (or equivalent) so journals can detect |
-| C — Filter tools | At `withAuth` time, drop tools the bound provider cannot implement |
-
-Recommendation: **B or C** for multi-channel hosts; **A** if host always branches. Avoid `console.warn` as the only signal.
-
-**Acceptance**
-
-- [ ] No silent success for unsupported ops without structured signal
-- [ ] Docs/provider gap table matches runtime
-- [ ] Unit tests cover at least one no-op path under new policy
-- [ ] Host helpers (`isMessagingDefiniteRejection` etc.) still coherent
-
-**Related paths**
-
-- `src/modules/messaging/domain.ts`, `providers/*`, `module.ts`, `contracts.ts`
-- `docs/modules/messaging.md`
-- `test/modules/messaging.test.ts`
+**Status:** done (2026-07-26) — product policy:  
+- **`unsend` removed from seam** (use `imessage` vendor).  
+- Intentional successful no-ops kept: `read` (TG/Slack/Teams), Teams reactions (presentation), typing lifecycle (TG stop; Slack assistant status when thread_ts set).  
+- Seam must not throw `unsupported` for lifecycle/presentation no-ops.
 
 ---
 
 ### G-06 — Align optional-spread rule with gold code (P1)
 
-**Status:** open  
-**Severity:** written standard vs house style diverge; every new client copies gold  
-
-**Problem**  
-AGENTS **R-no-spread-undefined** bans optional spread workarounds. Gold and almost all clients use:
-
-```ts
-...(ctx.fetch && { fetch: ctx.fetch }),
-...(ctx.signal && { signal: ctx.signal })
-```
-
-~48 occurrences under `src/`. Rag client uses the compliant `if` assign form.
-
-**Options**
-
-| Option | Action |
-| --- | --- |
-| A — Enforce AGENTS | Refactor all `fromContext` / optional option bags to `if` assign or typed `| undefined` pass-through; keep gold clean |
-| B — Rewrite AGENTS | Document truthy/optional spread as allowed when values are only `T \| undefined` and not `null`; ban only the ternary empty-object form |
-
-**Acceptance**
-
-- [ ] AGENTS and gold clients agree
-- [ ] If A: bulk refactor + tests still green
-- [ ] If B: AGENTS + handoff docs updated so agents stop “fixing” gold
-
-**Related paths**
-
-- `AGENTS.md` (R-no-spread-undefined)
-- All `fromContext` in `src/vendors/*/client.ts`, `src/modules/*/client.ts`
-- `docs/handoffs/codex-knowledge-and-next.md` (also documents the ban)
+**Status:** done (2026-07-26) — AGENTS **R-optional-spread**: prefer `...(x && { y: x })`; use `...(x !== undefined && …)` when falsy-valid (`0`, `false`, `''`); ban ternary empty-object soup only.
 
 ---
 
@@ -781,9 +688,9 @@ Other agent hygiene (G-03 mime, G-05 messaging no-ops, …) stays orthogonal.
 | --- | --- | --- |
 | 1 | **G-02** docs reconcile | Done |
 | 2 | **G-01** S3 → AwsService | Done |
-| 3 | **G-03** mime stub | Public surface honesty |
-| 4 | **G-06** optional-spread policy | Unblocks clean client refactors |
-| 5 | **G-05** messaging no-op honesty | Agent correctness |
+| 3 | **G-03** mime stub | **Done** — pack removed |
+| 4 | **G-06** optional-spread policy | **Done** — AGENTS R-optional-spread |
+| 5 | **G-05** messaging no-op honesty | **Done** — unsend off seam; intentional no-ops documented |
 | 6 | **G-09** storage capability surface | **Cancelled** — storage seam removed |
 | 7 | **G-04** messaging ArtifactRef media | Larger product slice |
 | 8 | **G-11** consistency cleanup | Cheap doc/schema polish |
@@ -828,7 +735,7 @@ bun run build && bun run typecheck
 | telegram | 10 |
 | teams / slack / imessage | 9 each |
 | amazon-sp-api | 9 |
-| mime | 1 (stub) |
+
 | resend / cloudflare-email / email | 2 each |
 
 ## Appendix B — Known doc vs code conflicts (quick list)
@@ -839,10 +746,10 @@ bun run build && bun run typecheck
 | No multi-provider messaging seam | `src/modules/messaging` exists |
 | Email multi-provider Removed (working) | Reconciled: Done thin seam (G-02) |
 | Artifact `store: 's3'` | `store: 'object'` |
-| mime = parse/build (old CHANGELOG) | mime = ping; email-message = parse/build |
+| mime = parse/build (old CHANGELOG) | mime pack removed; email-message = parse/build |
 | All SigV4 via AwsService | S3 uses `AwsService` (G-01 done) |
 | defineProvider for seams | Unused; switch + classes |
-| R-no-spread-undefined | Gold uses truthy optional spread |
+| R-optional-spread | Prefer `...(x && {…})`; `!== undefined` when falsy-valid |
 
 ## Appendix C — Related existing handoffs
 

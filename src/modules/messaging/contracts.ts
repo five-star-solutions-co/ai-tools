@@ -99,9 +99,7 @@ export const messagingSendChatActionInputSchema = z.object({
 		.string()
 		.min(1)
 		.optional()
-		.describe(
-			'Optional thread / reply anchor. Slack: thread root ts for assistant.threads.setStatus. Other channels ignore.'
-		),
+		.describe('Optional thread or reply anchor when the channel uses thread-scoped status'),
 	service_url: serviceUrlOptional
 })
 
@@ -111,9 +109,7 @@ export const messagingStopTypingInputSchema = z.object({
 		.string()
 		.min(1)
 		.optional()
-		.describe(
-			'Optional thread / reply anchor. Slack: thread root ts to clear assistant status. Other channels ignore.'
-		),
+		.describe('Optional thread or reply anchor when the channel uses thread-scoped status'),
 	service_url: serviceUrlOptional
 })
 
@@ -123,14 +119,12 @@ export const messagingSetReactionInputSchema = z.object({
 	emoji: z.string().min(1).max(64).describe('Any emoji the bound channel accepts')
 })
 
-/** Reaction result — store message_id for iMessage clearReaction. */
+/** Reaction result — store message_id when present for clearReaction. */
 export const messagingReactionOutputSchema = z.object({
 	message_id: z
 		.string()
 		.optional()
-		.describe(
-			'Reaction message id when the channel creates a separate reaction message (iMessage). Pass this to clearReaction on those channels.'
-		)
+		.describe('Reaction message id when the channel creates a separate reaction message; pass to clearReaction')
 })
 
 export const messagingClearReactionInputSchema = z.object({
@@ -138,10 +132,8 @@ export const messagingClearReactionInputSchema = z.object({
 	message_id: z
 		.string()
 		.min(1)
-		.describe(
-			'Message id to clear. iMessage: reaction message id from setReaction. Telegram/Slack: target message id (Slack also needs emoji).'
-		),
-	emoji: z.string().min(1).max(64).optional().describe('Emoji to clear when the channel requires a name (e.g. Slack)')
+		.describe('Message id to clear; use reaction message_id from setReaction when that was returned'),
+	emoji: z.string().min(1).max(64).optional().describe('Emoji to clear when the channel requires a reaction name')
 })
 
 export const messagingSendMediaInputSchema = z.object({
@@ -179,7 +171,7 @@ export const messagingSendMediaBatchOutputSchema = z.object({
 
 export const messagingDownloadFileInputSchema = z.object({
 	file_id: z.string().min(1).describe('Provider file id, content URL, or attachment message id'),
-	chat_id: z.string().min(1).optional().describe('Conversation / space id when required (iMessage Photon download)'),
+	chat_id: z.string().min(1).optional().describe('Conversation id when the channel requires it for download'),
 	file_name: z.string().min(1).optional().describe('Preferred file name'),
 	service_url: serviceUrlOptional
 })
@@ -199,13 +191,7 @@ export const messagingAnswerCallbackInputSchema = z.object({
 
 export const messagingReadInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
-	message_id: z.string().min(1).describe('Inbound message id to mark read up to (iMessage/Photon requires inbound)'),
-	service_url: serviceUrlOptional
-})
-
-export const messagingUnsendInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
-	message_id: z.string().min(1).describe('Message id to unsend / delete'),
+	message_id: z.string().min(1).describe('Message id to mark read up to'),
 	service_url: serviceUrlOptional
 })
 
@@ -228,7 +214,6 @@ export type MessagingDownloadFileInput = z.infer<typeof messagingDownloadFileInp
 export type MessagingDownloadFileOutput = z.infer<typeof messagingDownloadFileOutputSchema>
 export type MessagingAnswerCallbackInput = z.infer<typeof messagingAnswerCallbackInputSchema>
 export type MessagingReadInput = z.infer<typeof messagingReadInputSchema>
-export type MessagingUnsendInput = z.infer<typeof messagingUnsendInputSchema>
 
 /** Shared seam surface — provider classes implement this. */
 export type MessagingOps = {
@@ -243,5 +228,4 @@ export type MessagingOps = {
 	downloadFile: (input: MessagingDownloadFileInput) => Promise<MessagingDownloadFileOutput>
 	answerCallback: (input: MessagingAnswerCallbackInput) => Promise<void>
 	read: (input: MessagingReadInput) => Promise<void>
-	unsend: (input: MessagingUnsendInput) => Promise<void>
 }

@@ -148,7 +148,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | email | Resend and/or CF email | send + sendBatch per provider |
 | storage | S3 and/or R2 and/or Supabase | full object surface per provider |
 | files | S3 | list/search/stat/put/get/delete/copy/mkdir/move/multipart |
-| messaging | TG / Slack / iMessage / Teams when env set | **full MessagingOps** per channel: send/edit/chatAction/stopTyping/setReaction/clearReaction/sendMedia/sendMediaBatch; Telegram also downloadFile round-trip; iMessage reaction clear + unsend + outbound read **400** + inbound read (requires `IMESSAGE_INBOUND_MESSAGE_ID`); TG/Slack/Teams `read`/`unsend` assert warn+no-op. Not covered: interactive `answerCallback` (except iMessage pure no-op); Slack/Teams/iMessage `downloadFile` (needs inbound attachment id) |
+| messaging | TG / Slack / iMessage / Teams when env set | send/edit/chatAction/stopTyping/setReaction/clearReaction/sendMedia/sendMediaBatch; Telegram also downloadFile; iMessage reaction clear + outbound read **400** + inbound read (`IMESSAGE_INBOUND_MESSAGE_ID`); TG/Slack/Teams `read` intentional no-op. Unsend is **not** on the seam (vendor `imessage` only). Not covered: interactive `answerCallback` (except iMessage pure no-op); Slack/Teams/iMessage `downloadFile` |
 | document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot |
 | file-convert | Transmute + S3 | convert |
 | document-extract | Textract | extractText |

@@ -16,7 +16,6 @@ export const moduleKeys = [
 	'katana',
 	'mastra-vector',
 	'messaging',
-	'mime',
 	'pinecone',
 	'qdrant',
 	'rag',
