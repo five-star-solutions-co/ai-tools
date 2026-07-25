@@ -56,7 +56,7 @@ Product clients **own** the transport instance in the constructor. Tools never c
 | `src/shared/` | `artifact`, `batch`, `bytes`, `content-type`, `pagination` |
 | `src/vendors/` | 3rd-party packs |
 | `src/vendors/_email/` | Email vertical kit (address, limits, schemas) |
-| `src/vendors/_storage/` | Storage I/O schemas (shared by s3/r2/supabase + seams) |
+| `src/vendors/_storage/` | Storage I/O schemas (shared by s3 + nested S3 bindings) |
 | `src/vendors/_messaging/` | Chat helpers (`createLiveMessage`, `createTypingPulse`) |
 | `src/modules/` | Capability seams |
 

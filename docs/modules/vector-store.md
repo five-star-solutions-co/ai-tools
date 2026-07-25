@@ -9,7 +9,7 @@
 | **Client** | `VectorStoreClient` |
 | **Runtime** | `both` |
 
-Capability seam: upsert / query / delete vectors. HTTP lives in **vendor packs**; providers here only wrap them (same pattern as [storage](./storage.md)).
+Capability seam: upsert / query / delete vectors. HTTP lives in **vendor packs**; providers here only wrap them (same pattern as [email](./email.md)).
 
 | Seam provider | Vendor pack |
 | --- | --- |

@@ -127,8 +127,6 @@ bun test test/integration/vendors/resend.live.test.ts
 | teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ `CHAT_ID`, `SERVICE_URL`) | getBot; optional send/edit/action/react/media |
 | imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** (user-sent msg for successful `/v1/read`) | send/edit/typing/react/media/unsend; outbound read expects **400**; inbound read must succeed |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/signed URL/multipart |
-| r2 | `R2_*` | list/put/get/head/copy/delete/bytes |
-| supabase-storage | Supabase URL + service role + bucket | list/put/get/head/copy/delete/bytes |
 | gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot |
 | cloudflare-browser | CF browser token + S3 | renderPdf + renderScreenshot |
 | transmute | base URL + token + S3 | convert + convertBatch |

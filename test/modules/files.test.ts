@@ -48,7 +48,6 @@ describe('files module', () => {
 		const bound = withAuth(filesModule, {
 			root_prefix: 'orgs/acme/files/',
 			storage: {
-				provider: 's3',
 				access_key_id: 'AKIAtest',
 				secret_access_key: 'secret',
 				region: 'auto',
@@ -97,7 +96,6 @@ describe('files module', () => {
 		const bound = withAuth(filesModule, {
 			root_prefix: 'orgs/acme/files/',
 			storage: {
-				provider: 's3',
 				access_key_id: 'AKIAtest',
 				secret_access_key: 'secret',
 				region: 'auto',
@@ -139,7 +137,6 @@ describe('files module', () => {
 		const bound = withAuth(filesModule, {
 			root_prefix: 'orgs/acme/files/',
 			storage: {
-				provider: 's3',
 				access_key_id: 'AKIAtest',
 				secret_access_key: 'secret',
 				region: 'auto',
@@ -190,7 +187,6 @@ describe('files module', () => {
 		const bound = withAuth(filesModule, {
 			root_prefix: 'orgs/acme/files/',
 			storage: {
-				provider: 's3',
 				access_key_id: 'AKIAtest',
 				secret_access_key: 'secret',
 				region: 'auto',
@@ -242,7 +238,6 @@ describe('files module', () => {
 		const bound = withAuth(filesModule, {
 			root_prefix: 'orgs/acme/files/',
 			storage: {
-				provider: 's3',
 				access_key_id: 'AKIAtest',
 				secret_access_key: 'secret',
 				region: 'auto',

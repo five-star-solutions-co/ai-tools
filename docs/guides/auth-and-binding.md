@@ -27,26 +27,23 @@ Capability modules use a **provider** discriminator on auth. Nested vendor field
 
 ```ts
 import { withAuth } from '@harryy/ai-tools/core'
-import { storageModule } from '@harryy/ai-tools/storage'
+import { emailModule } from '@harryy/ai-tools/email'
+import { s3Module } from '@harryy/ai-tools/s3'
 
-const bound = withAuth(storageModule, {
-  provider: 's3',
+const boundEmail = withAuth(emailModule, { provider: 'resend', api_key: '…' })
+withAuth(emailModule, {
+  provider: 'cloudflare',
+  account_id: '…',
+  api_token: '…',
+})
+
+// Object store: use vendor packs (s3 / r2 / supabase-storage), not a storage seam
+const boundS3 = withAuth(s3Module, {
   access_key_id: '…',
   secret_access_key: '…',
   region: 'auto',
   bucket: 'my-bucket',
   endpoint: 'https://….r2.cloudflarestorage.com', // optional S3-compatible
-})
-```
-
-```ts
-import { emailModule } from '@harryy/ai-tools/email'
-
-withAuth(emailModule, { provider: 'resend', api_key: '…' })
-withAuth(emailModule, {
-  provider: 'cloudflare',
-  account_id: '…',
-  api_token: '…',
 })
 ```
 

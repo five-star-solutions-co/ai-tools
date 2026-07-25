@@ -75,7 +75,7 @@ src/
   core/          kernel (defineTool, withAuth, runTool, …)
   transport/     HttpService / AwsService  →  @harryy/ai-tools/http
   adapters/      mastra · ai-sdk · tanstack · cloudflare · mcp
-  modules/       our seams (storage, email, files, …)
+  modules/       our seams (email, messaging, files, …)
   vendors/       3rd-party packs (resend, telegram, s3, …)
                  + vertical kits: _email · _storage · _messaging · _vector (not published)
   shared/        bytes, batch, artifact, content-type, pagination
@@ -117,8 +117,7 @@ defineTool / defineModule
 | --- | --- | --- | --- |
 | `@harryy/ai-tools/email` | multi-provider | `email-send`, `email-send-batch` | [email](./docs/modules/email.md) |
 | `@harryy/ai-tools/messaging` | multi-provider | `messaging-send-text`, edit, media, reactions, … (telegram/slack/teams/imessage) | [messaging](./docs/modules/messaging.md) |
-| `@harryy/ai-tools/storage` | multi-provider | `storage-*` (+ batch, multipart, signed URL) | [storage](./docs/modules/storage.md) |
-| `@harryy/ai-tools/files` | path root over storage | `files-*` | [files](./docs/modules/files.md) |
+| `@harryy/ai-tools/files` | path root over nested S3 | `files-*` | [files](./docs/modules/files.md) |
 | `@harryy/ai-tools/vector-store` | qdrant, pinecone, supabase, mastra | `vector-store-*` | [vector-store](./docs/modules/vector-store.md) |
 | `@harryy/ai-tools/rag` | embed + nested vector-store | `rag-*` | [rag](./docs/modules/rag.md) |
 | `@harryy/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
@@ -139,8 +138,6 @@ defineTool / defineModule
 | `@harryy/ai-tools/teams` | `teams-send-text`, edit, media, Bot Framework activities | [teams](./docs/vendors/teams.md) |
 | `@harryy/ai-tools/imessage` | send/edit/react/unsend/read via photon-rest-proxy | [imessage](./docs/vendors/imessage.md) |
 | `@harryy/ai-tools/s3` | `s3-*` (+ signed URL, multipart) | [s3](./docs/vendors/s3.md) |
-| `@harryy/ai-tools/r2` | `r2-*` (Cloudflare REST) | [r2](./docs/vendors/r2.md) |
-| `@harryy/ai-tools/supabase-storage` | `supabase-storage-*` | [supabase-storage](./docs/vendors/supabase-storage.md) |
 | `@harryy/ai-tools/qdrant` | `qdrant-upsert`, `-query`, `-delete` | [qdrant](./docs/vendors/qdrant.md) |
 | `@harryy/ai-tools/pinecone` | `pinecone-upsert`, `-query`, `-delete` | [pinecone](./docs/vendors/pinecone.md) |
 | `@harryy/ai-tools/supabase-vector` | `supabase-vector-*` (pgvector/PostgREST) | [supabase-vector](./docs/vendors/supabase-vector.md) |

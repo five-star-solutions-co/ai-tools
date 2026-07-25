@@ -48,25 +48,25 @@ Related:
 
 ```text
 @harryy/ai-tools
-├── modules/      Platform seams (storage, files, document-render, …)
-└── vendors/      3rd-party packs (resend, telegram, cloudflare-email, …)
+├── modules/      Platform seams (email, messaging, files, document-render, …)
+└── vendors/      3rd-party packs (resend, telegram, s3, cloudflare-email, …)
 ```
 
 | Kind | Preferred source path | Module id style | When to use |
 | --- | --- | --- | --- |
-| **Platform capability** | `src/modules/<capability>/` | Capability name (`storage`, `files`) | Small stable contracts; **2+ swappable providers** with same verbs |
-| **Vendor pack** | `src/vendors/<vendor>/` | Vendor name (`resend`, `telegram`, `cloudflare-email`, …) | Full first-party API; grow tools over time (includes chat platforms) |
+| **Platform capability** | `src/modules/<capability>/` | Capability name (`email`, `files`) | Small stable contracts; **2+ swappable providers** with same verbs |
+| **Vendor pack** | `src/vendors/<vendor>/` | Vendor name (`resend`, `telegram`, `s3`, …) | Full first-party API; grow tools over time (includes chat + object stores) |
 
-**3rd party → vendors; seams → modules.** Chat platforms (Telegram, Slack, …) and email ESPs (Resend, Cloudflare Email) are **vendor packs** with full product APIs. Platform **seams** (storage, files, document-render, email, messaging, …) stay under **modules/**.
+**3rd party → vendors; seams → modules.** Chat platforms, email ESPs, and object store (`s3`, S3-compatible including R2 endpoint) are **vendor packs**. Platform **seams** (files, document-render, email, messaging, …) stay under **modules/**. There is **no** multi-provider `storage` seam — object CRUD is `@harryy/ai-tools/s3`; `files` is path-rooted manage with nested S3 auth.
 
 **Thin seams are allowed** when 2+ backends share the same verbs: they wrap vendor clients and must **not** shrink or replace full packs. Native-only APIs stay on the vendor. Do **not** invent a fat multi-provider facade that erases vendor surface.
 
 Public imports stay **flat** regardless of source lane:
 
 ```ts
-import { storageModule } from '@harryy/ai-tools/storage'
 import { emailModule } from '@harryy/ai-tools/email'
 import { messagingModule } from '@harryy/ai-tools/messaging'
+import { S3Client, s3Module } from '@harryy/ai-tools/s3'
 import { resendModule, ResendClient } from '@harryy/ai-tools/resend'
 import { telegramModule } from '@harryy/ai-tools/telegram'
 ```
@@ -117,8 +117,8 @@ src/modules/<capability>/
   index.ts
 ```
 
-- Tool ids are **capability-named** (`email-send`, `storage-get-object`).  
-- Auth is `{ provider: '…', … }` union.  
+- Tool ids are **capability-named** (`email-send`, `files-list`).  
+- Auth is `{ provider: '…', … }` union when multi-provider.  
 - Never name a **platform** module after a single cloud vendor (`cloudflare-email` is forbidden).  
 - `HttpService` for HTTP; `AwsService` for SigV4 (S3, Textract, SP-API, …).
 
@@ -126,8 +126,7 @@ src/modules/<capability>/
 
 | Module | Providers (today) | Notes |
 | --- | --- | --- |
-| `storage` | s3, r2 (CF REST), supabase | Object CRUD; multipart + signed URL when provider supports (S3) |
-| `files` | nested storage + `root_prefix` | Path-rooted manage over storage |
+| `files` | nested S3 `storage` + `root_prefix` | Path-rooted manage over S3Client |
 | `email` | resend, cloudflare | Thin send/batch seam over email vendors |
 | `messaging` | telegram, slack, teams, imessage | Thin shared channel verbs over chat vendors |
 | `document-extract` | textract | ArtifactRef text extract |
@@ -349,7 +348,7 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 
 - Durable bytes use `ArtifactRef` (`store: 'object' | 'host'`).  
 - Convert / extract / render / rag-ingest accept ArtifactRef where large payloads must not enter the LLM.  
-- `files` and `storage` share the same object plane; `files` only adds root prefix + metadata UX.
+- `files` sits on vendor object stores; it only adds root prefix + relative-path UX.
 
 ---
 
@@ -372,7 +371,7 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 
 1. **Layout** — discover `modules` / `vendors`; docs + AGENTS locks (this spec).  
 2. **`document-render`** — providers: gotenberg + cloudflare-browser.  
-3. **`files`** — path root over storage.  
+3. **`files`** — path root over vendor object store.  
 4. **`vendors/telegram`** — full Bot API pack (product P0).  
 5. **Email vendor packs** — `resend`, `cloudflare-email` (expand APIs over time).  
 6. **Vendor lifts** — `woocommerce`, `katana`, `amazon-sp-api`.  
@@ -396,8 +395,8 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 
 ## Implementation notes (non-normative)
 
-- Lane A: storage, files, email, messaging, extract, convert, render, web-fetch, email-message, content-type, vector-store, rag.  
-- Lane B: `resend`, `cloudflare-email`, chat vendors, storage vendors, commerce vendors, etc.  
+- Lane A: files, email, messaging, extract, convert, render, web-fetch, email-message, content-type, vector-store, rag.  
+- Lane B: `resend`, `cloudflare-email`, chat vendors, `s3`, commerce vendors, etc.  
 - Chat: full packs under `vendors/*` + thin `modules/messaging` seam.  
 - Email: full packs under `vendors/*` + thin `modules/email` seam.  
 - Codegen discovers `modules` + `vendors`.  

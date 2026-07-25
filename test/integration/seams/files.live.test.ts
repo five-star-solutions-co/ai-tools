@@ -13,7 +13,7 @@ run('live seam files', () => {
 		async () => {
 			const root = 'ai-tools-files-it'
 			const client = FilesClient.fromAuth({
-				storage: { provider: 's3', ...s3! },
+				storage: { ...s3! },
 				root_prefix: root
 			})
 			const path = `${uniqueId('f')}.txt`

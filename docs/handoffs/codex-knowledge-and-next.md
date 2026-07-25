@@ -38,9 +38,9 @@ Codegen **skips** `_foo`. Never hand-edit `package.json` exports / `tsdown.confi
 | Kind | Path |
 | --- | --- |
 | Vendor pack | `src/vendors/resend/` (`client.ts`, `contracts.ts`, `module.ts`, `index.ts`) |
-| Vendor domain parse | `src/vendors/r2/domain.ts` + client uses es-toolkit |
-| Multi-provider seam | `src/modules/storage/` |
-| Thin seam provider | `src/modules/storage/providers/supabase.ts` — **only** strips `provider`, wraps vendor client |
+| Vendor domain parse | `src/vendors/s3/domain.ts` + client uses es-toolkit |
+| Multi-provider seam | `src/modules/email/` |
+| Thin seam provider | `src/modules/email/providers/resend.ts` — **only** strips `provider`, wraps vendor client |
 | Kit barrel | `src/vendors/_storage/index.ts` — **schemas only** |
 
 ### Seam provider rule

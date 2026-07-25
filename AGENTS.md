@@ -29,7 +29,7 @@ These override convenience, host inventory code, and “I’ll clean it up later
 3. `docs/specs/package-surface-architecture.md` (modules vs vendors) and/or `docs/specs/provider-seam.md` (multi-provider seams only)
 4. **Clone a gold file:**
    - Vendor pack: `src/vendors/resend/` (`client.ts`, `module.ts`, `contracts.ts`)
-   - Multi-provider seam: `src/modules/storage/providers/supabase.ts`
+   - Multi-provider seam: `src/modules/email/providers/resend.ts`
    - SigV4 product client: `src/vendors/textract/client.ts` or `src/vendors/s3/client.ts` (`AwsService` only — no raw `AwsClient`)
 
 Do not invent a new layout, naming scheme, or HTTP stack.
@@ -68,7 +68,7 @@ If TypeScript complains about `undefined` on an optional prop, fix the **type** 
 
 | Root | Holds | Rule |
 | --- | --- | --- |
-| **`src/modules/*`** | **Our seams** | We own the contract; backends swappable when real (`storage`, `files`, `document-render`, pure helpers like `mime`) |
+| **`src/modules/*`** | **Our seams** | We own the contract; backends swappable when real (`email`, `messaging`, `files`, `document-render`, pure helpers like `mime`) |
 | **`src/vendors/*`** | **3rd-party products** | Full API of one vendor; grow over time (`resend`, `cloudflare-email`, `telegram`, `slack`, `woocommerce`, …) |
 
 - **Seams → modules.** Multi-provider only when 2+ backends share the same verbs (`defineProvider` + auth `{ provider, … }`).
@@ -85,9 +85,10 @@ If TypeScript complains about `undefined` on an optional prop, fix the **type** 
 | Public import path | **No different style** — flat kebab name only |
 
 ```ts
-import { storageModule } from '@harryy/ai-tools/storage'           // seam (module)
+import { emailModule } from '@harryy/ai-tools/email'                 // seam (module)
 import { ResendClient, resendModule } from '@harryy/ai-tools/resend' // vendor
-import { telegramModule } from '@harryy/ai-tools/telegram'         // vendor (chat)
+import { telegramModule } from '@harryy/ai-tools/telegram'           // vendor (chat)
+import { S3Client, s3Module } from '@harryy/ai-tools/s3'             // vendor (object store)
 ```
 
 - Codegen owns `package.json` `exports`, `tsdown.config.ts`, `generated/*`, `src/generated/module-keys.ts`.

@@ -65,7 +65,7 @@ defineTool / defineModule  (kernel — only real tool definitions)
 
 | Root | Holds | When |
 | --- | --- | --- |
-| `src/modules/<key>/` | **Our seams** | Stable capability contract; backends swappable when real (`storage`, `files`, multi-provider email/messaging, etc.) |
+| `src/modules/<key>/` | **Our seams** | Stable capability contract; backends swappable when real (`files`, multi-provider email/messaging, etc.) |
 | `src/vendors/<key>/` | **3rd-party packs** | Full API of one product (`resend`, `telegram`, `woocommerce`, …) |
 | `src/vendors/_*/` | Vertical kits | Shared by packs in that category only; underscore = skipped by codegen |
 
@@ -146,8 +146,7 @@ Extract / convert / render accept ArtifactRef so large payloads do not enter the
 
 | Key | Kind | Notes |
 | --- | --- | --- |
-| `storage` | multi-provider | s3, r2, supabase; multipart/signed URL optional (S3 only) |
-| `files` | nested storage + `root_prefix` | Path isolation under root |
+| `files` | nested S3 + `root_prefix` | Path isolation over S3Client |
 | `email` | multi-provider | resend, cloudflare — send/batch only |
 | `messaging` | multi-provider | telegram, slack, teams, imessage — shared verbs |
 | `document-extract` | multi-provider | textract only |
@@ -162,7 +161,7 @@ Extract / convert / render accept ArtifactRef so large payloads do not enter the
 
 ### 2.3 Vendors (`src/vendors/`)
 
-resend, cloudflare-email, telegram, slack, teams, imessage, s3, r2, supabase-storage, qdrant, pinecone, supabase-vector, mastra-vector, textract, transmute, gotenberg, cloudflare-browser, woocommerce, katana, amazon-sp-api
+resend, cloudflare-email, telegram, slack, teams, imessage, s3, qdrant, pinecone, supabase-vector, mastra-vector, textract, transmute, gotenberg, cloudflare-browser, woocommerce, katana, amazon-sp-api
 
 ### 2.4 Vertical kits (not packs)
 
@@ -282,9 +281,9 @@ If public surface / build emit changed: also `bun run build` and `bun run typech
 | Kind | Path |
 | --- | --- |
 | Vendor pack | `src/vendors/resend/` (`client.ts`, `contracts.ts`, `module.ts`, `index.ts`) |
-| Vendor domain parse | `src/vendors/r2/domain.ts` + client uses es-toolkit |
-| Multi-provider seam | `src/modules/storage/` |
-| Thin seam provider | `src/modules/storage/providers/supabase.ts` |
+| Vendor domain parse | `src/vendors/s3/domain.ts` + client uses es-toolkit |
+| Multi-provider seam | `src/modules/email/` |
+| Thin seam provider | `src/modules/email/providers/resend.ts` |
 | SigV4 via AwsService | `src/vendors/s3/client.ts`, `src/vendors/textract/client.ts`, `src/vendors/amazon-sp-api/client.ts` |
 | Kit barrel | `src/vendors/_storage/index.ts` — schemas only |
 | Chat webhook | `src/vendors/telegram/webhook.ts` |
@@ -304,7 +303,7 @@ If public surface / build emit changed: also `bun run build` and `bun run typech
 
 - Kernel auth binding (`withAuth`; never secrets on tools)
 - Contract validation + `validateModule` in almost every pack test
-- Thin seam providers wrapping vendors (storage, email, messaging, vector-store, extract, …)
+- Thin seam providers wrapping vendors (email, messaging, vector-store, extract, …)
 - Adapters are pure projectors using `runTool`
 - Transport status → `ToolError` mapping (retryable, Retry-After)
 - `files` path isolation (`..` rejection, root prefix)
@@ -357,7 +356,6 @@ Priority: **P0** = standards integrity / agent falsehood; **P1** = product hones
 **Related paths**
 
 - `src/vendors/s3/client.ts`, `domain.ts`, `contracts.ts`, `module.ts`
-- `src/modules/storage/providers/s3.ts` (thin wrap — should stay thin)
 - `test/vendors/s3.test.ts`, `test/integration/vendors/s3.live.test.ts`
 - `src/transport/aws-service.ts`
 
@@ -594,7 +592,7 @@ Kernel exports `defineProvider` / `resolveProvider`. No module registers provide
 
 | Option | Action |
 | --- | --- |
-| A — Adopt | Refactor storage (or email) to `defineProvider` array + `resolveProvider` as gold |
+| A — Adopt | Refactor email (or messaging) to `defineProvider` array + `resolveProvider` as gold |
 | B — Demote | Keep helpers exported but document real gold as switch + Ops class; remove “use defineProvider” as required authoring step |
 
 **Acceptance**
@@ -607,41 +605,13 @@ Kernel exports `defineProvider` / `resolveProvider`. No module registers provide
 - `src/core/provider.ts`
 - `docs/specs/provider-seam.md`
 - `docs/guides/authoring-modules.md`
-- Example seam: `src/modules/storage/`
+- Example seam: `src/modules/email/`
 
 ---
 
-### G-09 — Seam tool surface vs partial provider capabilities (P2)
+### G-09 — Storage seam tool surface vs partial provider capabilities (P2)
 
-**Status:** open  
-**Severity:** models select tools that fail only at execute time  
-
-**Problem**  
-Storage module always exposes signed URL + multipart tools. Only S3 implements them; R2/Supabase throw `unsupported` at runtime. Same class of problem as messaging no-ops (G-05).
-
-**Evidence**
-
-- `src/modules/storage/contracts.ts` — optional methods on `StorageOps`
-- `src/modules/storage/module.ts` — `createSignedUrlTool` / multipart tools check ops and throw
-- R2/Supabase providers do not implement optional methods
-
-**Fix direction**
-
-1. Filter tools in `withAuth` / bind helper by provider capabilities, **or**
-2. Expose static capability metadata for host allowlists, **or**
-3. Document strongly and accept execute-time `unsupported` (current) but improve model descriptions so models avoid calling them when provider known — weak for multi-bind hosts
-
-**Acceptance**
-
-- [ ] Chosen policy implemented consistently for storage (and optionally files multipart)
-- [ ] Tests for R2/Supabase path do not present false success
-- [ ] Docs list per-provider capability matrix (storage already partially does for multipart)
-
-**Related paths**
-
-- `src/modules/storage/module.ts`, `contracts.ts`, `providers/*`
-- `src/modules/files/module.ts` (multipart tools)
-- `docs/modules/storage.md`
+**Status:** cancelled (2026-07-26) — **storage multi-provider seam removed**; `r2` + `supabase-storage` vendors removed. Object store is `@harryy/ai-tools/s3` only; `files` nests S3 auth.
 
 ---
 
@@ -814,7 +784,7 @@ Other agent hygiene (G-03 mime, G-05 messaging no-ops, …) stays orthogonal.
 | 3 | **G-03** mime stub | Public surface honesty |
 | 4 | **G-06** optional-spread policy | Unblocks clean client refactors |
 | 5 | **G-05** messaging no-op honesty | Agent correctness |
-| 6 | **G-09** storage capability surface | Related partial-provider class |
+| 6 | **G-09** storage capability surface | **Cancelled** — storage seam removed |
 | 7 | **G-04** messaging ArtifactRef media | Larger product slice |
 | 8 | **G-11** consistency cleanup | Cheap doc/schema polish |
 | 9 | **G-08** defineProvider | Pattern clarity |
@@ -852,7 +822,6 @@ bun run build && bun run typecheck
 | --- | --- |
 | katana | 27 |
 | woocommerce | 26 |
-| storage | 14 |
 | files | 13 |
 | messaging | 12 |
 | s3 | 11 |

@@ -8,7 +8,7 @@
 | **Client** | `SupabaseVectorClient` |
 | **Runtime** | `both` |
 
-Supabase Postgres + **pgvector** via PostgREST. Distinct from [supabase-storage](./supabase-storage.md).
+Supabase Postgres + **pgvector** via PostgREST.
 
 ## Auth
 

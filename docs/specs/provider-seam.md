@@ -51,11 +51,11 @@ src/modules/<capability>/
 | Module | Providers |
 | --- | --- |
 | `email` | `cloudflare`, `resend` |
-| `storage` | `s3` (SigV4), `r2` (Cloudflare REST), `supabase` (Storage REST) |
+
 | `document-extract` | `textract` |
 | `document-render` | `gotenberg`, `cloudflare-browser` |
 | `file-convert` | `transmute` (+ nested S3 `storage`) |
-| `files` | nested `storage` union (`s3` \| `r2` \| `supabase`) + `root_prefix` |
+| `files` | nested S3 `storage` + `root_prefix` (not a multi-provider seam) |
 | `vector-store` | `qdrant`, `pinecone`, `supabase`, `mastra` (wrap vendor packs) |
 | `rag` | nested `vector_store` + OpenAI-compatible `embed` auth |
 

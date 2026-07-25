@@ -60,7 +60,7 @@ export class SupabaseVectorClient {
 		this.#matchRpc = data.match_rpc ?? 'match_vectors'
 
 		const schema = data.schema ?? 'public'
-		// Project url + API path prefix (same idea as supabase-storage; use trimEnd like HttpService/teams).
+		// Project url + API path prefix (trimEnd like HttpService/teams).
 		const httpOptions: HttpServiceOptions = {
 			baseURL: `${trimEnd(data.url, '/')}/rest/v1`,
 			headers: {

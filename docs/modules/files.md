@@ -5,9 +5,9 @@
 | **Import** | `@harryy/ai-tools/files` |
 | **Kind** | **seam** (`src/modules/files`) |
 | **Module id** | `files` |
-| **Auth** | Host: `root_prefix` + nested `storage` (`s3` \| `r2` \| `supabase`) |
+| **Auth** | Host: `root_prefix` + nested S3 `storage` (`s3AuthSchema`) |
 
-Path-rooted file manage over object storage. The model only sees paths **relative** to `root_prefix`. Host maps tenant → prefix + storage credentials.
+Path-rooted file manage over **S3-compatible** object storage ([s3](../vendors/s3.md)). The model only sees paths **relative** to `root_prefix`. Host maps tenant → prefix + S3 credentials (AWS, R2 S3 endpoint, MinIO, …).
 
 ## Bind
 
@@ -15,12 +15,11 @@ Path-rooted file manage over object storage. The model only sees paths **relativ
 withAuth(filesModule, {
   root_prefix: 'orgs/acme/files/',
   storage: {
-    provider: 's3',
     access_key_id: '…',
     secret_access_key: '…',
     region: 'auto',
     bucket: 'artifacts',
-    endpoint: 'https://….r2.cloudflarestorage.com',
+    endpoint: 'https://….r2.cloudflarestorage.com', // optional S3-compatible
   },
 })
 ```
@@ -38,9 +37,9 @@ withAuth(filesModule, {
 | `files-copy` | write | Copy within the same root |
 | `files-move` | write | Move within the same root |
 | `files-mkdir` | write | Create folder marker (`path/.keep`) |
-| `files-multipart-start` | write | Start multipart (requires `storage.provider: 's3'`) |
+| `files-multipart-start` | write | Start multipart upload |
 | `files-multipart-upload-part` | write | Upload one part |
 | `files-multipart-complete` | write | Assemble parts |
 | `files-multipart-abort` | delete | Abort in-progress multipart |
 
-Nested storage auth matches [storage](./storage.md).
+Nested `storage` is plain [s3](../vendors/s3.md) auth (no provider discriminator).

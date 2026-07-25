@@ -145,7 +145,7 @@ export const filesMultipartStartTool = defineTool({
 	id: 'files-multipart-start',
 	name: 'startFileMultipartUpload',
 	description:
-		'Start a multipart upload for a relative path under the bound workspace root. Requires storage provider s3 (S3-compatible). Returns upload_id for part/complete/abort. Use when the file exceeds the single put limit.',
+		'Start a multipart upload for a relative path under the bound workspace root. Returns upload_id for part/complete/abort. Use when the file exceeds the single put limit.',
 	inputSchema: filesMultipartStartInputSchema,
 	outputSchema: filesMultipartStartOutputSchema,
 	sideEffect: 'write',
@@ -193,7 +193,7 @@ export const filesModule = defineModule({
 	id: 'files',
 	title: 'Files',
 	description:
-		'Manage files under a host-bound object storage root prefix. Paths are relative to that root. List, search, stat, get, put, delete, copy, move, mkdir, and S3-compatible multipart stay inside the root; host maps tenant to prefix and storage credentials.',
+		'Manage files under a host-bound S3-compatible object storage root prefix. Paths are relative to that root. List, search, stat, get, put, delete, copy, move, mkdir, and multipart stay inside the root; host maps tenant to prefix and S3 credentials.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: filesAuthSchema },
 	tools: [

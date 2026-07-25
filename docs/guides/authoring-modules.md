@@ -25,7 +25,7 @@ docs/modules/<kebab-key>.md   # seams only
 docs/vendors/<kebab-key>.md   # vendor packs only
 ```
 
-Folder name = package subpath. Gold vendor: `src/vendors/resend/` + `docs/vendors/resend.md`. Gold seam: `src/modules/storage/` + `docs/modules/storage.md`.
+Folder name = package subpath. Gold vendor: `src/vendors/resend/` + `docs/vendors/resend.md`. Gold seam: `src/modules/email/` + `docs/modules/email.md`.
 
 ## Scaffold
 

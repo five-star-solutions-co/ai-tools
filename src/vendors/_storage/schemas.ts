@@ -1,5 +1,5 @@
 /**
- * Shared object-store I/O schemas for storage vendor packs (s3, r2, supabase-storage).
+ * Shared object-store I/O schemas for the s3 vendor pack (and nested S3 bindings).
  * Not published — `_storage` is skipped by codegen.
  */
 

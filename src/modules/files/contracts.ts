@@ -1,13 +1,15 @@
 import { z } from 'zod'
 
-import { storageAuthSchema } from '../storage/contracts'
+import { s3AuthSchema } from '../../vendors/s3'
 
 export const filesAuthSchema = z.object({
 	root_prefix: z
 		.string()
 		.min(1)
 		.describe('Object key prefix for this workspace, for example orgs/acme/files/ (no leading slash)'),
-	storage: storageAuthSchema.describe('Nested object storage binding (s3, r2, or supabase)')
+	storage: s3AuthSchema.describe(
+		'S3-compatible object storage credentials (AWS S3, R2 S3 endpoint, MinIO, …) for this workspace'
+	)
 })
 
 export type FilesAuth = z.infer<typeof filesAuthSchema>

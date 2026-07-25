@@ -29,14 +29,15 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `email` (Lane A multi-provider) | **Done** | Thin seam over resend + cloudflare; send/batch only |
 | `vendors/resend` | Done | full pack (send surface first; expand over time) |
 | `vendors/cloudflare-email` | Done | full pack (send surface first; expand over time) |
-| `storage` | Done | s3 (+ multipart + signed URL), r2 REST, supabase |
+| `storage` | **Removed** | No multi-provider storage seam — use `s3` vendor (or nested S3 on `files`) |
+| `r2` / `supabase-storage` | **Removed** | Cloudflare R2 REST + Supabase Storage packs deleted; use S3-compatible `s3` (R2 endpoint) when needed |
 | `document-extract` | Done | textract only |
 | `file-convert` | Done | transmute only |
 | `web-fetch` | Done | allowlisted HttpService |
 | `mime` | Stub | `mime-ping` only; real MIME is `email-message` / `content-type` |
 | `content-type` | Done | pure type ↔ extension |
 | `email-message` | Done | pure parse/build MIME |
-| `files` | Done | path root over storage: list/search/stat/get/put/delete/copy/move/mkdir + multipart (S3) |
+| `files` | Done | path root over nested S3: list/search/stat/get/put/delete/copy/move/mkdir + multipart |
 | `document-render` | Done | gotenberg + cloudflare-browser |
 | `vector-store` / `rag` | Done | qdrant+pinecone+supabase+mastra; chunk/embed/retrieve |
 | `messaging` (thin multi-provider seam) | **Done** | Shared verbs; wraps telegram/slack/teams/imessage vendors |

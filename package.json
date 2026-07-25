@@ -117,10 +117,6 @@
 			"types": "./dist/vendors/qdrant/index.d.ts",
 			"default": "./dist/vendors/qdrant/index.js"
 		},
-		"./r2": {
-			"types": "./dist/vendors/r2/index.d.ts",
-			"default": "./dist/vendors/r2/index.js"
-		},
 		"./rag": {
 			"types": "./dist/modules/rag/index.d.ts",
 			"default": "./dist/modules/rag/index.js"
@@ -136,14 +132,6 @@
 		"./slack": {
 			"types": "./dist/vendors/slack/index.d.ts",
 			"default": "./dist/vendors/slack/index.js"
-		},
-		"./storage": {
-			"types": "./dist/modules/storage/index.d.ts",
-			"default": "./dist/modules/storage/index.js"
-		},
-		"./supabase-storage": {
-			"types": "./dist/vendors/supabase-storage/index.d.ts",
-			"default": "./dist/vendors/supabase-storage/index.js"
 		},
 		"./supabase-vector": {
 			"types": "./dist/vendors/supabase-vector/index.d.ts",
