@@ -106,7 +106,8 @@ export const messagingClearReactionTool = defineTool({
 export const messagingSendMediaTool = defineTool({
 	id: 'messaging-send-media',
 	name: 'messagingSendMedia',
-	description: 'Send one photo or document on the bound messaging channel from a base64 body.',
+	description:
+		'Send one photo or document on the bound messaging channel. Provide body_base64 for small payloads or source ArtifactRef (object store) for large files.',
 	inputSchema: messagingSendMediaInputSchema,
 	outputSchema: messagingMessageOutputSchema,
 	sideEffect: 'send',
@@ -118,7 +119,7 @@ export const messagingSendMediaBatchTool = defineTool({
 	id: 'messaging-send-media-batch',
 	name: 'messagingSendMediaBatch',
 	description:
-		'Send 1–10 media items in order. May use a native album when all items share the same kind (2–10); otherwise sequential. Partial failures are reported per item.',
+		'Send 1–10 media items in order (body_base64 or source ArtifactRef per item). May use a native album when all items share the same kind (2–10); otherwise sequential. Partial failures are reported per item.',
 	inputSchema: messagingSendMediaBatchInputSchema,
 	outputSchema: messagingSendMediaBatchOutputSchema,
 	sideEffect: 'send',
@@ -129,7 +130,8 @@ export const messagingSendMediaBatchTool = defineTool({
 export const messagingDownloadFileTool = defineTool({
 	id: 'messaging-download-file',
 	name: 'messagingDownloadFile',
-	description: 'Download a file by file_id (and optional chat_id / file_name) and return the body as base64.',
+	description:
+		'Download a file by file_id (and optional chat_id / file_name). Returns body_base64 by default, or an ArtifactRef when destination_key is set (writes to bound object storage).',
 	inputSchema: messagingDownloadFileInputSchema,
 	outputSchema: messagingDownloadFileOutputSchema,
 	sideEffect: 'read',

@@ -8,17 +8,17 @@ import { SlackClient } from '../../../vendors/slack'
 import type {
 	MessagingAnswerCallbackInput,
 	MessagingClearReactionInput,
+	MessagingChannelDownloadOutput,
 	MessagingDownloadFileInput,
-	MessagingDownloadFileOutput,
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
 	MessagingReactionOutput,
 	MessagingReadInput,
 	MessagingSendChatActionInput,
-	MessagingSendMediaBatchInput,
 	MessagingSendMediaBatchOutput,
-	MessagingSendMediaInput,
+	MessagingSendMediaBatchResolved,
+	MessagingSendMediaResolved,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput,
@@ -32,7 +32,7 @@ export class SlackMessagingProvider implements MessagingOps {
 	readonly #client: SlackClient
 
 	constructor(auth: SlackMessagingAuth, options: SlackMessagingProviderOptions = {}) {
-		const { provider: _p, ...vendorAuth } = auth
+		const { provider: _p, storage: _s, ...vendorAuth } = auth
 		this.#client = new SlackClient(vendorAuth, options)
 	}
 
@@ -90,7 +90,7 @@ export class SlackMessagingProvider implements MessagingOps {
 		})
 	}
 
-	sendMedia(input: MessagingSendMediaInput): Promise<MessagingMessageOutput> {
+	sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
 		return this.#client.sendMedia({
 			chat_id: input.chat_id,
 			kind: input.kind,
@@ -102,11 +102,11 @@ export class SlackMessagingProvider implements MessagingOps {
 		})
 	}
 
-	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+	sendMediaBatch(input: MessagingSendMediaBatchResolved): Promise<MessagingSendMediaBatchOutput> {
 		return sendMediaBatchSequential((item) => this.sendMedia(item), input)
 	}
 
-	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
+	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingChannelDownloadOutput> {
 		return this.#client.downloadFile({
 			file_id: input.file_id,
 			...(input.file_name && { file_name: input.file_name })

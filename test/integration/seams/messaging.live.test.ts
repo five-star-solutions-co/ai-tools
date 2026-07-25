@@ -96,7 +96,8 @@ runTg('live seam messaging (telegram)', () => {
 				file_id: media.file_id!,
 				file_name: 'msg-tg-dl.txt'
 			})
-			expect(Buffer.from(downloaded.body_base64, 'base64').toString('utf8')).toBe(mediaBody)
+			expect(downloaded.body_base64).toBeDefined()
+			expect(Buffer.from(downloaded.body_base64!, 'base64').toString('utf8')).toBe(mediaBody)
 
 			const batch = await client.sendMediaBatch({
 				chat_id,

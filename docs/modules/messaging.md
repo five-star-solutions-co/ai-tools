@@ -34,12 +34,33 @@ withAuth(messagingModule, {
   project_secret: '…',
 })
 
+// Optional nested S3 for ArtifactRef media (send source / download destination_key)
+withAuth(messagingModule, {
+  provider: 'telegram',
+  bot_token: '…',
+  storage: {
+    access_key_id: '…',
+    secret_access_key: '…',
+    region: 'auto',
+    bucket: 'media',
+  },
+})
+
 const client = MessagingClient.fromAuth({ provider: 'slack', bot_token: '…' })
 await client.sendText({ chat_id: 'C…', text: 'hi' })
 ```
 
 Teams connector calls require `service_url` on method inputs (from the inbound activity).  
 iMessage `chat_id` is the Spectrum **space id**; outbound goes through **photon-rest-proxy** REST (`/v1/send`, `/v1/react`, …). A host that only exposes `/v1/imessage/execute` is not a drop-in `base_url`.
+
+### Media bytes
+
+| Path | Send | Download |
+| --- | --- | --- |
+| Small / host already has bytes | `body_base64` | returns `body_base64` |
+| Large / keep bytes out of the model | `source: { store: 'object', key }` + auth `storage` | `destination_key` + auth `storage` → returns `artifact` |
+
+Exactly one of `body_base64` or `source` on send. `source.store` must be `object`. Host-owned keys (`store: 'host'`) are not resolved by this pack.
 
 ### Provider gaps / quirks
 
@@ -89,9 +110,9 @@ Transport network/abort failures on the messaging vendors are rethrown as the ma
 | `messaging-stop-typing` | `stopTyping` |
 | `messaging-set-reaction` | `setReaction` |
 | `messaging-clear-reaction` | `clearReaction` |
-| `messaging-send-media` | `sendMedia` |
+| `messaging-send-media` | `sendMedia` (`body_base64` **or** `source` ArtifactRef) |
 | `messaging-send-media-batch` | `sendMediaBatch` |
-| `messaging-download-file` | `downloadFile` |
+| `messaging-download-file` | `downloadFile` (`body_base64` **or** `artifact` via `destination_key`) |
 | `messaging-answer-callback` | `answerCallback` |
 | `messaging-read` | `read` |
 

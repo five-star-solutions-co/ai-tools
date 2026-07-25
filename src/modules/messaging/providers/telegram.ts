@@ -7,17 +7,17 @@ import { TelegramClient } from '../../../vendors/telegram'
 import type {
 	MessagingAnswerCallbackInput,
 	MessagingClearReactionInput,
+	MessagingChannelDownloadOutput,
 	MessagingDownloadFileInput,
-	MessagingDownloadFileOutput,
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
 	MessagingReactionOutput,
 	MessagingReadInput,
 	MessagingSendChatActionInput,
-	MessagingSendMediaBatchInput,
 	MessagingSendMediaBatchOutput,
-	MessagingSendMediaInput,
+	MessagingSendMediaBatchResolved,
+	MessagingSendMediaResolved,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput,
@@ -31,7 +31,7 @@ export class TelegramMessagingProvider implements MessagingOps {
 	readonly #client: TelegramClient
 
 	constructor(auth: TelegramMessagingAuth, options: TelegramMessagingProviderOptions = {}) {
-		const { provider: _p, ...vendorAuth } = auth
+		const { provider: _p, storage: _s, ...vendorAuth } = auth
 		this.#client = new TelegramClient(vendorAuth, options)
 	}
 
@@ -83,7 +83,7 @@ export class TelegramMessagingProvider implements MessagingOps {
 		})
 	}
 
-	async sendMedia(input: MessagingSendMediaInput): Promise<MessagingMessageOutput> {
+	async sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
 		const out = await this.#client.sendMedia({
 			chat_id: input.chat_id,
 			kind: input.kind,
@@ -99,7 +99,7 @@ export class TelegramMessagingProvider implements MessagingOps {
 		}
 	}
 
-	async sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+	async sendMediaBatch(input: MessagingSendMediaBatchResolved): Promise<MessagingSendMediaBatchOutput> {
 		const kinds = new Set(input.items.map((i) => i.kind))
 		const homogeneous = kinds.size === 1
 		const kind = input.items[0]?.kind
@@ -131,7 +131,7 @@ export class TelegramMessagingProvider implements MessagingOps {
 		return sendMediaBatchSequential((item) => this.sendMedia(item), input)
 	}
 
-	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
+	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingChannelDownloadOutput> {
 		return this.#client.downloadFile({
 			file_id: input.file_id,
 			...(input.file_name && { file_name: input.file_name })

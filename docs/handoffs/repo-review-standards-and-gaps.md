@@ -408,7 +408,7 @@ Shipped product has multi-provider `email` and `messaging` seams (thin wrappers 
 
 ### G-04 — Messaging media: ArtifactRef path (reduce base64-through-model) (P1)
 
-**Status:** open  
+**Status:** done (2026-07-26) — seam send accepts `source` ArtifactRef (optional auth `storage`); download accepts `destination_key` → `artifact` (no body_base64). Base64 kept for small/host paths.  
 **Severity:** contradicts artifact doctrine for large bytes  
 
 **Problem**  
@@ -692,7 +692,7 @@ Other agent hygiene (G-03 mime, G-05 messaging no-ops, …) stays orthogonal.
 | 4 | **G-06** optional-spread policy | **Done** — AGENTS R-optional-spread |
 | 5 | **G-05** messaging no-op honesty | **Done** — unsend off seam; intentional no-ops documented |
 | 6 | **G-09** storage capability surface | **Cancelled** — storage seam removed |
-| 7 | **G-04** messaging ArtifactRef media | Larger product slice |
+| 7 | **G-04** messaging ArtifactRef media | **Done** — source / destination_key on seam |
 | 8 | **G-11** consistency cleanup | Cheap doc/schema polish |
 | 9 | **G-08** defineProvider | Pattern clarity |
 | 10 | **G-07** email API honesty docs | Can parallel with 8–9 |

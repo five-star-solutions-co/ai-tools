@@ -9,17 +9,17 @@ import type {
 	ImessageMessagingAuth,
 	MessagingAnswerCallbackInput,
 	MessagingClearReactionInput,
+	MessagingChannelDownloadOutput,
 	MessagingDownloadFileInput,
-	MessagingDownloadFileOutput,
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
 	MessagingReactionOutput,
 	MessagingReadInput,
 	MessagingSendChatActionInput,
-	MessagingSendMediaBatchInput,
 	MessagingSendMediaBatchOutput,
-	MessagingSendMediaInput,
+	MessagingSendMediaBatchResolved,
+	MessagingSendMediaResolved,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput
@@ -32,7 +32,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 	readonly #client: ImessageClient
 
 	constructor(auth: ImessageMessagingAuth, options: ImessageMessagingProviderOptions = {}) {
-		const { provider: _p, ...vendorAuth } = auth
+		const { provider: _p, storage: _s, ...vendorAuth } = auth
 		this.#client = new ImessageClient(
 			{
 				base_url: vendorAuth.base_url,
@@ -91,7 +91,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 		return this.#client.clearReaction({ chat_id: input.chat_id, message_id: input.message_id })
 	}
 
-	async sendMedia(input: MessagingSendMediaInput): Promise<MessagingMessageOutput> {
+	async sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
 		const result = await this.#client.sendMedia({
 			chat_id: input.chat_id,
 			kind: input.kind,
@@ -103,11 +103,11 @@ export class ImessageMessagingProvider implements MessagingOps {
 		return { message_id: result.message_id }
 	}
 
-	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+	sendMediaBatch(input: MessagingSendMediaBatchResolved): Promise<MessagingSendMediaBatchOutput> {
 		return sendMediaBatchSequential((item) => this.sendMedia(item), input)
 	}
 
-	async downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
+	async downloadFile(input: MessagingDownloadFileInput): Promise<MessagingChannelDownloadOutput> {
 		const chatId = input.chat_id ?? splitImessageFileRef(input.file_id).chat_id
 		const fileId = input.chat_id ? input.file_id : (splitImessageFileRef(input.file_id).file_id ?? input.file_id)
 		if (!chatId) {

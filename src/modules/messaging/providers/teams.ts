@@ -8,17 +8,17 @@ import { TeamsClient } from '../../../vendors/teams'
 import type {
 	MessagingAnswerCallbackInput,
 	MessagingClearReactionInput,
+	MessagingChannelDownloadOutput,
 	MessagingDownloadFileInput,
-	MessagingDownloadFileOutput,
 	MessagingEditTextInput,
 	MessagingMessageOutput,
 	MessagingOps,
 	MessagingReactionOutput,
 	MessagingReadInput,
 	MessagingSendChatActionInput,
-	MessagingSendMediaBatchInput,
 	MessagingSendMediaBatchOutput,
-	MessagingSendMediaInput,
+	MessagingSendMediaBatchResolved,
+	MessagingSendMediaResolved,
 	MessagingSendTextInput,
 	MessagingSetReactionInput,
 	MessagingStopTypingInput,
@@ -39,7 +39,7 @@ export class TeamsMessagingProvider implements MessagingOps {
 	readonly #client: TeamsClient
 
 	constructor(auth: TeamsMessagingAuth, options: TeamsMessagingProviderOptions = {}) {
-		const { provider: _p, ...vendorAuth } = auth
+		const { provider: _p, storage: _s, ...vendorAuth } = auth
 		this.#client = new TeamsClient(vendorAuth, options)
 	}
 
@@ -97,7 +97,7 @@ export class TeamsMessagingProvider implements MessagingOps {
 		})
 	}
 
-	sendMedia(input: MessagingSendMediaInput): Promise<MessagingMessageOutput> {
+	sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
 		const service_url = requireServiceUrl(input.service_url, 'messaging sendMedia')
 		return this.#client.sendMedia({
 			chat_id: input.chat_id,
@@ -111,11 +111,11 @@ export class TeamsMessagingProvider implements MessagingOps {
 		})
 	}
 
-	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+	sendMediaBatch(input: MessagingSendMediaBatchResolved): Promise<MessagingSendMediaBatchOutput> {
 		return sendMediaBatchSequential((item) => this.sendMedia(item), input)
 	}
 
-	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
+	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingChannelDownloadOutput> {
 		return this.#client.downloadFile({
 			file_id: input.file_id,
 			...(input.file_name && { file_name: input.file_name }),

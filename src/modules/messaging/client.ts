@@ -1,9 +1,11 @@
 /**
  * Messaging seam client — picks telegram / slack / teams / imessage from host auth.
+ * Resolves ArtifactRef media via optional nested S3 storage before channel calls.
  */
 
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
+import { S3Client } from '../../vendors/s3'
 import type {
 	MessagingAnswerCallbackInput,
 	MessagingAuth,
@@ -24,6 +26,7 @@ import type {
 	MessagingStopTypingInput
 } from './contracts'
 import { messagingAuthSchema } from './contracts'
+import { finalizeDownloadOutput, resolveSendMediaBatchInput, resolveSendMediaInput } from './domain'
 import { ImessageMessagingProvider } from './providers/imessage'
 import { SlackMessagingProvider } from './providers/slack'
 import { TeamsMessagingProvider } from './providers/teams'
@@ -50,20 +53,27 @@ function providerFor(auth: MessagingAuth, ctx: ToolContext): MessagingOps {
 	}
 }
 
-export class MessagingClient implements MessagingOps {
-	readonly #ops: MessagingOps
+function storageFor(auth: MessagingAuth, ctx: ToolContext): S3Client | undefined {
+	if (!auth.storage) return undefined
+	return new S3Client(auth.storage, transportOptions(ctx))
+}
 
-	constructor(ops: MessagingOps) {
+export class MessagingClient {
+	readonly #ops: MessagingOps
+	readonly #storage: S3Client | undefined
+
+	constructor(ops: MessagingOps, storage?: S3Client) {
 		this.#ops = ops
+		this.#storage = storage
 	}
 
 	static fromContext(ctx: ToolContext): MessagingClient {
 		const auth = requireAuth(ctx, messagingAuthSchema)
-		return new MessagingClient(providerFor(auth, ctx))
+		return new MessagingClient(providerFor(auth, ctx), storageFor(auth, ctx))
 	}
 
 	static fromAuth(auth: MessagingAuth, ctx: ToolContext = {}): MessagingClient {
-		return new MessagingClient(providerFor(auth, ctx))
+		return new MessagingClient(providerFor(auth, ctx), storageFor(auth, ctx))
 	}
 
 	sendText(input: MessagingSendTextInput): Promise<MessagingMessageOutput> {
@@ -90,16 +100,19 @@ export class MessagingClient implements MessagingOps {
 		return this.#ops.clearReaction(input)
 	}
 
-	sendMedia(input: MessagingSendMediaInput): Promise<MessagingMessageOutput> {
-		return this.#ops.sendMedia(input)
+	async sendMedia(input: MessagingSendMediaInput): Promise<MessagingMessageOutput> {
+		const resolved = await resolveSendMediaInput(input, this.#storage)
+		return this.#ops.sendMedia(resolved)
 	}
 
-	sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
-		return this.#ops.sendMediaBatch(input)
+	async sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
+		const resolved = await resolveSendMediaBatchInput(input, this.#storage)
+		return this.#ops.sendMediaBatch(resolved)
 	}
 
-	downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
-		return this.#ops.downloadFile(input)
+	async downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {
+		const got = await this.#ops.downloadFile(input)
+		return finalizeDownloadOutput(got, input.destination_key, this.#storage)
 	}
 
 	answerCallback(input: MessagingAnswerCallbackInput): Promise<void> {

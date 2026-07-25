@@ -4,8 +4,10 @@
 
 import { z } from 'zod'
 
+import { artifactRefSchema } from '../../shared/artifact'
 import { batchResultSchema } from '../../shared/batch'
 import { imessageAuthSchema } from '../../vendors/imessage'
+import { s3AuthSchema } from '../../vendors/s3'
 import { slackAuthSchema } from '../../vendors/slack'
 import { teamsAuthSchema } from '../../vendors/teams'
 import { telegramAuthSchema } from '../../vendors/telegram'
@@ -26,21 +28,30 @@ export const messagingChatActionSchema = z.enum([
 	'upload_video_note'
 ])
 
+/** Optional object storage for ArtifactRef media IO (send source / download destination). */
+const messagingStorageAuth = s3AuthSchema
+	.optional()
+	.describe('S3-compatible object storage for ArtifactRef media (source on send, destination_key on download)')
+
 /** Host auth: channel credentials + provider discriminator. */
 export const telegramMessagingAuthSchema = telegramAuthSchema.extend({
-	provider: z.literal('telegram')
+	provider: z.literal('telegram'),
+	storage: messagingStorageAuth
 })
 
 export const slackMessagingAuthSchema = slackAuthSchema.extend({
-	provider: z.literal('slack')
+	provider: z.literal('slack'),
+	storage: messagingStorageAuth
 })
 
 export const teamsMessagingAuthSchema = teamsAuthSchema.extend({
-	provider: z.literal('teams')
+	provider: z.literal('teams'),
+	storage: messagingStorageAuth
 })
 
 export const imessageMessagingAuthSchema = imessageAuthSchema.extend({
-	provider: z.literal('imessage')
+	provider: z.literal('imessage'),
+	storage: messagingStorageAuth
 })
 
 export type TelegramMessagingAuth = z.infer<typeof telegramMessagingAuthSchema>
@@ -133,22 +144,76 @@ export const messagingClearReactionInputSchema = z.object({
 	emoji: z.string().min(1).max(64).optional().describe('Emoji to clear when the channel requires a reaction name')
 })
 
-export const messagingSendMediaInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
+const messagingMediaBodyFields = {
 	kind: z.enum(['photo', 'document']).describe('Media kind'),
-	body_base64: z.string().min(1).describe('File body as base64'),
-	file_name: z.string().min(1).describe('File name including extension'),
+	body_base64: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('File body as base64. Omit when source is set. Prefer source for large files.'),
+	source: artifactRefSchema
+		.optional()
+		.describe('Durable ArtifactRef (store object). Prefer for large files. Requires bound storage auth.'),
+	file_name: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'File name including extension. Required with body_base64; defaults to source.filename when source is set'
+		),
 	caption: z.string().optional().describe('Optional caption'),
-	reply_to_message_id: z.string().min(1).optional().describe('Optional reply / thread anchor'),
-	content_type: z.string().optional().describe('Optional content type'),
-	service_url: serviceUrlOptional
-})
+	content_type: z
+		.string()
+		.optional()
+		.describe('Optional content type; defaults to source.media_type when source is set')
+}
 
-export const messagingSendMediaBatchItemSchema = messagingSendMediaInputSchema.omit({
-	chat_id: true,
-	service_url: true,
-	reply_to_message_id: true
-})
+function refineMediaBody(
+	val: {
+		body_base64?: string | undefined
+		source?: z.infer<typeof artifactRefSchema> | undefined
+		file_name?: string | undefined
+	},
+	ctx: z.RefinementCtx
+): void {
+	const hasB64 = val.body_base64 !== undefined
+	const hasSource = val.source !== undefined
+	if (hasB64 === hasSource) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'Provide exactly one of body_base64 or source'
+		})
+	}
+	if (hasB64 && !val.file_name) {
+		ctx.addIssue({
+			code: 'custom',
+			path: ['file_name'],
+			message: 'file_name is required when body_base64 is set'
+		})
+	}
+	if (hasSource && !val.file_name && !val.source?.filename) {
+		ctx.addIssue({
+			code: 'custom',
+			path: ['file_name'],
+			message: 'file_name or source.filename is required when source is set'
+		})
+	}
+}
+
+export const messagingSendMediaInputSchema = z
+	.object({
+		chat_id: z.string().min(1).describe('Channel conversation / chat id'),
+		...messagingMediaBodyFields,
+		reply_to_message_id: z.string().min(1).optional().describe('Optional reply / thread anchor'),
+		service_url: serviceUrlOptional
+	})
+	.superRefine(refineMediaBody)
+
+export const messagingSendMediaBatchItemSchema = z
+	.object({
+		...messagingMediaBodyFields
+	})
+	.superRefine(refineMediaBody)
 
 export const messagingSendMediaBatchInputSchema = z.object({
 	chat_id: z.string().min(1).describe('Channel conversation / chat id'),
@@ -170,13 +235,21 @@ export const messagingDownloadFileInputSchema = z.object({
 	file_id: z.string().min(1).describe('Provider file id, content URL, or attachment message id'),
 	chat_id: z.string().min(1).optional().describe('Conversation id when the channel requires it for download'),
 	file_name: z.string().min(1).optional().describe('Preferred file name'),
+	destination_key: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'When set, write bytes to bound object storage and return artifact (no body_base64). Requires storage auth.'
+		),
 	service_url: serviceUrlOptional
 })
 
 export const messagingDownloadFileOutputSchema = z.object({
 	file_name: z.string(),
 	file_size: z.number().optional(),
-	body_base64: z.string().describe('Downloaded file body as base64')
+	body_base64: z.string().optional().describe('Downloaded file body as base64 when destination_key is omitted'),
+	artifact: artifactRefSchema.optional().describe('Object-store ArtifactRef when destination_key is set')
 })
 
 export const messagingAnswerCallbackInputSchema = z.object({
@@ -205,12 +278,45 @@ export type MessagingSetReactionInput = z.infer<typeof messagingSetReactionInput
 export type MessagingReactionOutput = z.infer<typeof messagingReactionOutputSchema>
 export type MessagingClearReactionInput = z.infer<typeof messagingClearReactionInputSchema>
 export type MessagingSendMediaInput = z.infer<typeof messagingSendMediaInputSchema>
+export type MessagingSendMediaBatchItem = z.infer<typeof messagingSendMediaBatchItemSchema>
 export type MessagingSendMediaBatchInput = z.infer<typeof messagingSendMediaBatchInputSchema>
 export type MessagingSendMediaBatchOutput = z.infer<typeof messagingSendMediaBatchOutputSchema>
 export type MessagingDownloadFileInput = z.infer<typeof messagingDownloadFileInputSchema>
 export type MessagingDownloadFileOutput = z.infer<typeof messagingDownloadFileOutputSchema>
 export type MessagingAnswerCallbackInput = z.infer<typeof messagingAnswerCallbackInputSchema>
 export type MessagingReadInput = z.infer<typeof messagingReadInputSchema>
+
+/** Channel-facing media after ArtifactRef resolution (body always present). */
+export type MessagingSendMediaResolved = {
+	chat_id: string
+	kind: 'photo' | 'document'
+	body_base64: string
+	file_name: string
+	caption?: string | undefined
+	reply_to_message_id?: string | undefined
+	content_type?: string | undefined
+	service_url?: string | undefined
+}
+
+export type MessagingSendMediaBatchResolved = {
+	chat_id: string
+	items: Array<{
+		kind: 'photo' | 'document'
+		body_base64: string
+		file_name: string
+		caption?: string | undefined
+		content_type?: string | undefined
+	}>
+	reply_to_message_id?: string | undefined
+	service_url?: string | undefined
+}
+
+/** Channel download always returns bytes; client may rewrite to artifact. */
+export type MessagingChannelDownloadOutput = {
+	file_name: string
+	file_size?: number | undefined
+	body_base64: string
+}
 
 /** Shared seam surface — provider classes implement this. */
 export type MessagingOps = {
@@ -220,9 +326,9 @@ export type MessagingOps = {
 	stopTyping: (input: MessagingStopTypingInput) => Promise<void>
 	setReaction: (input: MessagingSetReactionInput) => Promise<MessagingReactionOutput>
 	clearReaction: (input: MessagingClearReactionInput) => Promise<void>
-	sendMedia: (input: MessagingSendMediaInput) => Promise<MessagingMessageOutput>
-	sendMediaBatch: (input: MessagingSendMediaBatchInput) => Promise<MessagingSendMediaBatchOutput>
-	downloadFile: (input: MessagingDownloadFileInput) => Promise<MessagingDownloadFileOutput>
+	sendMedia: (input: MessagingSendMediaResolved) => Promise<MessagingMessageOutput>
+	sendMediaBatch: (input: MessagingSendMediaBatchResolved) => Promise<MessagingSendMediaBatchOutput>
+	downloadFile: (input: MessagingDownloadFileInput) => Promise<MessagingChannelDownloadOutput>
 	answerCallback: (input: MessagingAnswerCallbackInput) => Promise<void>
 	read: (input: MessagingReadInput) => Promise<void>
 }

@@ -19,8 +19,10 @@ function asRecord(value: unknown): Record<string, unknown> {
 function mockFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
 	const original = globalThis.fetch
 	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-		return handler(url, init)
+		const req = input instanceof Request ? input : new Request(input, init)
+		const nextInit: RequestInit = { method: req.method, headers: req.headers }
+		if (init?.body !== undefined) nextInit.body = init.body
+		return handler(req.url, nextInit)
 	}) as typeof globalThis.fetch
 	return () => {
 		globalThis.fetch = original
@@ -315,7 +317,8 @@ describe('messaging seam', () => {
 				file_name: 'a.png'
 			})
 			expect(out.file_name).toBe('a.png')
-			expect(out.body_base64.length).toBeGreaterThan(0)
+			expect(out.body_base64).toBeDefined()
+			expect(out.body_base64!.length).toBeGreaterThan(0)
 		} finally {
 			restore()
 		}
@@ -365,6 +368,101 @@ describe('messaging seam', () => {
 		} finally {
 			restore()
 		}
+	})
+
+	test('sendMedia from ArtifactRef source loads object storage', async () => {
+		const restore = mockFetch((url, init) => {
+			if (url.includes('media.example') && (init?.method === 'GET' || !init?.method)) {
+				return new Response(new Uint8Array([1, 2, 3]), {
+					status: 200,
+					headers: { 'content-type': 'image/png' }
+				})
+			}
+			if (url.includes('sendDocument') || url.includes('sendPhoto')) {
+				return new Response(JSON.stringify({ ok: true, result: { message_id: 7 } }), { status: 200 })
+			}
+			return new Response(`unexpected ${url}`, { status: 500 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({
+				provider: 'telegram',
+				bot_token: '123:ABC',
+				storage: {
+					access_key_id: 'AKIAtest',
+					secret_access_key: 'secret',
+					region: 'us-east-1',
+					bucket: 'media',
+					endpoint: 'https://media.example'
+				}
+			})
+			const out = await client.sendMedia({
+				chat_id: '99',
+				kind: 'document',
+				source: { store: 'object', key: 'inbox/a.bin', filename: 'a.bin' }
+			})
+			expect(out.message_id).toBe('7')
+		} finally {
+			restore()
+		}
+	})
+
+	test('downloadFile with destination_key returns artifact without body_base64', async () => {
+		const puts: string[] = []
+		const restore = mockFetch((url, init) => {
+			const method = (init?.method ?? 'GET').toUpperCase()
+			if (url.includes('api.telegram.org') && url.includes('getFile')) {
+				return new Response(JSON.stringify({ ok: true, result: { file_path: 'docs/x.txt', file_size: 5 } }), {
+					status: 200
+				})
+			}
+			if (url.includes('api.telegram.org/file/')) {
+				return new Response(new Uint8Array([9, 9, 9, 9, 9]), { status: 200 })
+			}
+			if (method === 'PUT' && url.includes('out/x.txt')) {
+				puts.push(url)
+				return new Response(null, { status: 200 })
+			}
+			return new Response(`unexpected ${method} ${url}`, { status: 500 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({
+				provider: 'telegram',
+				bot_token: '123:ABC',
+				storage: {
+					access_key_id: 'AKIAtest',
+					secret_access_key: 'secret',
+					region: 'us-east-1',
+					bucket: 'media',
+					endpoint: 'https://media.example'
+				}
+			})
+			const out = await client.downloadFile({
+				file_id: 'AgAD',
+				file_name: 'x.txt',
+				destination_key: 'out/x.txt'
+			})
+			expect(out.artifact?.store).toBe('object')
+			expect(out.artifact?.key).toBe('out/x.txt')
+			expect(out.body_base64).toBeUndefined()
+			expect(puts.some((u) => u.includes('out/x.txt'))).toBe(true)
+		} finally {
+			restore()
+		}
+	})
+
+	test('sendMedia rejects missing body and source', async () => {
+		const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+		let threw = false
+		try {
+			await client.sendMedia({
+				chat_id: '99',
+				kind: 'document',
+				file_name: 'a.txt'
+			} as never)
+		} catch {
+			threw = true
+		}
+		expect(threw).toBe(true)
 	})
 
 	test('telegram sendMediaBatch uses sendMediaGroup for homogeneous 2+ photos', async () => {
