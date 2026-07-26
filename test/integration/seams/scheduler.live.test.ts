@@ -1,12 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 
 import { SchedulerClient } from '../../../src/modules/scheduler'
-import { awsCredentialsFromEnv, env, uniqueId } from '../env'
+import { awsCredentialsFromEnv, schedulerRoleArnFromEnv, schedulerTargetArnFromEnv, uniqueId } from '../env'
 
-const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_EVENTBRIDGE_SCHEDULER_REGION' })
-const targetArn = env('AI_TOOLS_EVENTBRIDGE_SCHEDULER_TARGET_ARN')
-const roleArn = env('AI_TOOLS_EVENTBRIDGE_SCHEDULER_ROLE_ARN')
-const groupName = env('AI_TOOLS_EVENTBRIDGE_SCHEDULER_GROUP_NAME')
+const aws = awsCredentialsFromEnv()
+const targetArn = aws ? schedulerTargetArnFromEnv(aws) : undefined
+const roleArn = aws ? schedulerRoleArnFromEnv(aws) : undefined
 const run = aws && targetArn && roleArn ? describe : describe.skip
 
 run('live seam scheduler', () => {
@@ -18,8 +17,7 @@ run('live seam scheduler', () => {
 				provider: 'eventbridge',
 				...aws!,
 				target_arn: targetArn!,
-				role_arn: roleArn!,
-				...(groupName && { group_name: groupName })
+				role_arn: roleArn!
 			})
 
 			try {

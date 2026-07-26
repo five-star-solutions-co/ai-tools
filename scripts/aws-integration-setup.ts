@@ -507,7 +507,7 @@ async function ensureUserPolicy(args: Args, account: string, queueArn: string, r
 
 function printEnvBlock(values: Record<string, string>): void {
 	console.log('')
-	console.log('# --- paste into .env (secrets: use the IT user access key, not printed here) ---')
+	console.log('# --- paste into .env (resource names/ARNs are derived in tests) ---')
 	for (const [k, v] of Object.entries(values)) {
 		console.log(`${k}=${v}`)
 	}
@@ -529,17 +529,14 @@ async function main(): Promise<void> {
 
 	await ensureBucket(args)
 	await uploadSamplePdf(args)
-	const { queueUrl, queueArn } = await ensureQueue(args, account)
+	const { queueArn } = await ensureQueue(args, account)
 	const { roleArn } = await ensureSchedulerRole(args, account, queueArn)
 	await ensureUserPolicy(args, account, queueArn, roleArn)
 
+	// Tests hardcode bucket/key/queue/role names and derive ARNs from account + region.
 	const envValues: Record<string, string> = {
 		AI_TOOLS_AWS_REGION: args.region,
-		AI_TOOLS_TEXTRACT_BUCKET: args.bucket,
-		AI_TOOLS_TEXTRACT_SOURCE_KEY: args.sourceKey,
-		AI_TOOLS_SQS_QUEUE_URL: queueUrl,
-		AI_TOOLS_EVENTBRIDGE_SCHEDULER_TARGET_ARN: queueArn,
-		AI_TOOLS_EVENTBRIDGE_SCHEDULER_ROLE_ARN: roleArn
+		AI_TOOLS_AWS_ACCOUNT_ID: account
 	}
 
 	printEnvBlock(envValues)

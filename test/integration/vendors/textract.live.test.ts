@@ -1,20 +1,20 @@
 import { describe, expect, test } from 'bun:test'
 
 import { TextractClient } from '../../../src/vendors/textract'
-import { awsCredentialsFromEnv, env } from '../env'
+import { awsCredentialsFromEnv, textractBucket, textractSourceKey } from '../env'
 
-// IAM: shared AI_TOOLS_AWS_* (not MinIO AI_TOOLS_S3_*).
-const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_TEXTRACT_REGION' })
-const bucket = env('AI_TOOLS_TEXTRACT_BUCKET')
-const sourceKey = env('AI_TOOLS_TEXTRACT_SOURCE_KEY')
-const run = aws && bucket && sourceKey ? describe : describe.skip
+// IAM: shared AI_TOOLS_AWS_* (not MinIO). Bucket/key are package IT constants.
+const aws = awsCredentialsFromEnv()
+const bucket = textractBucket()
+const sourceKey = textractSourceKey()
+const run = aws ? describe : describe.skip
 
 function client(pollMs = 60_000) {
 	return new TextractClient({
 		access_key_id: aws!.access_key_id,
 		secret_access_key: aws!.secret_access_key,
 		region: aws!.region,
-		bucket: bucket!,
+		bucket,
 		poll_timeout_ms: pollMs,
 		...(aws!.session_token && { session_token: aws!.session_token })
 	})
@@ -25,7 +25,7 @@ run('live vendor textract', () => {
 		'extractText from S3 object',
 		async () => {
 			const result = await client().extractText({
-				source: { store: 'object', key: sourceKey! }
+				source: { store: 'object', key: sourceKey }
 			})
 			expect(['succeeded', 'pending', 'failed']).toContain(result.status)
 			if (result.status === 'succeeded') {
@@ -40,7 +40,7 @@ run('live vendor textract', () => {
 		async () => {
 			const c = client(5_000)
 			const batch = await c.extractTextBatch({
-				sources: [{ store: 'object', key: sourceKey! }]
+				sources: [{ store: 'object', key: sourceKey }]
 			})
 			expect(batch.results.length).toBe(1)
 			expect(batch.succeeded + batch.failed).toBe(1)

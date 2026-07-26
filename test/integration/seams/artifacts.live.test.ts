@@ -6,8 +6,8 @@ import { bytesToBase64, utf8ToBytes } from '../../../src/shared/bytes'
 import { S3Client } from '../../../src/vendors/s3'
 import { s3AuthFromEnv, uniqueId } from '../env'
 
-const storage = s3AuthFromEnv('AI_TOOLS_S3')
-const runObject = storage ? describe : describe.skip
+const storage = s3AuthFromEnv()
+const runObject = describe
 
 /** Host-bound pure path — always runs (no external service). */
 describe('live seam artifacts host binding', () => {
@@ -89,9 +89,9 @@ runObject('live seam artifacts object storage', () => {
 			const key = `ai-tools-artifacts-it/${uniqueId('artifact')}.txt`
 			const client = ArtifactsClient.fromAuth({
 				provider: 'object',
-				storage: { ...storage! }
+				storage: { ...storage }
 			})
-			const cleanup = new S3Client(storage!)
+			const cleanup = new S3Client(storage)
 
 			try {
 				const created = await client.create({

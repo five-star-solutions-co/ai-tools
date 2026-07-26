@@ -4,8 +4,8 @@ import { isPlainObject, isString } from 'es-toolkit'
 import { BedrockAgentCoreCodeInterpreterClient } from '../../../src/vendors/bedrock-agentcore-code-interpreter'
 import { awsCredentialsFromEnv, env, sleep } from '../env'
 
-const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_BEDROCK_AGENTCORE_REGION' })
-const interpreterId = env('AI_TOOLS_BEDROCK_AGENTCORE_CODE_INTERPRETER_ID')
+const aws = awsCredentialsFromEnv()
+const interpreterId = env('AI_TOOLS_AWS_CODE_INTERPRETER_ID')
 const run = aws ? describe : describe.skip
 
 function client() {

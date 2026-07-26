@@ -4,8 +4,8 @@ import { FilesClient } from '../../../src/modules/files'
 import { uniqueId } from '../env'
 import { s3AuthFromEnv } from '../helpers'
 
-const s3 = s3AuthFromEnv('AI_TOOLS_S3')
-const run = s3 ? describe : describe.skip
+const s3 = s3AuthFromEnv()
+const run = describe
 
 run('live seam files', () => {
 	test(
@@ -13,7 +13,7 @@ run('live seam files', () => {
 		async () => {
 			const root = 'ai-tools-files-it'
 			const client = FilesClient.fromAuth({
-				storage: { ...s3! },
+				storage: { ...s3 },
 				root_prefix: root
 			})
 			const path = `${uniqueId('f')}.txt`

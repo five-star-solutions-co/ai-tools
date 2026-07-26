@@ -3,12 +3,12 @@ import { describe, expect, test } from 'bun:test'
 import { S3Client } from '../../../src/vendors/s3'
 import { objectKey, s3AuthFromEnv } from '../helpers'
 
-const auth = s3AuthFromEnv('AI_TOOLS_S3')
-const run = auth ? describe : describe.skip
+const auth = s3AuthFromEnv()
+const run = describe
 
 run('live vendor s3', () => {
 	test('list put get head copy delete putBytes getBytes', async () => {
-		const client = new S3Client(auth!)
+		const client = new S3Client(auth)
 		const key = objectKey('ai-tools-s3')
 		const copyKey = `${key}.copy`
 
@@ -51,7 +51,7 @@ run('live vendor s3', () => {
 	})
 
 	test('createSignedUrl get', async () => {
-		const client = new S3Client(auth!)
+		const client = new S3Client(auth)
 		const key = objectKey('ai-tools-s3-sign')
 		await client.put({
 			key,
@@ -67,7 +67,7 @@ run('live vendor s3', () => {
 	})
 
 	test('multipart upload complete', async () => {
-		const client = new S3Client(auth!)
+		const client = new S3Client(auth)
 		const key = objectKey('ai-tools-s3-mp')
 		// MinIO: two parts as base64 (S3 client only accepts string body)
 		const partA = Buffer.alloc(5 * 1024 * 1024, 1)
@@ -102,7 +102,7 @@ run('live vendor s3', () => {
 	})
 
 	test('multipart abort', async () => {
-		const client = new S3Client(auth!)
+		const client = new S3Client(auth)
 		const key = objectKey('ai-tools-s3-mp-abort')
 		const started = await client.createMultipartUpload({ key })
 		await client.abortMultipartUpload({ key, upload_id: started.upload_id })

@@ -6,7 +6,7 @@ import { S3Client } from '../../../src/vendors/s3'
 import { s3AuthFromEnv, uniqueId } from '../env'
 
 const storage = s3AuthFromEnv()
-const run = storage ? describe : describe.skip
+const run = describe
 
 run('live seam image', () => {
 	test(
@@ -15,14 +15,14 @@ run('live seam image', () => {
 			const prefix = `ai-tools-it/image/${uniqueId('image')}`
 			const sourceKey = `${prefix}/source.png`
 			const cleanup: string[] = [sourceKey]
-			const s3 = new S3Client(storage!)
+			const s3 = new S3Client(storage)
 			const bytes = await sharp({
 				create: { width: 40, height: 30, channels: 4, background: { r: 20, g: 40, b: 60, alpha: 1 } }
 			})
 				.png()
 				.toBuffer()
 			await s3.putBytes(sourceKey, bytes, 'image/png')
-			const client = ImageClient.fromAuth({ storage: storage! })
+			const client = ImageClient.fromAuth({ storage })
 			const source = { store: 'object', key: sourceKey, media_type: 'image/png' } as const
 
 			try {

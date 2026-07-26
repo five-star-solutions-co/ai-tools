@@ -59,22 +59,20 @@ Migrations under `supabase/migrations/` create `ai_tools_vectors`, `match_vector
 
 **Cloud / external keys still needed:** Resend, CF email/browser, Telegram, Slack, Teams, iMessage proxy, Pinecone, Woo, Katana, Amazon SP-API (LWA), AWS IAM services, embed models.
 
-### Shared AWS IAM (one key for all AWS cloud live IT)
+### Credential families (secrets only)
 
-Use **one** access key for Textract, Bedrock AgentCore, EventBridge Scheduler, and Amazon SP-API **SigV4**:
+Live IT **hardcodes** local compose defaults and fixed AWS resource names (`test/integration/env.ts` → `IT`).  
+Env is only for **secrets** and **dynamic host values**.
 
-| Var | Role |
-| --- | --- |
-| `AI_TOOLS_AWS_ACCESS_KEY_ID` | required |
-| `AI_TOOLS_AWS_SECRET_ACCESS_KEY` | required |
-| `AI_TOOLS_AWS_REGION` | required default region (this package IT: `us-east-1`) |
-| `AI_TOOLS_AWS_SESSION_TOKEN` | optional |
+| Family | Env (prefix `AI_TOOLS_`) | Notes |
+| --- | --- | --- |
+| **AWS IAM** | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_REGION` (default `us-east-1`), optional `AWS_SESSION_TOKEN`, **`AWS_ACCOUNT_ID`** (from `bun scripts/aws-integration-setup.ts --write-env`) | Textract bucket/key, SQS URL, scheduler ARNs **derived** from account + region + fixed names |
+| **Cloudflare** | `CF_ACCOUNT_ID`, `CF_API_TOKEN` + `CF_EMAIL_FROM` / `TO` | Email + browser |
+| **Supabase** | `SUPABASE_URL`, `SUPABASE_API_KEY` | Table/schema/RPC hardcoded |
+| **Mastra DB** | `MASTRA_DB_URL` | Schema hardcoded `public` |
+| **Resend / chat / pinecone / embed / …** | product secrets as before | unchanged |
 
-Optional per-service region overrides (still use the same key): `AI_TOOLS_TEXTRACT_REGION`, `AI_TOOLS_BEDROCK_AGENTCORE_REGION`, `AI_TOOLS_EVENTBRIDGE_SCHEDULER_REGION`, `AI_TOOLS_AMAZON_REGION`.
-
-**Not** shared with MinIO: local object store stays on `AI_TOOLS_S3_*` only.
-
-Service-specific non-credential env remains (buckets, ARNs, SP-API LWA client id/secret/refresh, marketplace ids, etc.).
+**Hardcoded (no env needed):** MinIO (`aitools` / `ai-tools-it` / `:9000`), Qdrant (`:6333` / `ai_tools_it`), Gotenberg (`:3000`), browser navigate `https://example.com`, Textract sample path, queue/role names under `integration-test-ai-tools*`.
 
 ---
 
@@ -151,26 +149,26 @@ bun test test/integration/vendors/resend.live.test.ts
 | Vendor | Env (prefix `AI_TOOLS_`) | Smoke (high level) |
 | --- | --- | --- |
 | resend | `RESEND_API_KEY`, `FROM`, `TO` | send + sendBatch |
-| cloudflare-email | `CF_EMAIL_*` | send + sendBatch |
+| cloudflare-email | shared `CF_ACCOUNT_ID` + `CF_API_TOKEN` + `CF_EMAIL_FROM` / `TO` | send + sendBatch |
 | telegram | `TELEGRAM_BOT_TOKEN` (+ chat; optional webhook URL/secret) | getBot, webhook, send/edit/action/react/media/group, downloadFile |
 | slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`; optional `SLACK_USER_ID`) | getBot, listConversations, send/edit, **thread** typing/stopTyping, react, media, **downloadFile round-trip**, answerCallback no-op, optional postEphemeral |
 | teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL; optional `TEAMS_FILE_URL`) | getBot; send/edit/action/react/media; answerCallback no-op; optional downloadFile |
 | imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** (+ optional `IMESSAGE_FILE_ID`) | send/edit/typing/react/media/unsend/read; answerCallback no-op; optional downloadFile |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/getBytesRange/signed URL/multipart |
 | gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot + convert + convertBatch |
-| cloudflare-browser | CF browser token; S3 for render tests | start/get/stop + optional CDP navigate + renderPdf + renderScreenshot |
+| cloudflare-browser | shared `CF_*` + S3 for render | start/get/stop + optional CDP navigate + renderPdf + renderScreenshot |
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
 | **katana** | `KATANA_API_KEY` | **read-only** list/get entity surfaces + inventory |
-| **amazon-sp-api** | LWA (`AMAZON_CLIENT_*` / refresh) + shared `AWS_*` IAM + marketplace/endpoint | **read-only** orders/items/inventory/reports/catalog |
-| qdrant | `QDRANT_URL` (+ collection) | upsert/query/delete |
-| pinecone | API key + base URL (+ dimension) | upsert/query/delete |
-| supabase-vector | Supabase URL + service role | upsert/query/delete |
-| mastra-vector | `MASTRA_DB_URL` | upsert/query/delete (+ disconnect cleanup) |
-| eventbridge-scheduler | shared `AWS_*` + `EVENTBRIDGE_SCHEDULER_TARGET_ARN` + `ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
+| **amazon-sp-api** | LWA (`AMAZON_CLIENT_*` / refresh) + shared `AWS_*` + marketplace/endpoint | **read-only** orders/items/inventory/reports/catalog |
+| qdrant | `QDRANT_URL` (+ `QDRANT_COLLECTION`) | upsert/query/delete |
+| pinecone | `PINECONE_API_KEY` + `BASE_URL` (+ dimension) | upsert/query/delete |
+| supabase-vector | shared `SUPABASE_*` | upsert/query/delete |
+| mastra-vector | `MASTRA_DB_URL` (+ schema from `SUPABASE_SCHEMA`) | upsert/query/delete (+ disconnect cleanup) |
+| eventbridge-scheduler | shared `AWS_*` + `SCHEDULER_TARGET_ARN` + `SCHEDULER_ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
 | sqs | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
-| bedrock-agentcore-browser | shared `AWS_*` (+ optional browser id) | start/get/stop; optional CDP navigate via automation stream (`AI_TOOLS_BEDROCK_BROWSER_NAVIGATE_URL`, default `https://example.com`; set `AI_TOOLS_BEDROCK_BROWSER_SKIP_NAVIGATE=1` to skip) |
-| bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional interpreter id) | getSession, executeCode, executeCommand, write/list/read/remove files, startCommand/getTask/stopTask, stopSession |
+| bedrock-agentcore-browser | shared `AWS_*` (+ optional `AWS_BROWSER_ID`); `BROWSER_NAVIGATE_URL` | start/get/stop; optional CDP navigate |
+| bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional `AWS_CODE_INTERPRETER_ID`) | full session surface |
 
 Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and have no live files.
 
@@ -188,9 +186,9 @@ Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and 
 | files | S3 | list/search/stat/put/get/delete/copy/mkdir/move/multipart (start/part/complete/abort) |
 | artifacts | host callbacks (always) + S3 object provider | create/readRange/readLines |
 | tasks | host callbacks (always) | create/get/list/update/delete |
-| scheduler | shared `AWS_*` + EventBridge target/role ARNs | create/get/list/update/delete (DISABLED schedule) |
+| scheduler | shared `AWS_*` + `SCHEDULER_TARGET_ARN` / `ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
 | queue | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
-| browser | shared `AWS_*` and/or CF browser token | start/get/stop per provider; optional CDP navigate (same navigate env as AgentCore browser) |
+| browser | shared `AWS_*` and/or shared `CF_*` | start/get/stop per provider; optional CDP navigate (`BROWSER_NAVIGATE_URL`) |
 | pdf | S3 | inspect/merge/extract/split/rotate artifacts |
 | image | S3 | metadata/resize/crop/thumbnail/convert artifacts |
 | crypto | none | tools: hash, hmac sign/verify, random bytes |
@@ -208,11 +206,11 @@ Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and 
 ## After `bunx supabase start`
 
 ```bash
-bunx supabase status -o env
-# map:
-# API_URL        → AI_TOOLS_SUPABASE_URL=http://127.0.0.1:60121
-# DB_URL         → AI_TOOLS_MASTRA_DB_URL=...
-# SERVICE_ROLE_KEY → AI_TOOLS_SUPABASE_API_KEY and AI_TOOLS_SUPABASE_SERVICE_ROLE_KEY
+bun run integration:env   # preferred: in-place upsert after integration:up
+# or: bunx supabase status -o env
+# API_URL          → AI_TOOLS_SUPABASE_URL
+# SERVICE_ROLE_KEY → AI_TOOLS_SUPABASE_API_KEY
+# DB_URL           → AI_TOOLS_MASTRA_DB_URL
 ```
 
 If DB password differs from `postgres`, update `AI_TOOLS_MASTRA_DB_URL` only (do not ask agents to open `.env`).

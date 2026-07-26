@@ -6,12 +6,24 @@ import { describe, expect, test } from 'bun:test'
 
 import { RagClient } from '../../../src/modules/rag'
 import type { RagAuth } from '../../../src/modules/rag'
-import { assertLocalUrl, ensureQdrantCollection, env, sleep, uniqueId } from '../helpers'
+import {
+	assertLocalUrl,
+	embedDimensionFromEnv,
+	ensureQdrantCollection,
+	env,
+	IT,
+	qdrantApiKeyFromEnv,
+	qdrantCollectionFromEnv,
+	qdrantUrlFromEnv,
+	sleep,
+	supabaseAuthFromEnv,
+	uniqueId
+} from '../helpers'
 
 const embedBase = env('AI_TOOLS_EMBED_BASE_URL')
 const embedKey = env('AI_TOOLS_EMBED_API_KEY')
 const embedModel = env('AI_TOOLS_EMBED_MODEL')
-const embedDim = Number(env('AI_TOOLS_EMBED_DIMENSION') ?? '1536')
+const embedDim = embedDimensionFromEnv()
 const hasEmbed = Boolean(embedBase && embedKey && embedModel)
 
 function embedAuth() {
@@ -19,7 +31,7 @@ function embedAuth() {
 		base_url: embedBase!,
 		api_key: embedKey!,
 		model: embedModel!,
-		...(Number.isFinite(embedDim) ? { dimensions: embedDim } : {})
+		dimensions: embedDim
 	}
 }
 
@@ -35,29 +47,24 @@ async function assertRag(auth: RagAuth): Promise<void> {
 	await rag.delete({ chunk_ids: ingested.chunk_ids })
 }
 
-const qdrantUrl = env('AI_TOOLS_QDRANT_URL')
-const qdrantKey = env('AI_TOOLS_QDRANT_API_KEY')
-const qdrantCollection = env('AI_TOOLS_QDRANT_RAG_COLLECTION') ?? 'ai_tools_rag_it'
+const qdrantUrl = qdrantUrlFromEnv()
+const qdrantKey = qdrantApiKeyFromEnv()
+const qdrantCollection = qdrantCollectionFromEnv()
 const pineconeKey = env('AI_TOOLS_PINECONE_API_KEY')
 const pineconeBase = env('AI_TOOLS_PINECONE_BASE_URL')
 const pineconeNs = env('AI_TOOLS_PINECONE_NAMESPACE')
-const supabaseUrl = env('AI_TOOLS_SUPABASE_URL')
-const supabaseKey = env('AI_TOOLS_SUPABASE_API_KEY')
-const supabaseTable = env('AI_TOOLS_SUPABASE_TABLE') ?? 'ai_tools_vectors'
-const supabaseSchema = env('AI_TOOLS_SUPABASE_SCHEMA')
-const supabaseRpc = env('AI_TOOLS_SUPABASE_MATCH_RPC')
+const supabase = supabaseAuthFromEnv()
 const mastraDb = env('AI_TOOLS_MASTRA_DB_URL')
-const mastraSchema = env('AI_TOOLS_MASTRA_SCHEMA')
 
-const runQ = hasEmbed && qdrantUrl ? describe : describe.skip
+const runQ = hasEmbed ? describe : describe.skip
 const runP = hasEmbed && pineconeKey && pineconeBase ? describe : describe.skip
-const runS = hasEmbed && supabaseUrl && supabaseKey ? describe : describe.skip
+const runS = hasEmbed && supabase ? describe : describe.skip
 const runM = hasEmbed && mastraDb ? describe : describe.skip
 
 runQ('live seam rag + qdrant', () => {
 	test('ingest retrieve delete', async () => {
 		await ensureQdrantCollection({
-			baseUrl: qdrantUrl!,
+			baseUrl: qdrantUrl,
 			apiKey: qdrantKey,
 			collection: qdrantCollection,
 			dimension: embedDim
@@ -65,7 +72,7 @@ runQ('live seam rag + qdrant', () => {
 		await assertRag({
 			vector_store: {
 				provider: 'qdrant',
-				base_url: qdrantUrl!,
+				base_url: qdrantUrl,
 				default_collection: qdrantCollection,
 				...(qdrantKey ? { api_key: qdrantKey } : {})
 			},
@@ -94,14 +101,14 @@ runS('live seam rag + supabase', () => {
 		await assertRag({
 			vector_store: {
 				provider: 'supabase',
-				url: supabaseUrl!,
-				api_key: supabaseKey!,
-				default_collection: supabaseTable,
-				...(supabaseSchema ? { schema: supabaseSchema } : {}),
-				...(supabaseRpc ? { match_rpc: supabaseRpc } : {})
+				url: supabase!.url,
+				api_key: supabase!.api_key,
+				default_collection: supabase!.table,
+				schema: supabase!.schema,
+				match_rpc: supabase!.match_rpc
 			},
 			embed: embedAuth(),
-			default_collection: supabaseTable
+			default_collection: supabase!.table
 		})
 	})
 })
@@ -118,7 +125,7 @@ runM('live seam rag + mastra', () => {
 				default_index: indexName,
 				dimension: embedDim,
 				auto_create_index: true,
-				...(mastraSchema ? { schema_name: mastraSchema } : {})
+				schema_name: IT.supabase.schema
 			},
 			embed: embedAuth(),
 			default_collection: indexName

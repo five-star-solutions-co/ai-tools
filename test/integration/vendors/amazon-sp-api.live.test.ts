@@ -10,7 +10,7 @@ import { awsCredentialsFromEnv, env } from '../env'
 const clientId = env('AI_TOOLS_AMAZON_CLIENT_ID')
 const clientSecret = env('AI_TOOLS_AMAZON_CLIENT_SECRET')
 const refreshToken = env('AI_TOOLS_AMAZON_REFRESH_TOKEN')
-const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_AMAZON_REGION' })
+const aws = awsCredentialsFromEnv()
 const endpoint = env('AI_TOOLS_AMAZON_ENDPOINT')
 const marketplaceIds = env('AI_TOOLS_AMAZON_MARKETPLACE_IDS')
 const catalogKeywords = env('AI_TOOLS_AMAZON_CATALOG_KEYWORDS')

@@ -10,8 +10,36 @@ import type { VectorStoreOps } from '../../src/modules/vector-store'
 import type { VectorMatch } from '../../src/vendors/_vector'
 import { sleep, uniqueId } from './env'
 
-export { env, requireEnv, uniqueId, assertLocalUrl, sleep, awsCredentialsFromEnv, s3AuthFromEnv } from './env'
+export {
+	IT,
+	env,
+	requireEnv,
+	uniqueId,
+	assertLocalUrl,
+	sleep,
+	awsCredentialsFromEnv,
+	awsAccountIdFromEnv,
+	textractBucket,
+	textractSourceKey,
+	sqsQueueUrlFromEnv,
+	sqsQueueArnFromEnv,
+	schedulerTargetArnFromEnv,
+	schedulerRoleArnFromEnv,
+	s3AuthFromEnv,
+	cloudflareAuthFromEnv,
+	supabaseAuthFromEnv,
+	qdrantUrlFromEnv,
+	qdrantCollectionFromEnv,
+	qdrantApiKeyFromEnv,
+	gotenbergBaseUrlFromEnv,
+	gotenbergAuthHeadersFromEnv,
+	browserNavigateUrlFromEnv,
+	browserSkipNavigateFromEnv,
+	pineconeDimensionFromEnv,
+	embedDimensionFromEnv
+} from './env'
 export { assertLocalUrl as assertLocalDbUrl } from './env'
+export type { AwsCredentials, S3AuthFromEnv, CloudflareAuthFromEnv, SupabaseAuthFromEnv } from './env'
 
 export const sampleVectorA = [0.12, 0.34, 0.56]
 export const sampleVectorB = [0.11, 0.33, 0.55]

@@ -2,16 +2,22 @@ import { describe, expect, test } from 'bun:test'
 
 import { VectorStoreClient } from '../../../src/modules/vector-store'
 import { QdrantClient } from '../../../src/vendors/qdrant'
-import { assertUpsertQueryDeleteRoundTrip, ensureQdrantCollection, env, sampleVectorA } from '../helpers'
+import {
+	assertUpsertQueryDeleteRoundTrip,
+	ensureQdrantCollection,
+	qdrantApiKeyFromEnv,
+	qdrantCollectionFromEnv,
+	qdrantUrlFromEnv,
+	sampleVectorA
+} from '../helpers'
 
-const baseUrl = env('AI_TOOLS_QDRANT_URL')
-const apiKey = env('AI_TOOLS_QDRANT_API_KEY')
-const collection = env('AI_TOOLS_QDRANT_COLLECTION') ?? 'ai_tools_it'
-const run = baseUrl ? describe : describe.skip
+const baseUrl = qdrantUrlFromEnv()
+const apiKey = qdrantApiKeyFromEnv()
+const collection = qdrantCollectionFromEnv()
+const run = describe
 
 run('live vendor qdrant', () => {
 	test('client round-trip', async () => {
-		if (!baseUrl) return
 		await ensureQdrantCollection({
 			baseUrl,
 			apiKey,
@@ -27,7 +33,6 @@ run('live vendor qdrant', () => {
 	})
 
 	test('seam vector-store provider=qdrant', async () => {
-		if (!baseUrl) return
 		await ensureQdrantCollection({
 			baseUrl,
 			apiKey,

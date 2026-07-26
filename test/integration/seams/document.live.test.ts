@@ -5,17 +5,17 @@ import { DocumentClient } from '../../../src/modules/document'
 import { S3Client } from '../../../src/vendors/s3'
 import { objectKey, s3AuthFromEnv } from '../helpers'
 
-const storage = s3AuthFromEnv('AI_TOOLS_S3')
-const run = storage ? describe : describe.skip
+const storage = s3AuthFromEnv()
+const run = describe
 
 async function cleanup(keys: string[]) {
-	const s3 = new S3Client(storage!)
+	const s3 = new S3Client(storage)
 	for (const key of keys) await s3.delete({ key }).catch(() => undefined)
 }
 
 run('live seam document', () => {
 	test('buildText read editText round-trip', async () => {
-		const client = DocumentClient.fromAuth({ storage: storage! })
+		const client = DocumentClient.fromAuth({ storage })
 		const outKey = objectKey('document-build')
 		const editKey = objectKey('document-edit')
 		const keys = [outKey, editKey]
@@ -54,7 +54,7 @@ run('live seam document', () => {
 	})
 
 	test('buildSpreadsheet editSpreadsheet read tables', async () => {
-		const client = DocumentClient.fromAuth({ storage: storage! })
+		const client = DocumentClient.fromAuth({ storage })
 		const key = objectKey('document-xlsx')
 		const editKey = objectKey('document-xlsx-edit')
 		const keys = [key, editKey]
@@ -98,7 +98,7 @@ run('live seam document', () => {
 	})
 
 	test('buildDocument editDocument read', async () => {
-		const client = DocumentClient.fromAuth({ storage: storage! })
+		const client = DocumentClient.fromAuth({ storage })
 		const key = objectKey('document-docx')
 		const editKey = objectKey('document-docx-edit')
 		const keys = [key, editKey]
@@ -135,7 +135,7 @@ run('live seam document', () => {
 	})
 
 	test('buildPresentation editPresentation read slides', async () => {
-		const client = DocumentClient.fromAuth({ storage: storage! })
+		const client = DocumentClient.fromAuth({ storage })
 		const key = objectKey('document-pptx')
 		const editKey = objectKey('document-pptx-edit')
 		const keys = [key, editKey]
@@ -173,9 +173,9 @@ run('live seam document', () => {
 	})
 
 	test('read PDF page text from object storage', async () => {
-		const client = DocumentClient.fromAuth({ storage: storage! })
+		const client = DocumentClient.fromAuth({ storage })
 		const key = objectKey('document-pdf')
-		const s3 = new S3Client(storage!)
+		const s3 = new S3Client(storage)
 		const pdf = await PDFDocument.create()
 		pdf.addPage([200, 200])
 		await s3.putBytes(key, await pdf.save(), 'application/pdf')

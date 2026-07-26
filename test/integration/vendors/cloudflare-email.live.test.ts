@@ -1,19 +1,18 @@
 import { describe, expect, test } from 'bun:test'
 
 import { CloudflareEmailClient } from '../../../src/vendors/cloudflare-email'
-import { env } from '../env'
+import { cloudflareAuthFromEnv, env } from '../helpers'
 
-const apiToken = env('AI_TOOLS_CF_EMAIL_API_TOKEN')
-const accountId = env('AI_TOOLS_CF_EMAIL_ACCOUNT_ID')
+const cf = cloudflareAuthFromEnv()
 const from = env('AI_TOOLS_CF_EMAIL_FROM')
 const to = env('AI_TOOLS_CF_EMAIL_TO')
-const run = apiToken && accountId && from && to ? describe : describe.skip
+const run = cf && from && to ? describe : describe.skip
 
 run('live vendor cloudflare-email', () => {
 	test('send text email', async () => {
 		const client = new CloudflareEmailClient({
-			api_token: apiToken!,
-			account_id: accountId!
+			api_token: cf!.api_token,
+			account_id: cf!.account_id
 		})
 		const result = await client.send({
 			from: from!,
@@ -26,8 +25,8 @@ run('live vendor cloudflare-email', () => {
 
 	test('sendBatch two messages', async () => {
 		const client = new CloudflareEmailClient({
-			api_token: apiToken!,
-			account_id: accountId!
+			api_token: cf!.api_token,
+			account_id: cf!.account_id
 		})
 		const result = await client.sendBatch({
 			messages: [

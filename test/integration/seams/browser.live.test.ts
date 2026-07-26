@@ -1,18 +1,23 @@
 import { describe, expect, test } from 'bun:test'
 
 import { BrowserClient } from '../../../src/modules/browser'
-import { awsCredentialsFromEnv, env } from '../env'
+import {
+	awsCredentialsFromEnv,
+	browserNavigateUrlFromEnv,
+	browserSkipNavigateFromEnv,
+	cloudflareAuthFromEnv,
+	env
+} from '../env'
 import { cdpNavigate } from '../helpers/cdp-navigate'
 
-const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_BEDROCK_AGENTCORE_REGION' })
-const browserId = env('AI_TOOLS_BEDROCK_AGENTCORE_BROWSER_ID')
-const navigateUrl = env('AI_TOOLS_BEDROCK_BROWSER_NAVIGATE_URL') ?? 'https://example.com'
-const skipNavigate = env('AI_TOOLS_BEDROCK_BROWSER_SKIP_NAVIGATE') === '1'
+const aws = awsCredentialsFromEnv()
+const browserId = env('AI_TOOLS_AWS_BROWSER_ID')
+const navigateUrl = browserNavigateUrlFromEnv()
+const skipNavigate = browserSkipNavigateFromEnv()
 const runBedrock = aws ? describe : describe.skip
 
-const cloudflareAccountId = env('AI_TOOLS_CF_BROWSER_ACCOUNT_ID') ?? env('AI_TOOLS_CF_EMAIL_ACCOUNT_ID')
-const cloudflareApiToken = env('AI_TOOLS_CF_BROWSER_API_TOKEN')
-const runCloudflare = cloudflareAccountId && cloudflareApiToken ? describe : describe.skip
+const cf = cloudflareAuthFromEnv()
+const runCloudflare = cf ? describe : describe.skip
 
 runBedrock('live seam browser bedrock-agentcore provider', () => {
 	test(
@@ -55,8 +60,8 @@ runCloudflare('live seam browser cloudflare provider', () => {
 		async () => {
 			const client = BrowserClient.fromAuth({
 				provider: 'cloudflare',
-				account_id: cloudflareAccountId!,
-				api_token: cloudflareApiToken!
+				account_id: cf!.account_id,
+				api_token: cf!.api_token
 			})
 			const started = await client.startSession({ session_timeout_seconds: 300 })
 			expect(started.session_id.length).toBeGreaterThan(0)

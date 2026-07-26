@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
 import { QueueClient } from '../../../src/modules/queue'
-import { awsCredentialsFromEnv, env, uniqueId } from '../env'
+import { awsCredentialsFromEnv, sqsQueueUrlFromEnv, uniqueId } from '../env'
 
-const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_SQS_REGION' })
-const queueUrl = env('AI_TOOLS_SQS_QUEUE_URL')
+const aws = awsCredentialsFromEnv()
+const queueUrl = aws ? sqsQueueUrlFromEnv(aws) : undefined
 const run = aws && queueUrl ? describe : describe.skip
 
 run('live seam queue', () => {

@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
 import { BedrockAgentCoreBrowserClient } from '../../../src/vendors/bedrock-agentcore-browser'
-import { awsCredentialsFromEnv, env } from '../env'
+import { awsCredentialsFromEnv, browserNavigateUrlFromEnv, browserSkipNavigateFromEnv, env } from '../env'
 import { cdpNavigate } from '../helpers/cdp-navigate'
 
-const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_BEDROCK_AGENTCORE_REGION' })
-const browserId = env('AI_TOOLS_BEDROCK_AGENTCORE_BROWSER_ID')
+const aws = awsCredentialsFromEnv()
+const browserId = env('AI_TOOLS_AWS_BROWSER_ID')
 /** When set (default example.com), attempt CDP Page.navigate on automation stream. */
-const navigateUrl = env('AI_TOOLS_BEDROCK_BROWSER_NAVIGATE_URL') ?? 'https://example.com'
-const skipNavigate = env('AI_TOOLS_BEDROCK_BROWSER_SKIP_NAVIGATE') === '1'
+const navigateUrl = browserNavigateUrlFromEnv()
+const skipNavigate = browserSkipNavigateFromEnv()
 const run = aws ? describe : describe.skip
 
 function client() {

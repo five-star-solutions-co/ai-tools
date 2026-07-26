@@ -56,27 +56,12 @@ export async function writeIntegrationEnv(): Promise<void> {
 
 	const { apiUrl, dbUrl, serviceRole } = parseStatusEnv(text)
 
+	// Only dynamic secrets from supabase status. Local MinIO/Qdrant/Gotenberg
+	// defaults are hardcoded in test/integration/env.ts (IT constants).
 	envSetMany(envFile, [
 		['AI_TOOLS_SUPABASE_URL', apiUrl],
 		['AI_TOOLS_SUPABASE_API_KEY', serviceRole],
-		['AI_TOOLS_SUPABASE_SERVICE_ROLE_KEY', serviceRole],
-		['AI_TOOLS_MASTRA_DB_URL', dbUrl],
-		// Compose-local defaults
-		['AI_TOOLS_QDRANT_URL', 'http://127.0.0.1:6333'],
-		['AI_TOOLS_QDRANT_COLLECTION', 'ai_tools_it'],
-		['AI_TOOLS_QDRANT_RAG_COLLECTION', 'ai_tools_rag_it'],
-		['AI_TOOLS_S3_ACCESS_KEY_ID', 'aitools'],
-		['AI_TOOLS_S3_SECRET_ACCESS_KEY', 'aitools-secret'],
-		['AI_TOOLS_S3_REGION', 'us-east-1'],
-		['AI_TOOLS_S3_BUCKET', 'ai-tools-it'],
-		['AI_TOOLS_S3_ENDPOINT', 'http://127.0.0.1:9000'],
-		['AI_TOOLS_GOTENBERG_BASE_URL', 'http://127.0.0.1:3000'],
-		['AI_TOOLS_SUPABASE_STORAGE_BUCKET', 'ai-tools-it'],
-		['AI_TOOLS_SUPABASE_VECTOR_TABLE', 'ai_tools_vectors'],
-		['AI_TOOLS_SUPABASE_TABLE', 'ai_tools_vectors'],
-		['AI_TOOLS_SUPABASE_MATCH_RPC', 'match_vectors'],
-		['AI_TOOLS_SUPABASE_SCHEMA', 'public'],
-		['AI_TOOLS_MASTRA_SCHEMA', 'public']
+		['AI_TOOLS_MASTRA_DB_URL', dbUrl]
 	])
 
 	log('updated .env (values not printed)')

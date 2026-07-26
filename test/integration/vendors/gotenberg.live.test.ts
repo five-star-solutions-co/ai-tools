@@ -2,22 +2,17 @@ import { describe, expect, test } from 'bun:test'
 
 import { GotenbergClient } from '../../../src/vendors/gotenberg'
 import { S3Client } from '../../../src/vendors/s3'
-import { env, objectKey, s3AuthFromEnv } from '../helpers'
+import { gotenbergAuthHeadersFromEnv, gotenbergBaseUrlFromEnv, objectKey, s3AuthFromEnv } from '../helpers'
 
-const baseUrl = env('AI_TOOLS_GOTENBERG_BASE_URL')
-const storage = s3AuthFromEnv('AI_TOOLS_S3')
-const run = baseUrl && storage ? describe : describe.skip
+const baseUrl = gotenbergBaseUrlFromEnv()
+const storage = s3AuthFromEnv()
+const run = describe
 
 function auth() {
 	return {
-		gotenberg_base_url: baseUrl!,
-		storage: storage!,
-		...(env('AI_TOOLS_GOTENBERG_USER')
-			? {
-					gotenberg_api_username: env('AI_TOOLS_GOTENBERG_USER')!,
-					gotenberg_api_password: env('AI_TOOLS_GOTENBERG_PASSWORD')!
-				}
-			: {})
+		gotenberg_base_url: baseUrl,
+		storage,
+		...gotenbergAuthHeadersFromEnv()
 	}
 }
 
@@ -43,7 +38,7 @@ run('live vendor gotenberg', () => {
 	})
 
 	test('convert and convertBatch office-to-pdf', async () => {
-		const s3 = new S3Client(storage!)
+		const s3 = new S3Client(storage)
 		const sourceKey = objectKey('gotenberg-convert-src')
 		const rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Times New Roman;}}\\f0\\fs24 Hello convert.\\par}'
 		await s3.put({

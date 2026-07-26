@@ -11,35 +11,37 @@ import {
 	assertUpsertQueryDeleteRoundTrip,
 	ensureQdrantCollection,
 	env,
+	IT,
+	pineconeDimensionFromEnv,
+	qdrantApiKeyFromEnv,
+	qdrantCollectionFromEnv,
+	qdrantUrlFromEnv,
 	sampleVectorA,
+	supabaseAuthFromEnv,
 	uniqueId
 } from '../helpers'
 
-const qdrantUrl = env('AI_TOOLS_QDRANT_URL')
-const qdrantKey = env('AI_TOOLS_QDRANT_API_KEY')
-const qdrantCollection = env('AI_TOOLS_QDRANT_COLLECTION') ?? 'ai_tools_it'
+const qdrantUrl = qdrantUrlFromEnv()
+const qdrantKey = qdrantApiKeyFromEnv()
+const qdrantCollection = qdrantCollectionFromEnv()
 
 const pineconeKey = env('AI_TOOLS_PINECONE_API_KEY')
 const pineconeBase = env('AI_TOOLS_PINECONE_BASE_URL')
 const pineconeNs = env('AI_TOOLS_PINECONE_NAMESPACE')
-const pineconeDim = Number(env('AI_TOOLS_PINECONE_DIMENSION') ?? '512')
+const pineconeDim = pineconeDimensionFromEnv()
 
-const supabaseUrl = env('AI_TOOLS_SUPABASE_URL')
-const supabaseKey = env('AI_TOOLS_SUPABASE_API_KEY')
-const supabaseTable = env('AI_TOOLS_SUPABASE_VECTOR_TABLE') ?? 'ai_tools_vectors'
-
+const supabase = supabaseAuthFromEnv()
 const mastraDb = env('AI_TOOLS_MASTRA_DB_URL')
-const mastraSchema = env('AI_TOOLS_MASTRA_SCHEMA')
 
-const runQ = qdrantUrl ? describe : describe.skip
+const runQ = describe
 const runP = pineconeKey && pineconeBase ? describe : describe.skip
-const runS = supabaseUrl && supabaseKey ? describe : describe.skip
+const runS = supabase ? describe : describe.skip
 const runM = mastraDb ? describe : describe.skip
 
 runQ('live seam vector-store qdrant', () => {
 	test('round-trip', async () => {
 		await ensureQdrantCollection({
-			baseUrl: qdrantUrl!,
+			baseUrl: qdrantUrl,
 			apiKey: qdrantKey,
 			collection: qdrantCollection,
 			dimension: sampleVectorA.length
@@ -47,7 +49,7 @@ runQ('live seam vector-store qdrant', () => {
 		await assertUpsertQueryDeleteRoundTrip(
 			VectorStoreClient.fromAuth({
 				provider: 'qdrant',
-				base_url: qdrantUrl!,
+				base_url: qdrantUrl,
 				default_collection: qdrantCollection,
 				...(qdrantKey ? { api_key: qdrantKey } : {})
 			})
@@ -60,8 +62,7 @@ runP('live seam vector-store pinecone', () => {
 		'round-trip',
 		async () => {
 			const values: number[] = []
-			for (let i = 0; i < (Number.isFinite(pineconeDim) && pineconeDim > 0 ? pineconeDim : 512); i += 1)
-				values.push(0.1 + i * 0.01)
+			for (let i = 0; i < pineconeDim; i += 1) values.push(0.1 + i * 0.01)
 			await assertUpsertQueryDeleteRoundTrip(
 				VectorStoreClient.fromAuth({
 					provider: 'pinecone',
@@ -81,9 +82,11 @@ runS('live seam vector-store supabase', () => {
 		await assertUpsertQueryDeleteRoundTrip(
 			VectorStoreClient.fromAuth({
 				provider: 'supabase',
-				url: supabaseUrl!,
-				api_key: supabaseKey!,
-				default_collection: supabaseTable
+				url: supabase!.url,
+				api_key: supabase!.api_key,
+				default_collection: supabase!.table,
+				schema: supabase!.schema,
+				match_rpc: supabase!.match_rpc
 			}),
 			{ values: sampleVectorA }
 		)
@@ -102,7 +105,7 @@ runM('live seam vector-store mastra', () => {
 				default_index: indexName,
 				dimension: sampleVectorA.length,
 				auto_create_index: true,
-				...(mastraSchema ? { schema_name: mastraSchema } : {})
+				schema_name: IT.supabase.schema
 			}),
 			{ values: sampleVectorA }
 		)

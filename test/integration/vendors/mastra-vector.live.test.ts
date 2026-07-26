@@ -2,10 +2,9 @@ import { afterAll, describe, test } from 'bun:test'
 
 import { VectorStoreClient } from '../../../src/modules/vector-store'
 import { MastraVectorClient } from '../../../src/vendors/mastra-vector'
-import { assertLocalUrl, assertUpsertQueryDeleteRoundTrip, env, sampleVectorA, uniqueId } from '../helpers'
+import { assertLocalUrl, assertUpsertQueryDeleteRoundTrip, env, IT, sampleVectorA, uniqueId } from '../helpers'
 
 const dbUrl = env('AI_TOOLS_MASTRA_DB_URL')
-const schemaName = env('AI_TOOLS_MASTRA_SCHEMA')
 const run = dbUrl ? describe : describe.skip
 
 run('live vendor mastra-vector', () => {
@@ -27,7 +26,7 @@ run('live vendor mastra-vector', () => {
 			default_index: indexName,
 			dimension: sampleVectorA.length,
 			auto_create_index: true,
-			...(schemaName ? { schema_name: schemaName } : {})
+			schema_name: IT.supabase.schema
 		})
 		clients.push(client)
 		await assertUpsertQueryDeleteRoundTrip(client, { values: sampleVectorA })
@@ -44,7 +43,7 @@ run('live vendor mastra-vector', () => {
 			default_index: seamIndex,
 			dimension: sampleVectorA.length,
 			auto_create_index: true,
-			...(schemaName ? { schema_name: schemaName } : {})
+			schema_name: IT.supabase.schema
 		})
 		await assertUpsertQueryDeleteRoundTrip(client, { values: sampleVectorA })
 	})

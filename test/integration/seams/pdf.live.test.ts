@@ -6,7 +6,7 @@ import { S3Client } from '../../../src/vendors/s3'
 import { s3AuthFromEnv, uniqueId } from '../env'
 
 const storage = s3AuthFromEnv()
-const run = storage ? describe : describe.skip
+const run = describe
 
 run('live seam pdf', () => {
 	test(
@@ -16,7 +16,7 @@ run('live seam pdf', () => {
 			const sourceKey = `${prefix}/source.pdf`
 			const secondKey = `${prefix}/second.pdf`
 			const cleanup: string[] = [sourceKey, secondKey]
-			const s3 = new S3Client(storage!)
+			const s3 = new S3Client(storage)
 			const first = await PDFDocument.create()
 			first.addPage([300, 400])
 			first.addPage([301, 401])
@@ -24,7 +24,7 @@ run('live seam pdf', () => {
 			second.addPage([200, 200])
 			await s3.putBytes(sourceKey, await first.save(), 'application/pdf')
 			await s3.putBytes(secondKey, await second.save(), 'application/pdf')
-			const client = PdfClient.fromAuth({ storage: storage! })
+			const client = PdfClient.fromAuth({ storage })
 			const source = { store: 'object', key: sourceKey, media_type: 'application/pdf' } as const
 			const other = { store: 'object', key: secondKey, media_type: 'application/pdf' } as const
 

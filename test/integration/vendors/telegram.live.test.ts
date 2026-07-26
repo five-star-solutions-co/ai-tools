@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
 import { TelegramClient } from '../../../src/vendors/telegram'
-import { env } from '../env'
+import { env, IT } from '../env'
 
 const botToken = env('AI_TOOLS_TELEGRAM_BOT_TOKEN')
 const chatId = env('AI_TOOLS_TELEGRAM_CHAT_ID')
 /** HTTPS URL only. Temporarily replaces any existing webhook; always deleted after. */
 const webhookUrl = env('AI_TOOLS_TELEGRAM_WEBHOOK_URL')
-const webhookSecret = env('AI_TOOLS_TELEGRAM_WEBHOOK_SECRET') ?? 'ai-tools-it-webhook-secret'
+const webhookSecret = env('AI_TOOLS_TELEGRAM_WEBHOOK_SECRET') ?? IT.telegram.webhookSecret
 const run = botToken ? describe : describe.skip
 
 run('live vendor telegram', () => {

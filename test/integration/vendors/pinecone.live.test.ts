@@ -2,12 +2,12 @@ import { describe, test } from 'bun:test'
 
 import { VectorStoreClient } from '../../../src/modules/vector-store'
 import { PineconeClient } from '../../../src/vendors/pinecone'
-import { assertUpsertQueryDeleteRoundTrip, env } from '../helpers'
+import { assertUpsertQueryDeleteRoundTrip, env, pineconeDimensionFromEnv } from '../helpers'
 
 const apiKey = env('AI_TOOLS_PINECONE_API_KEY')
 const baseUrl = env('AI_TOOLS_PINECONE_BASE_URL')
 const namespace = env('AI_TOOLS_PINECONE_NAMESPACE')
-const dim = Number(env('AI_TOOLS_PINECONE_DIMENSION') ?? '512')
+const dim = pineconeDimensionFromEnv()
 const run = apiKey && baseUrl ? describe : describe.skip
 
 function sample(dimN: number): number[] {
@@ -17,7 +17,7 @@ function sample(dimN: number): number[] {
 }
 
 run('live vendor pinecone', () => {
-	const values = sample(Number.isFinite(dim) && dim > 0 ? dim : 512)
+	const values = sample(dim)
 
 	test(
 		'client round-trip',

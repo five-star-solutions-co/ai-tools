@@ -1,18 +1,17 @@
 import { describe, expect, test } from 'bun:test'
 
 import { EmailClient } from '../../../src/modules/email'
-import { env } from '../env'
+import { cloudflareAuthFromEnv, env } from '../helpers'
 
 const resendKey = env('AI_TOOLS_RESEND_API_KEY')
 const resendFrom = env('AI_TOOLS_RESEND_FROM')
 const resendTo = env('AI_TOOLS_RESEND_TO')
 const runResend = resendKey && resendFrom && resendTo ? describe : describe.skip
 
-const cfToken = env('AI_TOOLS_CF_EMAIL_API_TOKEN')
-const cfAccount = env('AI_TOOLS_CF_EMAIL_ACCOUNT_ID')
+const cf = cloudflareAuthFromEnv()
 const cfFrom = env('AI_TOOLS_CF_EMAIL_FROM')
 const cfTo = env('AI_TOOLS_CF_EMAIL_TO')
-const runCf = cfToken && cfAccount && cfFrom && cfTo ? describe : describe.skip
+const runCf = cf && cfFrom && cfTo ? describe : describe.skip
 
 runResend('live seam email (resend)', () => {
 	test('send + sendBatch', async () => {
@@ -53,8 +52,8 @@ runCf('live seam email (cloudflare)', () => {
 		async () => {
 			const client = EmailClient.fromAuth({
 				provider: 'cloudflare',
-				api_token: cfToken!,
-				account_id: cfAccount!
+				api_token: cf!.api_token,
+				account_id: cf!.account_id
 			})
 			const out = await client.send({
 				from: cfFrom!,
