@@ -85,6 +85,61 @@ describe('createTypingPulse', () => {
 		await Promise.resolve()
 		expect(sends).toHaveLength(2)
 
+		// New generation still schedules a renew sleep.
+		expect(sleepResolvers.length).toBeGreaterThanOrEqual(2)
+
+		pulse.stop()
+		sleepResolvers[1]?.()
+		await Promise.resolve()
+	})
+
+	test('stop during in-flight send still renews after restart', async () => {
+		const sends: number[] = []
+		const sleepResolvers: Array<() => void> = []
+		let releaseSend: (() => void) | undefined
+		let sendGate = 0
+
+		const pulse = createTypingPulse({
+			intervalMs: 100,
+			send: async () => {
+				const n = sendGate
+				sendGate += 1
+				if (n === 0) {
+					// First start: hold the initial send so stop races mid-flight.
+					await new Promise<void>((resolve) => {
+						releaseSend = resolve
+					})
+				}
+				sends.push(sends.length)
+			},
+			sleep: () =>
+				new Promise<void>((resolve) => {
+					sleepResolvers.push(resolve)
+				})
+		})
+
+		const firstStart = pulse.start()
+		// Let first send enter the gate.
+		await Promise.resolve()
+		await Promise.resolve()
+		expect(releaseSend).toBeDefined()
+
+		pulse.stop()
+		releaseSend?.()
+		await firstStart
+
+		await pulse.start()
+		// Initial (held) + restart initial.
+		expect(sends).toHaveLength(2)
+		// New generation must schedule renewal (not blocked by a stale non-null loop).
+		expect(sleepResolvers).toHaveLength(1)
+
+		sleepResolvers[0]?.()
+		await Promise.resolve()
+		await Promise.resolve()
+		await Promise.resolve()
+		expect(sends).toHaveLength(3)
+
 		pulse.stop()
 		sleepResolvers[1]?.()
 		await Promise.resolve()

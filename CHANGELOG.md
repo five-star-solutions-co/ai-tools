@@ -46,6 +46,17 @@ Public surfaces removed or renamed since **v1.6.1** — next release **must** be
 | `messaging-unsend` tool / seam `unsend` | Use `@harryy/ai-tools/imessage` `imessage-unsend` (or channel vendor) |
 | email-message attachment `mimeType` | Renamed to **`mime_type`** |
 | messaging media `source.store: 'host'` | Not accepted; use `store: 'object'` + nested `storage` auth |
+| `messaging-download-file` output | When `destination_key` is set, response may include **`artifact`** and omit `body_base64` — handle both shapes |
+| Messaging host client media | Prefer `MessagingClient.fromContext` / nested `storage` auth for ArtifactRef media; resolve storage before send |
+| Invalid base64 on media/bodies | Always `ToolError` code **`bad_input`** (never raw `DOMException`) |
+| Hooks + output validation | Hooks run in **`runTool`** only; output schema is parsed **once** (do not rely on double-transform) |
+| `mergeToolContext` / adapter `createContext` | Explicit `undefined` fields **do not** erase base `signal` / `fetch` / `auth` / `now` |
+| MCP `context` | Still accepts static `ToolContext` **or** factory `() => ToolContext \| Promise<…>` (and deprecated `contextFactory`) |
+
+### Notes (compat preserved)
+
+- Adapter `createContext` callbacks are typed with framework-specific structural types (`AiSdkExecuteOptions`, `MastraExecuteContext`, `TanStackExecuteContext`, `McpRequestExtra`) so hosts can read `toolCallId` / `requestId` / etc. type-safely.
+- S3 `get` / `getBytes({ maxBytes })` use HEAD + conditional Range GET (`If-Match` when etag is known) so oversized concurrent replacements are not fully buffered.
 
 ### Historical note
 

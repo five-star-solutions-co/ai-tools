@@ -145,6 +145,51 @@ describe('withHooks (H-03)', () => {
 		}
 		expect(events).toEqual(['internal'])
 	})
+
+	test('output schema transform applies once (hooks + runTool)', async () => {
+		let afterSeen: unknown
+		const transforming = defineTool({
+			id: 'echo-transform',
+			name: 'echoTransform',
+			description: 'Output transform once.',
+			inputSchema: z.object({ message: z.string() }),
+			outputSchema: z.string().transform((value) => `${value}!`),
+			execute: async (input) => input.message
+		})
+		const mod = defineModule({
+			id: 'transform',
+			title: 'Transform',
+			description: 'Single validation.',
+			auth: { type: 'none' },
+			tools: [transforming]
+		})
+		const hooked = withHooks(mod, {
+			afterExecute: async ({ output }) => {
+				afterSeen = output
+			}
+		})
+		const out = await runTool(hooked.tools[0]!, { message: 'x' })
+		expect(afterSeen).toBe('x!')
+		expect(out).toBe('x!')
+
+		// bindModule without hooks also validates once.
+		const bound = bindModule(mod, {})
+		const boundOut = await runTool(bound.tools[0]!, { message: 'x' })
+		expect(boundOut).toBe('x!')
+	})
+})
+
+describe('mergeToolContext (undefined overlay)', () => {
+	test('explicit undefined does not erase base signal', async () => {
+		const { mergeToolContext } = await import('../../src/core/context')
+		const ac = new AbortController()
+		const merged = mergeToolContext(
+			{ signal: ac.signal, extras: { keep: 1 } },
+			{ signal: undefined, fetch: undefined, extras: { org_id: 'x' } }
+		)
+		expect(merged.signal).toBe(ac.signal)
+		expect(merged.extras).toEqual({ keep: 1, org_id: 'x' })
+	})
 })
 
 describe('bindModule (H-01)', () => {

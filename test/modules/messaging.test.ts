@@ -472,6 +472,43 @@ describe('messaging seam', () => {
 		expect(threw).toBe(true)
 	})
 
+	test('sendMedia invalid base64 throws ToolError bad_input', async () => {
+		const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+		try {
+			await client.sendMedia({
+				chat_id: '99',
+				kind: 'document',
+				file_name: 'a.txt',
+				body_base64: '%%%not-base64%%%'
+			})
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error)).toBe(true)
+			if (isToolError(error)) {
+				expect(error.code).toBe('bad_input')
+				expect(error.message).toBe('Invalid base64 body')
+			}
+		}
+	})
+
+	test('sendMediaBatch invalid base64 reports bad_input not internal', async () => {
+		const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '123:ABC' })
+		const batch = await client.sendMediaBatch({
+			chat_id: '99',
+			items: [
+				{
+					kind: 'document',
+					file_name: 'a.txt',
+					body_base64: 'not!!!valid'
+				}
+			]
+		})
+		expect(batch.results.succeeded).toBe(0)
+		expect(batch.results.failed).toBe(1)
+		expect(batch.results.results[0]?.ok).toBe(false)
+		expect(batch.results.results[0]?.error?.code).toBe('bad_input')
+	})
+
 	test('sendMediaBatch keeps partial results when one ArtifactRef fails', async () => {
 		const restore = mockFetch((url, init) => {
 			const method = (init?.method ?? 'GET').toUpperCase()

@@ -5,16 +5,18 @@
 import type { ToolContext } from './types'
 
 /**
- * Merge overlay onto base. Overlay fields win; `extras` are shallow-merged.
- * Undefined overlay leaves base values when using spread of partials — callers
- * should only put defined keys on overlay when they intend to replace.
+ * Overlay wins for fields that are **present and defined**.
+ * `{ signal: undefined }` does not clear base.signal.
+ * `extras` are shallow-merged when overlay sets them.
  */
 export function mergeToolContext(base: ToolContext, overlay: ToolContext = {}): ToolContext {
-	const extras =
-		base.extras !== undefined || overlay.extras !== undefined ? { ...base.extras, ...overlay.extras } : undefined
-	return {
-		...base,
-		...overlay,
-		extras
+	const out: ToolContext = { ...base }
+	if (overlay.auth !== undefined) out.auth = overlay.auth
+	if (overlay.fetch !== undefined) out.fetch = overlay.fetch
+	if (overlay.signal !== undefined) out.signal = overlay.signal
+	if (overlay.now !== undefined) out.now = overlay.now
+	if (overlay.extras !== undefined) {
+		out.extras = { ...base.extras, ...overlay.extras }
 	}
+	return out
 }

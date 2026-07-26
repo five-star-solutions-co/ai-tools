@@ -9,14 +9,15 @@ import { runTool } from '../../core/with-auth'
 
 type TanStackServerTool = ReturnType<ReturnType<typeof toolDefinition>['server']>
 
-/** TanStack server-tool context shape hosts can narrow inside createContext. */
+/** Host-facing shape for TanStack server-tool context (`createContext`). */
 export type TanStackExecuteContext = {
 	abortSignal?: AbortSignal
+	requestId?: string
 } & Record<string, unknown>
 
 export type TanStackToolsOptions = {
 	context?: ToolContext
-	createContext?: (context: unknown) => ToolContext | Promise<ToolContext>
+	createContext?: (context: TanStackExecuteContext) => ToolContext | Promise<ToolContext>
 }
 
 /**
@@ -32,9 +33,28 @@ export function createTanStackTool(kernelTool: ToolDefinition, options: TanStack
 	})
 
 	return definition.server(async (args, context) => {
-		const ctx = await mergeAdapterToolContext(context, options, 'abortSignal')
+		const createContext = options.createContext
+		const ctx = await mergeAdapterToolContext(
+			context,
+			{
+				...(options.context && { context: options.context }),
+				...(createContext && {
+					createContext: (fw: unknown) => createContext(asTanStackContext(fw))
+				})
+			},
+			'abortSignal'
+		)
 		return runTool(kernelTool, args, ctx)
 	})
+}
+
+function asTanStackContext(value: unknown): TanStackExecuteContext {
+	if (value === null || typeof value !== 'object') return {}
+	const out: TanStackExecuteContext = {}
+	for (const key of Object.keys(value)) {
+		out[key] = Reflect.get(value, key)
+	}
+	return out
 }
 
 /** Project tools into a TanStack AI tool array (chat `tools` accepts arrays). */

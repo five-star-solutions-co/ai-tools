@@ -38,7 +38,15 @@ import type {
 	UploadPartOutput
 } from './contracts'
 import { DEFAULT_SIGNED_URL_SECONDS, MAX_MULTIPART_PART_BYTES, MAX_OBJECT_BYTES, s3AuthSchema } from './contracts'
-import { copySourceHeader, firstXmlText, listUrl, objectUrl, parseListResult, stripEtagQuotes } from './domain'
+import {
+	contentRangeTotal,
+	copySourceHeader,
+	firstXmlText,
+	listUrl,
+	objectUrl,
+	parseListResult,
+	stripEtagQuotes
+} from './domain'
 
 export type S3ClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -49,6 +57,18 @@ function objectNotFound(): never {
 function remapNotFound(error: unknown): never {
 	if (isToolError(error) && error.code === 'not_found') objectNotFound()
 	throw error
+}
+
+function tooLarge(maxBytes: number, contentLength: number, message: string): never {
+	throw new ToolError(message, {
+		code: 'too_large',
+		details: { max_bytes: maxBytes, content_length: contentLength }
+	})
+}
+
+/** Quote a stripped etag for conditional request headers. */
+function ifMatchValue(etag: string): string {
+	return etag.startsWith('"') ? etag : `"${etag}"`
 }
 
 export class S3Client {
@@ -107,33 +127,62 @@ export class S3Client {
 		return out
 	}
 
-	async get(input: GetObjectInput): Promise<GetObjectOutput> {
-		// Gate size from HEAD before buffering the body (review: do not materialize oversized objects).
-		const head = await this.head({ key: input.key })
+	/**
+	 * Bounded download: HEAD size gate, then conditional GET with If-Match (when etag
+	 * known) and a Range capped at maxBytes+1 so a concurrent grow cannot buffer past the limit.
+	 */
+	async #getBounded(
+		key: string,
+		maxBytes: number,
+		limitMessage: string
+	): Promise<{ bytes: Uint8Array; headers: Headers; head: HeadObjectOutput }> {
+		const head = await this.head({ key })
 		if (!head.exists) objectNotFound()
-		if (!isNil(head.content_length) && head.content_length > MAX_OBJECT_BYTES) {
-			throw new ToolError('Object exceeds 5 MiB download limit', {
-				code: 'too_large',
-				details: { max_bytes: MAX_OBJECT_BYTES, content_length: head.content_length }
-			})
+		if (!isNil(head.content_length) && head.content_length > maxBytes) {
+			tooLarge(maxBytes, head.content_length, limitMessage)
 		}
+
+		const headers: Record<string, string> = {
+			// Inclusive end index maxBytes → at most maxBytes+1 bytes (overflow probe).
+			Range: `bytes=0-${maxBytes}`
+		}
+		if (head.etag) headers['If-Match'] = ifMatchValue(head.etag)
+
 		let response
 		try {
-			response = await this.#aws.bytes('GET', objectUrl(this.#auth, input.key), { label: 'S3 get' })
+			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), {
+				label: 'S3 get',
+				headers
+			})
 		} catch (error) {
+			if (isToolError(error) && error.details?.['status'] === 412) {
+				throw new ToolError('Object changed during download', {
+					code: 'upstream',
+					details: { status: 412, key },
+					cause: error
+				})
+			}
 			remapNotFound(error)
 		}
+
 		const bodyBytes = response.bytes
-		if (bodyBytes.byteLength > MAX_OBJECT_BYTES) {
-			throw new ToolError('Object exceeds 5 MiB download limit', {
-				code: 'too_large',
-				details: { max_bytes: MAX_OBJECT_BYTES, content_length: bodyBytes.byteLength }
-			})
+		if (bodyBytes.byteLength > maxBytes) {
+			const rangeTotal = contentRangeTotal(response.headers.get('content-range'))
+			tooLarge(maxBytes, rangeTotal ?? bodyBytes.byteLength, limitMessage)
 		}
+		return { bytes: bodyBytes, headers: response.headers, head }
+	}
+
+	async get(input: GetObjectInput): Promise<GetObjectOutput> {
+		const {
+			bytes: bodyBytes,
+			headers: responseHeaders,
+			head
+		} = await this.#getBounded(input.key, MAX_OBJECT_BYTES, 'Object exceeds 5 MiB download limit')
 		const encoding = input.encoding ?? 'base64'
 		const body = encoding === 'utf8' ? bytesToUtf8(bodyBytes) : bytesToBase64(bodyBytes)
-		const contentType = response.headers.get('content-type') ?? head.content_type
-		const lengthHeader = response.headers.get('content-length')
+		const contentType = responseHeaders.get('content-type') ?? head.content_type
+		const lengthHeader = responseHeaders.get('content-length')
 		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : head.content_length
 		const out: GetObjectOutput = {
 			key: input.key,
@@ -141,7 +190,13 @@ export class S3Client {
 			encoding
 		}
 		if (isString(contentType)) out.content_type = contentType
-		out.content_length = isNil(contentLength) || !Number.isFinite(contentLength) ? bodyBytes.byteLength : contentLength
+		// Prefer HEAD length (full object); Range responses report partial Content-Length.
+		out.content_length =
+			!isNil(head.content_length) && Number.isFinite(head.content_length)
+				? head.content_length
+				: isNil(contentLength) || !Number.isFinite(contentLength)
+					? bodyBytes.byteLength
+					: contentLength
 		return out
 	}
 
@@ -151,6 +206,7 @@ export class S3Client {
 		try {
 			bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
 		} catch (error) {
+			if (isToolError(error) && error.code === 'bad_input') throw error
 			throw new ToolError('Invalid body encoding for putObject', {
 				code: 'bad_input',
 				cause: error
@@ -265,6 +321,7 @@ export class S3Client {
 		try {
 			bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
 		} catch (error) {
+			if (isToolError(error) && error.code === 'bad_input') throw error
 			throw new ToolError('Invalid body encoding for uploadPart', {
 				code: 'bad_input',
 				cause: error
@@ -337,31 +394,19 @@ export class S3Client {
 
 	/**
 	 * Host-facing raw download.
-	 * When `maxBytes` is set, HEAD enforces size before GET buffers the body.
+	 * When `maxBytes` is set: HEAD size gate + conditional Range GET so concurrent
+	 * object growth cannot buffer past the limit.
 	 */
 	async getBytes(key: string, options: { maxBytes?: number } = {}): Promise<Uint8Array> {
 		const maxBytes = options.maxBytes
 		if (maxBytes !== undefined) {
-			const head = await this.head({ key })
-			if (!head.exists) objectNotFound()
-			if (!isNil(head.content_length) && head.content_length > maxBytes) {
-				throw new ToolError('Object exceeds download limit', {
-					code: 'too_large',
-					details: { max_bytes: maxBytes, content_length: head.content_length }
-				})
-			}
+			const { bytes } = await this.#getBounded(key, maxBytes, 'Object exceeds download limit')
+			return bytes
 		}
 		try {
 			const { bytes } = await this.#aws.bytes('GET', objectUrl(this.#auth, key), { label: 'S3 get' })
-			if (maxBytes !== undefined && bytes.byteLength > maxBytes) {
-				throw new ToolError('Object exceeds download limit', {
-					code: 'too_large',
-					details: { max_bytes: maxBytes, content_length: bytes.byteLength }
-				})
-			}
 			return bytes
 		} catch (error) {
-			if (isToolError(error) && error.code === 'too_large') throw error
 			remapNotFound(error)
 		}
 	}

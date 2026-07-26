@@ -9,17 +9,17 @@ import { runTool } from '../../core/with-auth'
 
 type AiSdkTool = ReturnType<typeof dynamicTool>
 
-/**
- * AI SDK tool-call options shape hosts can narrow inside createContext.
- * @see https://sdk.vercel.ai/docs
- */
+/** Host-facing shape for AI SDK tool execute options (`createContext`). */
 export type AiSdkExecuteOptions = {
 	abortSignal?: AbortSignal
+	toolCallId?: string
+	messages?: unknown
+	experimental_context?: unknown
 } & Record<string, unknown>
 
 export type AiSdkToolsOptions = {
 	context?: ToolContext
-	createContext?: (options: unknown) => ToolContext | Promise<ToolContext>
+	createContext?: (options: AiSdkExecuteOptions) => ToolContext | Promise<ToolContext>
 }
 
 /**
@@ -31,10 +31,29 @@ export function createAiSdkTool(kernelTool: ToolDefinition, options: AiSdkToolsO
 		description: kernelTool.description,
 		inputSchema: kernelTool.inputSchema,
 		execute: async (input, execOptions) => {
-			const ctx = await mergeAdapterToolContext(execOptions, options, 'abortSignal')
+			const createContext = options.createContext
+			const ctx = await mergeAdapterToolContext(
+				execOptions,
+				{
+					...(options.context && { context: options.context }),
+					...(createContext && {
+						createContext: (fw: unknown) => createContext(asAiSdkOptions(fw))
+					})
+				},
+				'abortSignal'
+			)
 			return runTool(kernelTool, input, ctx)
 		}
 	})
+}
+
+function asAiSdkOptions(value: unknown): AiSdkExecuteOptions {
+	if (value === null || typeof value !== 'object') return {}
+	const out: AiSdkExecuteOptions = {}
+	for (const key of Object.keys(value)) {
+		out[key] = Reflect.get(value, key)
+	}
+	return out
 }
 
 /** Project tools into an AI SDK tools record keyed by tool id. */

@@ -137,9 +137,11 @@ export function createMcpTools(source: ToolSource): McpToolset {
 	}
 }
 
-/** MCP request extras (signal + any structural fields hosts need). */
+/** Host-facing MCP request extras (`createContext`). */
 export type McpRequestExtra = {
 	signal?: AbortSignal
+	requestId?: string
+	sessionId?: string
 } & Record<string, unknown>
 
 export type RegisterMcpToolsOptions = {
@@ -151,8 +153,9 @@ export type RegisterMcpToolsOptions = {
 	/**
 	 * Map MCP request extras into ToolContext.
 	 * Merged over framework defaults (`signal`) so cancel works unless explicitly overridden.
+	 * Explicit `undefined` fields do not erase the framework signal.
 	 */
-	createContext?: (extra: unknown) => ToolContext | Promise<ToolContext>
+	createContext?: (extra: McpRequestExtra) => ToolContext | Promise<ToolContext>
 	/** @deprecated Alias of factory form of `context`. */
 	contextFactory?: ToolContext | (() => ToolContext | Promise<ToolContext>)
 }
@@ -193,9 +196,15 @@ export function registerMcpTools(
 			},
 			async (args, extra) => {
 				const staticCtx = await resolveMcpStaticContext(options)
+				const createContext = options.createContext
 				const ctx = await mergeAdapterToolContext(
 					extra,
-					{ context: staticCtx, createContext: options.createContext },
+					{
+						context: staticCtx,
+						...(createContext && {
+							createContext: (fw: unknown) => createContext(asMcpExtra(fw))
+						})
+					},
 					'signal'
 				)
 				const value = await runTool(tool, args, ctx)
@@ -203,4 +212,13 @@ export function registerMcpTools(
 			}
 		)
 	}
+}
+
+function asMcpExtra(value: unknown): McpRequestExtra {
+	if (value === null || typeof value !== 'object') return {}
+	const out: McpRequestExtra = {}
+	for (const key of Object.keys(value)) {
+		out[key] = Reflect.get(value, key)
+	}
+	return out
 }

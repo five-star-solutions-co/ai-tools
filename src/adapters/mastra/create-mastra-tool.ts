@@ -9,18 +9,17 @@ import { runTool } from '../../core/with-auth'
 
 type MastraTool = ReturnType<typeof createTool>
 
-/**
- * Mastra execute context shape hosts can narrow inside createContext.
- * Framework may pass additional fields (toolCallId, requestContext, …).
- */
+/** Host-facing shape for Mastra tool execute context (`createContext`). */
 export type MastraExecuteContext = {
 	abortSignal?: AbortSignal
+	toolCallId?: string
+	requestContext?: unknown
+	tracingContext?: unknown
 } & Record<string, unknown>
 
 export type MastraToolsOptions = {
 	context?: ToolContext
-	/** Receives full framework execute context; merge defaults keep abortSignal unless overridden. */
-	createContext?: (context: unknown) => ToolContext | Promise<ToolContext>
+	createContext?: (context: MastraExecuteContext) => ToolContext | Promise<ToolContext>
 }
 
 /**
@@ -36,10 +35,29 @@ export function createMastraTool(tool: ToolDefinition, options: MastraToolsOptio
 		inputSchema: tool.inputSchema,
 		outputSchema: tool.outputSchema,
 		execute: async (input, context) => {
-			const ctx = await mergeAdapterToolContext(context, options, 'abortSignal')
+			const createContext = options.createContext
+			const ctx = await mergeAdapterToolContext(
+				context,
+				{
+					...(options.context && { context: options.context }),
+					...(createContext && {
+						createContext: (fw: unknown) => createContext(asMastraContext(fw))
+					})
+				},
+				'abortSignal'
+			)
 			return runTool(tool, input, ctx)
 		}
 	})
+}
+
+function asMastraContext(value: unknown): MastraExecuteContext {
+	if (value === null || typeof value !== 'object') return {}
+	const out: MastraExecuteContext = {}
+	for (const key of Object.keys(value)) {
+		out[key] = Reflect.get(value, key)
+	}
+	return out
 }
 
 /** Project tools into a Mastra tools record keyed by tool id. */

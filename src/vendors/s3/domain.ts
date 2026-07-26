@@ -60,6 +60,17 @@ export function stripEtagQuotes(etag: string): string {
 	return etag.replaceAll('"', '')
 }
 
+/** Parse `Content-Range: bytes start-end/total` → total object size when known. */
+export function contentRangeTotal(header: string | null): number | undefined {
+	if (header === null || header.length === 0) return undefined
+	const slash = header.lastIndexOf('/')
+	if (slash < 0) return undefined
+	const totalRaw = header.slice(slash + 1).trim()
+	if (totalRaw === '*' || totalRaw.length === 0) return undefined
+	const total = Number.parseInt(totalRaw, 10)
+	return Number.isFinite(total) ? total : undefined
+}
+
 function asArray(value: unknown): unknown[] {
 	if (value === undefined || value === null) return []
 	return isArray(value) ? value : [value]

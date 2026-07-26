@@ -245,18 +245,17 @@ export type TypingPulse = {
 
 /**
  * Renew chat-action (typing) while a turn is active.
- * Sends once immediately on start, then again only after each interval (no double pulse).
+ * Immediate pulse on start, then once per interval until stop.
+ * stop() bumps generation so in-flight work cannot restart a dead schedule.
  */
 export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 	const intervalMs = deps.intervalMs ?? DEFAULT_TYPING_INTERVAL_MS
 	const sleep = deps.sleep ?? sleepMs
 	let active = false
-	/** Bumped on every stop so a stale loop cannot observe a later start. */
 	let generation = 0
-	let loop: Promise<void> | null = null
-	let wakeSleep: (() => void) | undefined
+	let wake: (() => void) | undefined
 
-	const pulseOnce = async () => {
+	const pulse = async () => {
 		try {
 			await deps.send()
 		} catch {
@@ -264,26 +263,24 @@ export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 		}
 	}
 
-	/** Sleep that stop() can interrupt so the renew loop exits promptly. */
 	const waitInterval = () =>
 		new Promise<void>((resolve) => {
 			let settled = false
 			const done = () => {
 				if (settled) return
 				settled = true
-				if (wakeSleep === done) wakeSleep = undefined
+				if (wake === done) wake = undefined
 				resolve()
 			}
-			wakeSleep = done
+			wake = done
 			void sleep(intervalMs).then(done)
 		})
 
-	/** After the initial pulse: sleep, then send, repeat until stop or generation changes. */
-	const run = async (gen: number) => {
-		while (active && gen === generation) {
+	const renew = async (mine: number) => {
+		while (active && mine === generation) {
 			await waitInterval()
-			if (!active || gen !== generation) return
-			await pulseOnce()
+			if (!active || mine !== generation) return
+			await pulse()
 		}
 	}
 
@@ -291,19 +288,16 @@ export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 		start: async () => {
 			if (active) return
 			active = true
-			const gen = generation
-			await pulseOnce()
-			if (!active || gen !== generation) return
-			if (loop === null) {
-				loop = run(gen).finally(() => {
-					loop = null
-				})
-			}
+			const mine = generation
+			await pulse()
+			if (!active || mine !== generation) return
+			// Always schedule renew for this generation (do not gate on a shared loop handle).
+			void renew(mine)
 		},
 		stop: () => {
 			active = false
 			generation += 1
-			wakeSleep?.()
+			wake?.()
 		}
 	}
 }

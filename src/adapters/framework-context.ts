@@ -1,5 +1,5 @@
 /**
- * Shared adapter helpers: merge framework defaults without type assertions.
+ * Shared adapter helpers: framework signal + host createContext merge.
  */
 
 import { mergeToolContext } from '../core/context'
@@ -19,7 +19,10 @@ export function frameworkSignalContext(context: unknown, key: 'abortSignal' | 's
 
 /**
  * defaults (framework signal) ← static options.context ← createContext(framework).
- * Factory may override signal explicitly; omitting signal keeps cancellation.
+ * Explicit `undefined` from createContext does not erase base fields.
+ *
+ * `createContext` receives the raw framework bag (`unknown` here so peer SDK types
+ * do not fight exactOptionalPropertyTypes). Adapter option types narrow it for hosts.
  */
 export async function mergeAdapterToolContext(
 	frameworkContext: unknown,

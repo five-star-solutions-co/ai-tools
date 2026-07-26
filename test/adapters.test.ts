@@ -83,4 +83,29 @@ describe('adapters', () => {
 	test('kernel runTool still works for direct calls', () => {
 		expect(runTool(echoTool, { message: 'direct' })).resolves.toEqual({ message: 'direct' })
 	})
+
+	test('createContext is typed on adapter options (not unknown)', () => {
+		// Compile-time: createContext param is MastraExecuteContext, not unknown.
+		const tools = createMastraTools(echoModule, {
+			createContext: (context) => {
+				const id: string | undefined = context.toolCallId
+				const signal: AbortSignal | undefined = context.abortSignal
+				return { extras: { id: id ?? 'none', has_signal: signal !== undefined } }
+			}
+		})
+		expect(tools['echo-message']).toBeDefined()
+	})
+
+	test('createContext undefined signal does not erase framework abort', async () => {
+		const ac = new AbortController()
+		const { mergeAdapterToolContext } = await import('../src/adapters/framework-context')
+		const ctx = await mergeAdapterToolContext(
+			{ abortSignal: ac.signal },
+			{
+				createContext: () => ({ signal: undefined })
+			},
+			'abortSignal'
+		)
+		expect(ctx.signal).toBe(ac.signal)
+	})
 })

@@ -4,8 +4,8 @@
  */
 
 import { mergeToolContext } from './context'
+import { attachToolPipe, getToolPipe } from './hooks'
 import type { ToolHooks } from './hooks'
-import { invokeWithHooks } from './hooks'
 import { ToolError } from './errors'
 import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition } from './types'
 
@@ -40,11 +40,10 @@ export type BindModuleOptions<TAuth = unknown> = {
 	 */
 	resolveAuth?: (ctx: ToolContext) => TAuth | Promise<TAuth>
 	/**
-	 * Overlay host runtime fields onto the incoming context (merged, not replaced).
-	 * Returning `{ extras: { org_id } }` keeps signal/fetch from the adapter.
+	 * Overlay onto the incoming context (merged). Explicit `undefined` does not erase base fields.
 	 */
 	resolveContext?: (ctx: ToolContext) => ToolContext | Promise<ToolContext>
-	/** Optional execute hooks (same semantics as `withHooks`). */
+	/** Optional execute hooks (run by `runTool` after context bind). */
 	hooks?: ToolHooks
 }
 
@@ -56,16 +55,13 @@ async function resolveBoundContext<TAuth>(
 	const base = options.resolveContext
 		? mergeToolContext(incoming, await options.resolveContext(incoming))
 		: { ...incoming }
-	if (moduleAuth.type === 'none') {
-		return base
-	}
+	if (moduleAuth.type === 'none') return base
 	if (!options.resolveAuth) {
 		throw new ToolError('resolveAuth is required for modules that declare auth', {
 			code: 'bad_auth'
 		})
 	}
-	const raw = await options.resolveAuth(base)
-	const boundAuth = assertAuth(moduleAuth, raw)
+	const boundAuth = assertAuth(moduleAuth, await options.resolveAuth(base))
 	return withBoundAuth(base, boundAuth)
 }
 
@@ -75,37 +71,17 @@ export function bindTool<TInput, TOutput, TAuth = unknown>(
 	moduleAuth: AuthDefinition<TAuth>,
 	options: BindModuleOptions<TAuth>
 ): ToolDefinition<TInput, TOutput> {
-	const hooks = options.hooks
-	return {
-		...tool,
-		execute: async (input, ctx) => {
-			let boundCtx = ctx
-			try {
-				boundCtx = await resolveBoundContext(moduleAuth, ctx, options)
-			} catch (error) {
-				if (hooks?.onError) {
-					await hooks.onError({
-						tool: {
-							id: tool.id,
-							name: tool.name,
-							description: tool.description,
-							meta: tool.meta
-						},
-						input,
-						ctx,
-						error
-					})
-				}
-				throw error
-			}
-			return invokeWithHooks(tool, input, boundCtx, hooks)
-		}
-	}
+	const prev = getToolPipe(tool)
+	const hooks = options.hooks ?? prev?.hooks
+	return attachToolPipe(tool, {
+		run: prev?.run ?? tool.execute,
+		bindCtx: (ctx) => resolveBoundContext(moduleAuth, ctx, options),
+		...(hooks && { hooks })
+	})
 }
 
 /**
  * Bind a module so each tool resolves auth (and optional context) **per invocation**.
- * Model-facing schemas stay free of secrets; hosts supply `resolveAuth` from vault/session.
  */
 export function bindModule<TAuth>(
 	module: ModuleDefinition<TAuth>,

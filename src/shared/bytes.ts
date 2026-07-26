@@ -1,3 +1,5 @@
+import { ToolError } from '../core/errors'
+
 export function utf8ToBytes(text: string): Uint8Array {
 	return new TextEncoder().encode(text)
 }
@@ -14,8 +16,17 @@ export function bytesToBase64(bytes: Uint8Array): string {
 	return btoa(binary)
 }
 
+/**
+ * Decode base64. Invalid input throws `ToolError` with code `bad_input`
+ * (never a raw DOMException) so hosts and batch items see a stable contract.
+ */
 export function base64ToBytes(base64: string): Uint8Array {
-	const binary = atob(base64)
+	let binary: string
+	try {
+		binary = atob(base64)
+	} catch (error) {
+		throw new ToolError('Invalid base64 body', { code: 'bad_input', cause: error })
+	}
 	const out = new Uint8Array(binary.length)
 	for (let i = 0; i < binary.length; i += 1) {
 		out[i] = binary.charCodeAt(i)

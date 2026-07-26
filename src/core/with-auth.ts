@@ -1,5 +1,6 @@
+import { attachToolPipe, getToolPipe, toolRef } from './hooks'
 import { ToolError } from './errors'
-import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition } from './types'
+import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition, ToolMeta } from './types'
 
 function assertAuth<TAuth>(auth: AuthDefinition<TAuth>, value: unknown): TAuth | undefined {
 	if (auth.type === 'none') {
@@ -30,16 +31,17 @@ export function withAuthTool<TInput, TOutput>(
 	tool: ToolDefinition<TInput, TOutput>,
 	auth: unknown
 ): ToolDefinition<TInput, TOutput> {
-	return {
-		...tool,
-		execute: async (input, ctx) => tool.execute(input, withBoundAuth(ctx, auth))
-	}
+	const prev = getToolPipe(tool)
+	return attachToolPipe(tool, {
+		run: prev?.run ?? tool.execute,
+		bindCtx: (ctx) => withBoundAuth(ctx, auth),
+		...(prev?.hooks && { hooks: prev.hooks })
+	})
 }
 
 /**
  * Bind validated credentials into a module's tools.
  * Model-facing schemas never include auth; hosts call this before agent projection.
- * Returns the same ModuleDefinition shape (auth closed over in execute).
  */
 export function withAuth<TAuth>(module: ModuleDefinition<TAuth>, auth?: TAuth): ModuleDefinition<TAuth> {
 	if (module.auth.type !== 'none' && auth === undefined) {
@@ -50,14 +52,15 @@ export function withAuth<TAuth>(module: ModuleDefinition<TAuth>, auth?: TAuth): 
 
 	return {
 		...module,
-		tools: module.tools.map((tool) => ({
-			...tool,
-			execute: async (input, ctx) => tool.execute(input, withBoundAuth(ctx, boundAuth))
-		}))
+		tools: module.tools.map((tool) => withAuthTool(tool, boundAuth))
 	}
 }
 
 type RunnableTool<TInput, TOutput> = {
+	id?: string
+	name?: string
+	description?: string
+	meta?: ToolMeta
 	inputSchema: {
 		safeParse: (
 			value: unknown
@@ -71,30 +74,64 @@ type RunnableTool<TInput, TOutput> = {
 	execute: (input: unknown, ctx: ToolContext) => Promise<unknown>
 }
 
-/** Run a tool after validating input (and using already-bound auth when present). */
+const defaultMeta: ToolMeta = { runtime: 'both', sideEffect: 'read' }
+
+/**
+ * Canonical invocation: bindCtx → validate input → before → leaf execute → validate output → after.
+ * Output schema runs once.
+ */
 export async function runTool<TInput, TOutput>(
 	tool: RunnableTool<TInput, TOutput>,
 	input: TInput,
 	ctx: ToolContext = {}
 ): Promise<TOutput> {
+	const pipe = getToolPipe(tool)
+	const hooks = pipe?.hooks
+	const ref = toolRef({
+		id: tool.id ?? 'tool',
+		name: tool.name ?? 'tool',
+		description: tool.description ?? '',
+		meta: tool.meta ?? defaultMeta
+	})
+
 	const parsedInput = tool.inputSchema.safeParse(input)
 	if (!parsedInput.success) {
-		throw new ToolError('Invalid tool input', {
+		const error = new ToolError('Invalid tool input', {
 			code: 'bad_input',
 			details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
 		})
+		if (hooks?.onError) await hooks.onError({ tool: ref, input, ctx, error })
+		throw error
 	}
 
-	const output = await tool.execute(parsedInput.data, ctx)
-	const parsedOutput = tool.outputSchema.safeParse(output)
-	if (!parsedOutput.success) {
-		throw new ToolError('Tool returned invalid output', {
-			code: 'internal',
-			details: { issues: parsedOutput.error.issues.map((issue) => issue.message) }
-		})
+	let boundCtx = ctx
+	if (pipe?.bindCtx) {
+		try {
+			boundCtx = await pipe.bindCtx(ctx)
+		} catch (error) {
+			if (hooks?.onError) await hooks.onError({ tool: ref, input: parsedInput.data, ctx, error })
+			throw error
+		}
 	}
 
-	return parsedOutput.data
+	const event = { tool: ref, input: parsedInput.data, ctx: boundCtx }
+	const run = pipe?.run ?? tool.execute
+	try {
+		if (hooks?.beforeExecute) await hooks.beforeExecute(event)
+		const raw = await run(parsedInput.data, boundCtx)
+		const parsedOutput = tool.outputSchema.safeParse(raw)
+		if (!parsedOutput.success) {
+			throw new ToolError('Tool returned invalid output', {
+				code: 'internal',
+				details: { issues: parsedOutput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		if (hooks?.afterExecute) await hooks.afterExecute({ ...event, output: parsedOutput.data })
+		return parsedOutput.data
+	} catch (error) {
+		if (hooks?.onError) await hooks.onError({ ...event, error })
+		throw error
+	}
 }
 
 export function listTools(module: ModuleDefinition): readonly ToolDefinition[] {
