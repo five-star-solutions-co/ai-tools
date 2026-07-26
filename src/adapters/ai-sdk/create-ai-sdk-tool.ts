@@ -1,6 +1,7 @@
 import { dynamicTool } from 'ai'
 import { keyBy, mapValues } from 'es-toolkit'
 
+import { mergeAdapterToolContext } from '../framework-context'
 import { resolveTools } from '../../core/resolve-tools'
 import type { ToolContext, ToolDefinition, ToolSource } from '../../core/types'
 import { assertUniqueBy } from '../../core/unique'
@@ -8,28 +9,17 @@ import { runTool } from '../../core/with-auth'
 
 type AiSdkTool = ReturnType<typeof dynamicTool>
 
+/**
+ * AI SDK tool-call options shape hosts can narrow inside createContext.
+ * @see https://sdk.vercel.ai/docs
+ */
 export type AiSdkExecuteOptions = {
 	abortSignal?: AbortSignal
-}
+} & Record<string, unknown>
 
 export type AiSdkToolsOptions = {
 	context?: ToolContext
-	createContext?: (options: AiSdkExecuteOptions | undefined) => ToolContext | Promise<ToolContext>
-}
-
-async function toolContextFromAiSdk(
-	options: AiSdkExecuteOptions | undefined,
-	adapter: AiSdkToolsOptions
-): Promise<ToolContext> {
-	const base = adapter.context ?? {}
-	if (adapter.createContext) {
-		const fromFactory = await adapter.createContext(options)
-		return { ...base, ...fromFactory }
-	}
-	if (options?.abortSignal) {
-		return { ...base, signal: options.abortSignal }
-	}
-	return { ...base }
+	createContext?: (options: unknown) => ToolContext | Promise<ToolContext>
 }
 
 /**
@@ -41,7 +31,7 @@ export function createAiSdkTool(kernelTool: ToolDefinition, options: AiSdkToolsO
 		description: kernelTool.description,
 		inputSchema: kernelTool.inputSchema,
 		execute: async (input, execOptions) => {
-			const ctx = await toolContextFromAiSdk(execOptions, options)
+			const ctx = await mergeAdapterToolContext(execOptions, options, 'abortSignal')
 			return runTool(kernelTool, input, ctx)
 		}
 	})

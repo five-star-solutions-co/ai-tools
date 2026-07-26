@@ -11,6 +11,7 @@ import {
 	withAuth,
 	withHooks
 } from '../../src/core'
+import type { ToolContext } from '../../src/core'
 
 const authSchema = z.object({ api_key: z.string().min(1) })
 
@@ -109,6 +110,41 @@ describe('withHooks (H-03)', () => {
 			expect(events).toContain('boom-error')
 		}
 	})
+
+	test('onError sees invalid output; afterExecute does not run', async () => {
+		const events: string[] = []
+		const bad = defineTool({
+			id: 'echo-bad-out',
+			name: 'echoBadOut',
+			description: 'Returns invalid output for hook tests.',
+			inputSchema: z.object({}),
+			outputSchema: z.object({ ok: z.literal(true) }),
+			execute: async () => ({ ok: false })
+		})
+		const mod = defineModule({
+			id: 'bad-out',
+			title: 'Bad',
+			description: 'Invalid output.',
+			auth: { type: 'none' },
+			tools: [bad]
+		})
+		const hooked = withHooks(mod, {
+			afterExecute: async () => {
+				events.push('after')
+			},
+			onError: async ({ error }) => {
+				events.push(isToolError(error) ? error.code : 'err')
+			}
+		})
+		try {
+			await runTool(hooked.tools[0]!, {})
+			expect(true).toBe(false)
+		} catch (error) {
+			expect(isToolError(error)).toBe(true)
+			if (isToolError(error)) expect(error.code).toBe('internal')
+		}
+		expect(events).toEqual(['internal'])
+	})
 })
 
 describe('bindModule (H-01)', () => {
@@ -120,9 +156,8 @@ describe('bindModule (H-01)', () => {
 				const org = ctx.extras?.['org_id']
 				return { api_key: org === 'acme' ? 'acm-key' : 'oth-key' }
 			},
-			resolveContext: async (ctx) => ({
-				...ctx,
-				extras: { ...ctx.extras, resolved: true }
+			resolveContext: async () => ({
+				extras: { resolved: true }
 			})
 		})
 		const tool = bound.tools[0]!
@@ -140,6 +175,43 @@ describe('bindModule (H-01)', () => {
 		expect(b.key_prefix).toBe('oth')
 		expect(a.org).toBe('acme')
 		expect(authCalls).toBe(2)
+	})
+
+	test('resolveContext merges over incoming signal and extras', async () => {
+		const ac = new AbortController()
+		const seen: ToolContext[] = []
+		const client = bindModule(echoModule, {
+			resolveAuth: async () => ({ api_key: 'xyz' }),
+			resolveContext: async () => ({ extras: { org_id: 'from-resolve' } }),
+			hooks: {
+				beforeExecute: async ({ ctx }) => {
+					seen.push(ctx)
+				}
+			}
+		})
+		await runTool(client.tools[0]!, { message: 'm' }, { signal: ac.signal, extras: { keep: 1 } })
+		expect(seen[0]?.signal).toBe(ac.signal)
+		expect(seen[0]?.extras).toEqual({ keep: 1, org_id: 'from-resolve' })
+	})
+
+	test('onError sees resolveAuth failures', async () => {
+		const events: string[] = []
+		const bound = bindModule(echoModule, {
+			resolveAuth: async () => {
+				throw new Error('vault down')
+			},
+			hooks: {
+				onError: async () => {
+					events.push('auth-fail')
+				}
+			}
+		})
+		try {
+			await runTool(bound.tools[0]!, { message: 'x' })
+			expect(true).toBe(false)
+		} catch {
+			expect(events).toEqual(['auth-fail'])
+		}
 	})
 
 	test('requires resolveAuth when module has auth', () => {

@@ -36,9 +36,9 @@ const bound = bindModule(emailModule, {
     // host vault / DB — never on tool inputs
     return { provider: 'resend', api_key: await loadKey(orgId) }
   },
-  resolveContext: async (ctx) => ({
-    ...ctx,
-    // e.g. inject AbortSignal already on ctx from adapter createContext
+  resolveContext: async () => ({
+    // Merged over adapter context (signal/fetch preserved). Only set what you add:
+    extras: { /* org_id, … */ },
   }),
   hooks: {
     beforeExecute: async ({ tool, ctx }) => {

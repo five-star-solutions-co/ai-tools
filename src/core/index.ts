@@ -1,5 +1,6 @@
 export { bindModule, bindTool } from './bind'
 export type { BindModuleOptions } from './bind'
+export { mergeToolContext } from './context'
 export { assertContracts, validateModule, validateTool } from './contracts'
 export type { ContractIssue, ContractResult } from './contracts'
 export { toModuleCatalogEntry, toToolCatalogEntry } from './catalog'

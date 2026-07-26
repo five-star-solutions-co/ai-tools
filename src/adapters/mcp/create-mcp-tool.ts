@@ -1,6 +1,8 @@
 import { isFunction, isPlainObject, isString, keyBy, mapValues } from 'es-toolkit'
 import { toJSONSchema } from 'zod'
 
+import { mergeToolContext } from '../../core/context'
+import { mergeAdapterToolContext } from '../framework-context'
 import { resolveTools } from '../../core/resolve-tools'
 import type { ToolContext, ToolDefinition, ToolSideEffect, ToolSource } from '../../core/types'
 import { assertUniqueBy } from '../../core/unique'
@@ -135,19 +137,32 @@ export function createMcpTools(source: ToolSource): McpToolset {
 	}
 }
 
+/** MCP request extras (signal + any structural fields hosts need). */
+export type McpRequestExtra = {
+	signal?: AbortSignal
+} & Record<string, unknown>
+
 export type RegisterMcpToolsOptions = {
 	/**
-	 * Static base context merged on every call.
+	 * Static base context **or** async factory (back-compat with pre-H-02 `context: () => …`).
 	 * Prefer `withAuth` / `bindModule` before projection when credentials are fixed or dynamic.
 	 */
-	context?: ToolContext
+	context?: ToolContext | (() => ToolContext | Promise<ToolContext>)
 	/**
-	 * Map MCP request extras (e.g. AbortSignal) into ToolContext.
-	 * Default merges `extra.signal` when present.
+	 * Map MCP request extras into ToolContext.
+	 * Merged over framework defaults (`signal`) so cancel works unless explicitly overridden.
 	 */
-	createContext?: (extra: { signal?: AbortSignal }) => ToolContext | Promise<ToolContext>
-	/** @deprecated Prefer `context` + `createContext`. Still supported as static or factory. */
+	createContext?: (extra: unknown) => ToolContext | Promise<ToolContext>
+	/** @deprecated Alias of factory form of `context`. */
 	contextFactory?: ToolContext | (() => ToolContext | Promise<ToolContext>)
+}
+
+async function resolveMcpStaticContext(options: RegisterMcpToolsOptions): Promise<ToolContext> {
+	const fromDeprecated = options.contextFactory
+	const deprecatedBase: ToolContext = isFunction(fromDeprecated) ? await fromDeprecated() : (fromDeprecated ?? {})
+	const c = options.context
+	const fromContext: ToolContext = isFunction(c) ? await c() : (c ?? {})
+	return mergeToolContext(deprecatedBase, fromContext)
 }
 
 /**
@@ -177,15 +192,12 @@ export function registerMcpTools(
 				annotations: annotationsForTool(tool)
 			},
 			async (args, extra) => {
-				const legacy = options.contextFactory
-				const legacyBase: ToolContext = isFunction(legacy) ? await legacy() : (legacy ?? {})
-				const base: ToolContext = { ...legacyBase, ...options.context }
-				const fromFactory = options.createContext
-					? await options.createContext(extra)
-					: extra.signal
-						? { signal: extra.signal }
-						: {}
-				const ctx: ToolContext = { ...base, ...fromFactory }
+				const staticCtx = await resolveMcpStaticContext(options)
+				const ctx = await mergeAdapterToolContext(
+					extra,
+					{ context: staticCtx, createContext: options.createContext },
+					'signal'
+				)
 				const value = await runTool(tool, args, ctx)
 				return toCallResult(value)
 			}

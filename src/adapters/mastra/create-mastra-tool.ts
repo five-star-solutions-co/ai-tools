@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { keyBy, mapValues } from 'es-toolkit'
 
+import { mergeAdapterToolContext } from '../framework-context'
 import { resolveTools } from '../../core/resolve-tools'
 import type { ToolContext, ToolDefinition, ToolSource } from '../../core/types'
 import { assertUniqueBy } from '../../core/unique'
@@ -8,31 +9,18 @@ import { runTool } from '../../core/with-auth'
 
 type MastraTool = ReturnType<typeof createTool>
 
-/** Mastra execute second-arg subset used by this projector. */
+/**
+ * Mastra execute context shape hosts can narrow inside createContext.
+ * Framework may pass additional fields (toolCallId, requestContext, …).
+ */
 export type MastraExecuteContext = {
 	abortSignal?: AbortSignal
-}
+} & Record<string, unknown>
 
 export type MastraToolsOptions = {
-	/** Static base context merged on every call. */
 	context?: ToolContext
-	/** Map Mastra execute context into ToolContext (signal, extras, …). */
-	createContext?: (context: MastraExecuteContext | undefined) => ToolContext | Promise<ToolContext>
-}
-
-async function toolContextFromMastra(
-	context: MastraExecuteContext | undefined,
-	options: MastraToolsOptions
-): Promise<ToolContext> {
-	const base = options.context ?? {}
-	if (options.createContext) {
-		const fromFactory = await options.createContext(context)
-		return { ...base, ...fromFactory }
-	}
-	if (context?.abortSignal) {
-		return { ...base, signal: context.abortSignal }
-	}
-	return { ...base }
+	/** Receives full framework execute context; merge defaults keep abortSignal unless overridden. */
+	createContext?: (context: unknown) => ToolContext | Promise<ToolContext>
 }
 
 /**
@@ -48,7 +36,7 @@ export function createMastraTool(tool: ToolDefinition, options: MastraToolsOptio
 		inputSchema: tool.inputSchema,
 		outputSchema: tool.outputSchema,
 		execute: async (input, context) => {
-			const ctx = await toolContextFromMastra(context, options)
+			const ctx = await mergeAdapterToolContext(context, options, 'abortSignal')
 			return runTool(tool, input, ctx)
 		}
 	})

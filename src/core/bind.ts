@@ -3,7 +3,9 @@
  * Prefer `withAuth` when credentials are fixed for the process/request lifetime.
  */
 
+import { mergeToolContext } from './context'
 import type { ToolHooks } from './hooks'
+import { invokeWithHooks } from './hooks'
 import { ToolError } from './errors'
 import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition } from './types'
 
@@ -37,7 +39,10 @@ export type BindModuleOptions<TAuth = unknown> = {
 	 * Required when `module.auth.type !== 'none'`.
 	 */
 	resolveAuth?: (ctx: ToolContext) => TAuth | Promise<TAuth>
-	/** Merge host runtime context (signal, extras, fetch, …) before execute. */
+	/**
+	 * Overlay host runtime fields onto the incoming context (merged, not replaced).
+	 * Returning `{ extras: { org_id } }` keeps signal/fetch from the adapter.
+	 */
 	resolveContext?: (ctx: ToolContext) => ToolContext | Promise<ToolContext>
 	/** Optional execute hooks (same semantics as `withHooks`). */
 	hooks?: ToolHooks
@@ -48,7 +53,9 @@ async function resolveBoundContext<TAuth>(
 	incoming: ToolContext,
 	options: BindModuleOptions<TAuth>
 ): Promise<ToolContext> {
-	const base = options.resolveContext ? await options.resolveContext(incoming) : { ...incoming }
+	const base = options.resolveContext
+		? mergeToolContext(incoming, await options.resolveContext(incoming))
+		: { ...incoming }
 	if (moduleAuth.type === 'none') {
 		return base
 	}
@@ -72,26 +79,26 @@ export function bindTool<TInput, TOutput, TAuth = unknown>(
 	return {
 		...tool,
 		execute: async (input, ctx) => {
-			const boundCtx = await resolveBoundContext(moduleAuth, ctx, options)
-			const event = {
-				tool: {
-					id: tool.id,
-					name: tool.name,
-					description: tool.description,
-					meta: tool.meta
-				},
-				input,
-				ctx: boundCtx
-			}
-			if (hooks?.beforeExecute) await hooks.beforeExecute(event)
+			let boundCtx = ctx
 			try {
-				const output = await tool.execute(input, boundCtx)
-				if (hooks?.afterExecute) await hooks.afterExecute({ ...event, output })
-				return output
+				boundCtx = await resolveBoundContext(moduleAuth, ctx, options)
 			} catch (error) {
-				if (hooks?.onError) await hooks.onError({ ...event, error })
+				if (hooks?.onError) {
+					await hooks.onError({
+						tool: {
+							id: tool.id,
+							name: tool.name,
+							description: tool.description,
+							meta: tool.meta
+						},
+						input,
+						ctx,
+						error
+					})
+				}
 				throw error
 			}
+			return invokeWithHooks(tool, input, boundCtx, hooks)
 		}
 	}
 }

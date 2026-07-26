@@ -1,6 +1,7 @@
 import { toolDefinition } from '@tanstack/ai'
 import { keyBy } from 'es-toolkit'
 
+import { mergeAdapterToolContext } from '../framework-context'
 import { resolveTools } from '../../core/resolve-tools'
 import type { ToolContext, ToolDefinition, ToolSource } from '../../core/types'
 import { assertUniqueBy } from '../../core/unique'
@@ -8,28 +9,14 @@ import { runTool } from '../../core/with-auth'
 
 type TanStackServerTool = ReturnType<ReturnType<typeof toolDefinition>['server']>
 
+/** TanStack server-tool context shape hosts can narrow inside createContext. */
 export type TanStackExecuteContext = {
 	abortSignal?: AbortSignal
-}
+} & Record<string, unknown>
 
 export type TanStackToolsOptions = {
 	context?: ToolContext
-	createContext?: (context: TanStackExecuteContext | undefined) => ToolContext | Promise<ToolContext>
-}
-
-async function toolContextFromTanStack(
-	context: TanStackExecuteContext | undefined,
-	options: TanStackToolsOptions
-): Promise<ToolContext> {
-	const base = options.context ?? {}
-	if (options.createContext) {
-		const fromFactory = await options.createContext(context)
-		return { ...base, ...fromFactory }
-	}
-	if (context?.abortSignal) {
-		return { ...base, signal: context.abortSignal }
-	}
-	return { ...base }
+	createContext?: (context: unknown) => ToolContext | Promise<ToolContext>
 }
 
 /**
@@ -45,7 +32,7 @@ export function createTanStackTool(kernelTool: ToolDefinition, options: TanStack
 	})
 
 	return definition.server(async (args, context) => {
-		const ctx = await toolContextFromTanStack(context, options)
+		const ctx = await mergeAdapterToolContext(context, options, 'abortSignal')
 		return runTool(kernelTool, args, ctx)
 	})
 }

@@ -1,6 +1,7 @@
 import { keyBy, mapValues } from 'es-toolkit'
 import { toJSONSchema } from 'zod'
 
+import { mergeToolContext } from '../../core/context'
 import { resolveTools } from '../../core/resolve-tools'
 import type { ToolContext, ToolDefinition, ToolSource } from '../../core/types'
 import { assertUniqueBy } from '../../core/unique'
@@ -59,12 +60,11 @@ export function createCloudflareAiTools(
 	)
 
 	const resolveCtx = async (ctx: ToolContext | undefined): Promise<ToolContext> => {
-		const base: ToolContext = { ...options.context, ...ctx }
+		let next = mergeToolContext(options.context ?? {}, ctx ?? {})
 		if (options.createContext) {
-			const fromFactory = await options.createContext(ctx)
-			return { ...base, ...fromFactory }
+			next = mergeToolContext(next, await options.createContext(ctx))
 		}
-		return base
+		return next
 	}
 
 	const executors = mapValues(

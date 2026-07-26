@@ -35,14 +35,14 @@ Optional second argument on projectors (H-02):
 ```ts
 createMastraTools(bound, {
   context: { /* static */ },
-  createContext: (mastraCtx) => ({
-    signal: mastraCtx?.abortSignal,
+  // Merged over framework defaults — abortSignal kept unless you override `signal`
+  createContext: (_mastraCtx) => ({
     extras: { org_id: '…' },
   }),
 })
 ```
 
-Same shape on AI SDK, TanStack, Cloudflare; MCP `registerMcpTools` uses `context` + `createContext`.
+Same merge rules on AI SDK, TanStack, Cloudflare. MCP `registerMcpTools`: `context` may be a value **or** factory; `createContext` is additive.
 
 ## Framework pages
 
