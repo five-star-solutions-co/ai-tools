@@ -49,6 +49,14 @@
 			"types": "./dist/vendors/amazon-sp-api/index.d.ts",
 			"default": "./dist/vendors/amazon-sp-api/index.js"
 		},
+		"./bedrock-agentcore-browser": {
+			"types": "./dist/vendors/bedrock-agentcore-browser/index.d.ts",
+			"default": "./dist/vendors/bedrock-agentcore-browser/index.js"
+		},
+		"./bedrock-agentcore-code-interpreter": {
+			"types": "./dist/vendors/bedrock-agentcore-code-interpreter/index.d.ts",
+			"default": "./dist/vendors/bedrock-agentcore-code-interpreter/index.js"
+		},
 		"./cloudflare-browser": {
 			"types": "./dist/vendors/cloudflare-browser/index.d.ts",
 			"default": "./dist/vendors/cloudflare-browser/index.js"
@@ -80,6 +88,10 @@
 		"./email-message": {
 			"types": "./dist/modules/email-message/index.d.ts",
 			"default": "./dist/modules/email-message/index.js"
+		},
+		"./eventbridge-scheduler": {
+			"types": "./dist/vendors/eventbridge-scheduler/index.d.ts",
+			"default": "./dist/vendors/eventbridge-scheduler/index.js"
 		},
 		"./file-convert": {
 			"types": "./dist/modules/file-convert/index.d.ts",
@@ -128,6 +140,14 @@
 		"./s3": {
 			"types": "./dist/vendors/s3/index.d.ts",
 			"default": "./dist/vendors/s3/index.js"
+		},
+		"./scheduler": {
+			"types": "./dist/modules/scheduler/index.d.ts",
+			"default": "./dist/modules/scheduler/index.js"
+		},
+		"./skills": {
+			"types": "./dist/modules/skills/index.d.ts",
+			"default": "./dist/modules/skills/index.js"
 		},
 		"./slack": {
 			"types": "./dist/vendors/slack/index.d.ts",
@@ -196,19 +216,25 @@
 		"release:dry": "semantic-release --dry-run"
 	},
 	"dependencies": {
+		"@napi-rs/canvas": "0.1.70",
+		"@office-kit/docx": "0.1.1",
+		"@office-open/pptx": "0.10.13",
 		"aws4fetch": "1.0.20",
-		"docx": "9.5.1",
 		"es-toolkit": "1.49.0",
 		"exceljs": "4.4.0",
 		"fast-xml-parser": "5.10.1",
-		"jszip": "3.10.1",
+		"file-type": "22.0.1",
+		"html-to-text": "10.0.0",
+		"image-size": "2.0.2",
 		"mammoth": "1.9.1",
-		"mime": "4",
+		"mime": "4.1.0",
 		"mimetext": "3.0.28",
 		"ofetch": "1.5.1",
 		"p-map": "7.0.6",
 		"p-retry": "8.0.0",
+		"pdfjs-dist": "5.2.133",
 		"postal-mime": "2.7.5",
+		"pptx-automizer": "0.8.2",
 		"pptxgenjs": "3.12.0",
 		"unpdf": "1.0.6",
 		"zod": "4.4.3"
@@ -225,6 +251,7 @@
 		"@semantic-release/release-notes-generator": "14.1.1",
 		"@tanstack/ai": "0.42.0",
 		"@types/bun": "1.3.14",
+		"@types/html-to-text": "9.0.4",
 		"ai": "5.0.217",
 		"conventional-changelog-conventionalcommits": "10.2.1",
 		"lefthook": "2.1.10",

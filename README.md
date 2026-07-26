@@ -123,10 +123,12 @@ defineTool / defineModule
 | `@harryy/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
 | `@harryy/ai-tools/document-render` | multi-provider | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
 | `@harryy/ai-tools/file-convert` | gotenberg LO | `file-convert` (`office-to-pdf`), batch | [file-convert](./docs/modules/file-convert.md) |
-| `@harryy/ai-tools/document` | reader/builder | `document-read`, build text/docx/pptx/xlsx, edit spreadsheet | [document](./docs/modules/document.md) |
+| `@harryy/ai-tools/document` | reader/builder/editor | read common files with PDF page views; build text/docx/pptx/xlsx; edit text/docx/pptx/xlsx/csv | [document](./docs/modules/document.md) |
 | `@harryy/ai-tools/web-fetch` | host policy | `web-fetch-get`, `web-fetch-request` | [web-fetch](./docs/modules/web-fetch.md) |
 | `@harryy/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
 | `@harryy/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
+| `@harryy/ai-tools/skills` | host-bound catalog | `skills-list`, `skills-get`, `skills-search` | [skills](./docs/modules/skills.md) |
+| `@harryy/ai-tools/scheduler` | multi-provider | `scheduler-create` / update / get / list / delete / set-state | [scheduler](./docs/modules/scheduler.md) |
 
 ### Vendors (`vendors/`)
 
@@ -144,6 +146,9 @@ defineTool / defineModule
 | `@harryy/ai-tools/supabase-vector` | `supabase-vector-*` (pgvector/PostgREST) | [supabase-vector](./docs/vendors/supabase-vector.md) |
 | `@harryy/ai-tools/mastra-vector` | `mastra-vector-*` (PgVector, node) | [mastra-vector](./docs/vendors/mastra-vector.md) |
 | `@harryy/ai-tools/textract` | `textract-extract-text`, `-get-status`, `-extract-text-batch` | [textract](./docs/vendors/textract.md) |
+| `@harryy/ai-tools/eventbridge-scheduler` | create/update/get/list/delete/set-state (task_ref) | [eventbridge-scheduler](./docs/vendors/eventbridge-scheduler.md) |
+| `@harryy/ai-tools/bedrock-agentcore-code-interpreter` | session + execute + files | [bedrock-agentcore-code-interpreter](./docs/vendors/bedrock-agentcore-code-interpreter.md) |
+| `@harryy/ai-tools/bedrock-agentcore-browser` | start/stop/get session + stream endpoints | [bedrock-agentcore-browser](./docs/vendors/bedrock-agentcore-browser.md) |
 
 | `@harryy/ai-tools/gotenberg` | render PDF/screenshot + `office-to-pdf` convert | [gotenberg](./docs/vendors/gotenberg.md) |
 | `@harryy/ai-tools/cloudflare-browser` | `cloudflare-browser-render-pdf`, `-render-screenshot` | [cloudflare-browser](./docs/vendors/cloudflare-browser.md) |
@@ -183,6 +188,7 @@ Codegen owns `package.json` exports for packs under `src/modules|vendors/<key>/`
 ## Artifacts (extract · convert · render)
 
 - Objects are **S3 keys** (`ArtifactRef`), not base64 in the model. Spec: [artifacts-extract-convert](./docs/specs/artifacts-extract-convert.md).
+- **Read / build / edit:** native document, presentation, spreadsheet, text, PDF-page, and image-metadata work lives in [`document`](./docs/modules/document.md). Product lock: [document plane](./docs/specs/document-plane.md).
 - **Extract:** Amazon Textract (object must live in AWS S3 Textract can read).
 - **Convert (office→PDF):** self-host [Gotenberg](https://gotenberg.dev/) LibreOffice (`file-convert` path `office-to-pdf`).
 - **Render (HTML/URL):** Gotenberg Chromium or Cloudflare Browser Rendering → storage `ArtifactRef`.

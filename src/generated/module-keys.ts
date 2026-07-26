@@ -2,6 +2,8 @@
 /** Flat public export keys under src/{modules,vendors}. */
 export const moduleKeys = [
 	'amazon-sp-api',
+	'bedrock-agentcore-browser',
+	'bedrock-agentcore-code-interpreter',
 	'cloudflare-browser',
 	'cloudflare-email',
 	'content-type',
@@ -10,6 +12,7 @@ export const moduleKeys = [
 	'document-render',
 	'email',
 	'email-message',
+	'eventbridge-scheduler',
 	'file-convert',
 	'files',
 	'gotenberg',
@@ -22,6 +25,8 @@ export const moduleKeys = [
 	'rag',
 	'resend',
 	's3',
+	'scheduler',
+	'skills',
 	'slack',
 	'supabase-vector',
 	'teams',
@@ -46,6 +51,8 @@ export const moduleSeamKeys = [
 	'files',
 	'messaging',
 	'rag',
+	'scheduler',
+	'skills',
 	'vector-store',
 	'web-fetch'
 ] as const

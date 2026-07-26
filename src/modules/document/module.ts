@@ -7,7 +7,10 @@ import {
 	documentBuildPresentationInputSchema,
 	documentBuildSpreadsheetInputSchema,
 	documentBuildTextInputSchema,
+	documentEditDocumentInputSchema,
+	documentEditPresentationInputSchema,
 	documentEditSpreadsheetInputSchema,
+	documentEditTextInputSchema,
 	documentReadInputSchema,
 	documentReadOutputSchema
 } from './contracts'
@@ -19,11 +22,11 @@ export const documentReadTool = defineTool({
 	id: 'document-read',
 	name: 'readDocument',
 	description:
-		'Read a document into model-usable content: plain text, HTML when available, spreadsheet tables, or presentation slides. Source may be an object-store artifact, base64 bytes, or inline text. Supports txt, md, json, csv, html, pdf, docx, pptx, xlsx, and images (metadata only for images).',
+		'Read a document into model-usable text, HTML, tables, slides, page text, or image metadata. Request selected PDF page images when visual reasoning is useful. Supports txt, md, json, csv, html, pdf, docx, pptx, xlsx, and common images.',
 	inputSchema: documentReadInputSchema,
 	outputSchema: documentReadOutputSchema,
 	sideEffect: 'read',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => DocumentClient.fromContext(ctx).read(input)
 })
 
@@ -34,7 +37,7 @@ export const documentBuildTextTool = defineTool({
 	inputSchema: documentBuildTextInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => DocumentClient.fromContext(ctx).buildText(input)
 })
 
@@ -45,7 +48,7 @@ export const documentBuildSpreadsheetTool = defineTool({
 	inputSchema: documentBuildSpreadsheetInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => DocumentClient.fromContext(ctx).buildSpreadsheet(input)
 })
 
@@ -56,7 +59,7 @@ export const documentBuildDocumentTool = defineTool({
 	inputSchema: documentBuildDocumentInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => DocumentClient.fromContext(ctx).buildDocument(input)
 })
 
@@ -68,8 +71,43 @@ export const documentBuildPresentationTool = defineTool({
 	inputSchema: documentBuildPresentationInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => DocumentClient.fromContext(ctx).buildPresentation(input)
+})
+
+export const documentEditTextTool = defineTool({
+	id: 'document-edit-text',
+	name: 'editTextDocument',
+	description:
+		'Apply ordered exact-text replacements to an existing txt, md, json, or html document while preserving the rest of the file.',
+	inputSchema: documentEditTextInputSchema,
+	outputSchema: documentBuildOutputSchema,
+	sideEffect: 'write',
+	runtime: 'node',
+	execute: async (input, ctx) => DocumentClient.fromContext(ctx).editText(input)
+})
+
+export const documentEditDocumentTool = defineTool({
+	id: 'document-edit-document',
+	name: 'editDocument',
+	description:
+		'Apply ordered text replacements to an existing docx while preserving its package, layout, styles, media, headers, and footers.',
+	inputSchema: documentEditDocumentInputSchema,
+	outputSchema: documentBuildOutputSchema,
+	sideEffect: 'write',
+	runtime: 'node',
+	execute: async (input, ctx) => DocumentClient.fromContext(ctx).editDocument(input)
+})
+
+export const documentEditPresentationTool = defineTool({
+	id: 'document-edit-presentation',
+	name: 'editPresentation',
+	description: 'Replace text in pptx slide content while preserving layout, speaker notes, and media.',
+	inputSchema: documentEditPresentationInputSchema,
+	outputSchema: documentBuildOutputSchema,
+	sideEffect: 'write',
+	runtime: 'node',
+	execute: async (input, ctx) => DocumentClient.fromContext(ctx).editPresentation(input)
 })
 
 export const documentEditSpreadsheetTool = defineTool({
@@ -79,7 +117,7 @@ export const documentEditSpreadsheetTool = defineTool({
 	inputSchema: documentEditSpreadsheetInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => DocumentClient.fromContext(ctx).editSpreadsheet(input)
 })
 
@@ -87,8 +125,8 @@ export const documentModule = defineModule({
 	id: 'document',
 	title: 'Document',
 	description:
-		'Read documents into text/tables/slides, build text/docx/pptx/xlsx artifacts, and patch spreadsheets. HTML print PDF/PNG is document-render; office-to-PDF is file-convert.',
-	runtime: 'both',
+		'Read common documents, build native text/docx/pptx/xlsx artifacts, and edit existing text, documents, presentations, and spreadsheets. Browser print and format conversion remain separate capabilities.',
+	runtime: 'node',
 	auth: { type: 'custom', schema: documentAuthSchema },
 	tools: [
 		documentReadTool,
@@ -96,6 +134,9 @@ export const documentModule = defineModule({
 		documentBuildSpreadsheetTool,
 		documentBuildDocumentTool,
 		documentBuildPresentationTool,
+		documentEditTextTool,
+		documentEditDocumentTool,
+		documentEditPresentationTool,
 		documentEditSpreadsheetTool
 	]
 })
