@@ -132,6 +132,7 @@ src/modules/<capability>/
 | `document-extract` | textract | ArtifactRef text extract |
 | `document-render` | gotenberg, cloudflare-browser | HTML/URL → PDF / screenshot |
 | `file-convert` | gotenberg (LibreOffice) | Office → PDF only (not HTML print) |
+| `document` | none | Node reader, native builders, and format-specific edit tools |
 | `web-fetch` | host allowlist | Free-form allowlisted HTTP |
 | `email-message` | none | Email message parse/build |
 | `content-type` | none | MIME type ↔ extension |

@@ -34,7 +34,6 @@ export default defineConfig({
 		'modules/rag/index': 'src/modules/rag/index.ts',
 		'vendors/resend/index': 'src/vendors/resend/index.ts',
 		'vendors/s3/index': 'src/vendors/s3/index.ts',
-		'modules/scheduler/index': 'src/modules/scheduler/index.ts',
 		'modules/skills/index': 'src/modules/skills/index.ts',
 		'vendors/slack/index': 'src/vendors/slack/index.ts',
 		'vendors/supabase-vector/index': 'src/vendors/supabase-vector/index.ts',

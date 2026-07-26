@@ -25,7 +25,6 @@ export const moduleKeys = [
 	'rag',
 	'resend',
 	's3',
-	'scheduler',
 	'skills',
 	'slack',
 	'supabase-vector',
@@ -51,7 +50,6 @@ export const moduleSeamKeys = [
 	'files',
 	'messaging',
 	'rag',
-	'scheduler',
 	'skills',
 	'vector-store',
 	'web-fetch'

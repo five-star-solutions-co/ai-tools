@@ -128,7 +128,6 @@ defineTool / defineModule
 | `@harryy/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
 | `@harryy/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
 | `@harryy/ai-tools/skills` | host-bound catalog | `skills-list`, `skills-get`, `skills-search` | [skills](./docs/modules/skills.md) |
-| `@harryy/ai-tools/scheduler` | multi-provider | `scheduler-create` / update / get / list / delete / set-state | [scheduler](./docs/modules/scheduler.md) |
 
 ### Vendors (`vendors/`)
 
@@ -146,7 +145,7 @@ defineTool / defineModule
 | `@harryy/ai-tools/supabase-vector` | `supabase-vector-*` (pgvector/PostgREST) | [supabase-vector](./docs/vendors/supabase-vector.md) |
 | `@harryy/ai-tools/mastra-vector` | `mastra-vector-*` (PgVector, node) | [mastra-vector](./docs/vendors/mastra-vector.md) |
 | `@harryy/ai-tools/textract` | `textract-extract-text`, `-get-status`, `-extract-text-batch` | [textract](./docs/vendors/textract.md) |
-| `@harryy/ai-tools/eventbridge-scheduler` | create/update/get/list/delete/set-state (task_ref) | [eventbridge-scheduler](./docs/vendors/eventbridge-scheduler.md) |
+| `@harryy/ai-tools/eventbridge-scheduler` | create/update/get/list/delete (task_ref) | [eventbridge-scheduler](./docs/vendors/eventbridge-scheduler.md) |
 | `@harryy/ai-tools/bedrock-agentcore-code-interpreter` | session + execute + files | [bedrock-agentcore-code-interpreter](./docs/vendors/bedrock-agentcore-code-interpreter.md) |
 | `@harryy/ai-tools/bedrock-agentcore-browser` | start/stop/get session + stream endpoints | [bedrock-agentcore-browser](./docs/vendors/bedrock-agentcore-browser.md) |
 

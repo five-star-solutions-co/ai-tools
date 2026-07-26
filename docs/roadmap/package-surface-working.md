@@ -35,7 +35,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `r2` / `supabase-storage` | **Removed** | Cloudflare R2 REST + Supabase Storage packs deleted; use S3-compatible `s3` (R2 endpoint) when needed |
 | `document-extract` | Done | textract only |
 | `file-convert` | Done | gotenberg LibreOffice `office-to-pdf` |
-| `document` | Done | read (txt/md/json/csv/html/pdf/docx/pptx/xlsx/image) + build text/docx/pptx/xlsx + edit spreadsheet |
+| `document` | Done | read common files with PDF page text/images + build text/docx/pptx/xlsx + edit text/docx/pptx/xlsx/csv |
 | `web-fetch` | Done | allowlisted HttpService |
 | `mime` | **Removed** | Stub pack deleted; use `email-message` / `content-type` |
 | `content-type` | Done | pure type ↔ extension |
@@ -44,6 +44,11 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `document-render` | Done | gotenberg + cloudflare-browser |
 | `vector-store` / `rag` | Done | qdrant+pinecone+supabase+mastra; chunk/embed/retrieve |
 | `messaging` (thin multi-provider seam) | **Done** | Shared verbs; wraps telegram/slack/teams/imessage vendors |
+| `skills` | Done | host-bound catalog; list/get/search |
+| `scheduler` | Not started | Defer capability seam until a second backend shares the verbs |
+| `eventbridge-scheduler` | Done | vendor pack |
+| `bedrock-agentcore-code-interpreter` | Done | sessions + execute + files |
+| `bedrock-agentcore-browser` | Done | session lifecycle + stream endpoints (no faked click tools) |
 | `speech` / `pdf` / `image` / `browser` / `queue` / `webhook` / `crypto` / `calendar` | Not started | |
 | Codegen multi-lane | Done | discovers modules + vendors |
 | `vendors/telegram` | Done | full pack + live message + webhook helpers |

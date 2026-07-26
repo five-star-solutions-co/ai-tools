@@ -141,10 +141,6 @@
 			"types": "./dist/vendors/s3/index.d.ts",
 			"default": "./dist/vendors/s3/index.js"
 		},
-		"./scheduler": {
-			"types": "./dist/modules/scheduler/index.d.ts",
-			"default": "./dist/modules/scheduler/index.js"
-		},
 		"./skills": {
 			"types": "./dist/modules/skills/index.d.ts",
 			"default": "./dist/modules/skills/index.js"

@@ -15,6 +15,7 @@ Documentation hub. Root [README](../README.md) is the short entry point; this tr
 | [Changelog](../CHANGELOG.md) | Released notes |
 | [Repo review / gap backlog](./handoffs/repo-review-standards-and-gaps.md) | Standards dump + G-task backlog (not an architecture lock) |
 | [Working inventory](./roadmap/package-surface-working.md) | Delivery status board |
+| [Document plane](./specs/document-plane.md) | Locked reader, builder, edit, and explicit-converter product scope |
 
 **Authority when docs disagree:** `AGENTS.md` → shipped code + gold files → specs (`provider-seam`, http/aws) → pack docs → architecture + working roadmap.
 
@@ -43,12 +44,13 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/document-extract` | [document-extract](./modules/document-extract.md) — `textract` |
 | `@harryy/ai-tools/document-render` | [document-render](./modules/document-render.md) — `gotenberg`, `cloudflare-browser` |
 | `@harryy/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — Gotenberg `office-to-pdf` |
-| `@harryy/ai-tools/document` | [document](./modules/document.md) — read / build / edit spreadsheets |
+| `@harryy/ai-tools/document` | [document](./modules/document.md) — read / build / edit text, documents, presentations, and spreadsheets |
 | `@harryy/ai-tools/web-fetch` | [web-fetch](./modules/web-fetch.md) |
 | `@harryy/ai-tools/vector-store` | [vector-store](./modules/vector-store.md) — providers: `qdrant`, `pinecone`, `supabase`, `mastra` |
 | `@harryy/ai-tools/rag` | [rag](./modules/rag.md) — chunk + host embed route + nested vector-store |
 | `@harryy/ai-tools/email-message` | [email-message](./modules/email-message.md) — pure MIME |
 | `@harryy/ai-tools/content-type` | [content-type](./modules/content-type.md) — pure type ↔ extension |
+| `@harryy/ai-tools/skills` | [skills](./modules/skills.md) — portable skill catalog (list/get/search) |
 
 ## Vendors (`src/vendors/`)
 
@@ -69,6 +71,9 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/supabase-vector` | [supabase-vector](./vendors/supabase-vector.md) — pgvector |
 | `@harryy/ai-tools/mastra-vector` | [mastra-vector](./vendors/mastra-vector.md) — `@mastra/pg` PgVector |
 | `@harryy/ai-tools/textract` | [textract](./vendors/textract.md) |
+| `@harryy/ai-tools/eventbridge-scheduler` | [eventbridge-scheduler](./vendors/eventbridge-scheduler.md) |
+| `@harryy/ai-tools/bedrock-agentcore-code-interpreter` | [bedrock-agentcore-code-interpreter](./vendors/bedrock-agentcore-code-interpreter.md) |
+| `@harryy/ai-tools/bedrock-agentcore-browser` | [bedrock-agentcore-browser](./vendors/bedrock-agentcore-browser.md) |
 
 | `@harryy/ai-tools/gotenberg` | [gotenberg](./vendors/gotenberg.md) |
 | `@harryy/ai-tools/cloudflare-browser` | [cloudflare-browser](./vendors/cloudflare-browser.md) |
@@ -92,6 +97,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | [package-surface-architecture](./specs/package-surface-architecture.md) | modules vs vendors layout and import rules |
 | [host-integration-kernel](./specs/host-integration-kernel.md) | bind/context/hooks/catalog; not an agent brain |
 | [provider-seam](./specs/provider-seam.md) | Multi-provider capability modules |
+| [document-plane](./specs/document-plane.md) | Reader, builder, edit, and explicit-converter product lock |
 | [artifacts-extract-convert](./specs/artifacts-extract-convert.md) | ArtifactRef extract / convert / render |
 | [http-and-aws-services](./reference/http-and-aws-services.md) | Transport classes |
 | [package-surface-working](./roadmap/package-surface-working.md) | Delivery board (working) |

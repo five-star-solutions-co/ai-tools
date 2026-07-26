@@ -651,9 +651,9 @@ Full lock: [`docs/specs/host-integration-kernel.md`](../specs/host-integration-k
 | H-05 | Registry + catalog discovery | **Tabled.** Search/read over registered tools; prefer names `catalog-search-tools` / `catalog-read-tool` (not “meta tools”) |
 | H-06 | Public artifacts surface | `@harryy/ai-tools/artifacts` + bounded files reads (range/lines/create artifact) — related to G-04 |
 | H-07 | Task contracts | Package Zod + tools only; host supplies backend (no host DB/deploy code in package) |
-| H-08 | Scheduler + EventBridge provider | Model schedules task **refs**, not ARNs/IAM |
-| H-09 | Bedrock AgentCore packs | Code Interpreter / Browser as **vendors** when product wants AWS sandboxes |
-| H-10 | Skills defs (portable) | Instructions + required tool ids/tags; org assignment stays host |
+| H-08 | Scheduler + EventBridge provider | EventBridge vendor done; scheduler seam deferred until a second backend shares the verbs |
+| H-09 | Bedrock AgentCore packs | **Done** — `bedrock-agentcore-code-interpreter` + `bedrock-agentcore-browser` vendors |
+| H-10 | Skills defs (portable) | **Done** — `modules/skills` schemas + list/get/search over host-bound catalog |
 | H-11 | Host adoption | Loader: registry → bind → hooks → adapter; map legacy host tool ids → kebab ids |
 
 ### Prefer order when un-tabling host work

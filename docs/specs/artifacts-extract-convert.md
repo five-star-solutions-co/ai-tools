@@ -7,7 +7,7 @@ Package: `@harryy/ai-tools`
 
 - Keep **file bytes out of the LLM**. Tools pass **ArtifactRef** only.
 - **One path** for all sizes (no small/large tiers).
-- **Reuse** `s3-storage` concepts, `aws4fetch`, `ofetch` — no in-process Office/PDF stacks.
+- **Reuse** object-storage concepts and the package transport stack. Keep Office conversion and browser print out of the in-process `document` module; native read/build/edit libraries remain in `document`.
 - Extract via **AWS Textract**; convert via **self-hosted Gotenberg LibreOffice** (office → PDF). HTML print via **document-render** (Chromium / Cloudflare Browser).
 
 ## ArtifactRef
