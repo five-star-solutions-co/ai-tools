@@ -88,16 +88,22 @@ describe('s3', () => {
 					headers: { 'content-type': 'application/xml' }
 				})
 			}
+			if (req.method === 'HEAD' && req.url.includes('hello.txt')) {
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-type': 'text/plain', 'content-length': '5' }
+				})
+			}
 			if (req.method === 'GET' && req.url.includes('hello.txt')) {
 				return new Response('hello', {
 					status: 200,
 					headers: { 'content-type': 'text/plain', 'content-length': '5' }
 				})
 			}
-			if (req.method === 'GET' && req.url.includes('missing')) {
+			if ((req.method === 'HEAD' || req.method === 'GET') && req.url.includes('missing')) {
 				return new Response('nope', { status: 404 })
 			}
-			return new Response('unexpected', { status: 500 })
+			return new Response(`unexpected ${req.method}`, { status: 500 })
 		}) as typeof globalThis.fetch
 
 		try {

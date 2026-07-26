@@ -108,19 +108,20 @@ export class S3Client {
 	}
 
 	async get(input: GetObjectInput): Promise<GetObjectOutput> {
+		// Gate size from HEAD before buffering the body (review: do not materialize oversized objects).
+		const head = await this.head({ key: input.key })
+		if (!head.exists) objectNotFound()
+		if (!isNil(head.content_length) && head.content_length > MAX_OBJECT_BYTES) {
+			throw new ToolError('Object exceeds 5 MiB download limit', {
+				code: 'too_large',
+				details: { max_bytes: MAX_OBJECT_BYTES, content_length: head.content_length }
+			})
+		}
 		let response
 		try {
 			response = await this.#aws.bytes('GET', objectUrl(this.#auth, input.key), { label: 'S3 get' })
 		} catch (error) {
 			remapNotFound(error)
-		}
-		const lengthHeader = response.headers.get('content-length')
-		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : undefined
-		if (!isNil(contentLength) && Number.isFinite(contentLength) && contentLength > MAX_OBJECT_BYTES) {
-			throw new ToolError('Object exceeds 5 MiB download limit', {
-				code: 'too_large',
-				details: { max_bytes: MAX_OBJECT_BYTES, content_length: contentLength }
-			})
 		}
 		const bodyBytes = response.bytes
 		if (bodyBytes.byteLength > MAX_OBJECT_BYTES) {
@@ -131,7 +132,9 @@ export class S3Client {
 		}
 		const encoding = input.encoding ?? 'base64'
 		const body = encoding === 'utf8' ? bytesToUtf8(bodyBytes) : bytesToBase64(bodyBytes)
-		const contentType = response.headers.get('content-type')
+		const contentType = response.headers.get('content-type') ?? head.content_type
+		const lengthHeader = response.headers.get('content-length')
+		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : head.content_length
 		const out: GetObjectOutput = {
 			key: input.key,
 			body,
@@ -332,12 +335,33 @@ export class S3Client {
 		return { key: input.key, upload_id: input.upload_id, aborted: true }
 	}
 
-	/** Host-facing raw download (no size cap). */
-	async getBytes(key: string): Promise<Uint8Array> {
+	/**
+	 * Host-facing raw download.
+	 * When `maxBytes` is set, HEAD enforces size before GET buffers the body.
+	 */
+	async getBytes(key: string, options: { maxBytes?: number } = {}): Promise<Uint8Array> {
+		const maxBytes = options.maxBytes
+		if (maxBytes !== undefined) {
+			const head = await this.head({ key })
+			if (!head.exists) objectNotFound()
+			if (!isNil(head.content_length) && head.content_length > maxBytes) {
+				throw new ToolError('Object exceeds download limit', {
+					code: 'too_large',
+					details: { max_bytes: maxBytes, content_length: head.content_length }
+				})
+			}
+		}
 		try {
 			const { bytes } = await this.#aws.bytes('GET', objectUrl(this.#auth, key), { label: 'S3 get' })
+			if (maxBytes !== undefined && bytes.byteLength > maxBytes) {
+				throw new ToolError('Object exceeds download limit', {
+					code: 'too_large',
+					details: { max_bytes: maxBytes, content_length: bytes.byteLength }
+				})
+			}
 			return bytes
 		} catch (error) {
+			if (isToolError(error) && error.code === 'too_large') throw error
 			remapNotFound(error)
 		}
 	}

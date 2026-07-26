@@ -26,7 +26,12 @@ import type {
 	MessagingStopTypingInput
 } from './contracts'
 import { messagingAuthSchema } from './contracts'
-import { finalizeDownloadOutput, resolveSendMediaBatchInput, resolveSendMediaInput } from './domain'
+import {
+	finalizeDownloadOutput,
+	mediaMaxBytesForProvider,
+	resolveAndSendMediaBatch,
+	resolveSendMediaInput
+} from './domain'
 import { ImessageMessagingProvider } from './providers/imessage'
 import { SlackMessagingProvider } from './providers/slack'
 import { TeamsMessagingProvider } from './providers/teams'
@@ -61,19 +66,21 @@ function storageFor(auth: MessagingAuth, ctx: ToolContext): S3Client | undefined
 export class MessagingClient {
 	readonly #ops: MessagingOps
 	readonly #storage: S3Client | undefined
+	readonly #maxMediaBytes: number
 
-	constructor(ops: MessagingOps, storage?: S3Client) {
+	constructor(ops: MessagingOps, storage: S3Client | undefined, maxMediaBytes: number) {
 		this.#ops = ops
 		this.#storage = storage
+		this.#maxMediaBytes = maxMediaBytes
 	}
 
 	static fromContext(ctx: ToolContext): MessagingClient {
 		const auth = requireAuth(ctx, messagingAuthSchema)
-		return new MessagingClient(providerFor(auth, ctx), storageFor(auth, ctx))
+		return new MessagingClient(providerFor(auth, ctx), storageFor(auth, ctx), mediaMaxBytesForProvider(auth.provider))
 	}
 
 	static fromAuth(auth: MessagingAuth, ctx: ToolContext = {}): MessagingClient {
-		return new MessagingClient(providerFor(auth, ctx), storageFor(auth, ctx))
+		return new MessagingClient(providerFor(auth, ctx), storageFor(auth, ctx), mediaMaxBytesForProvider(auth.provider))
 	}
 
 	sendText(input: MessagingSendTextInput): Promise<MessagingMessageOutput> {
@@ -101,13 +108,14 @@ export class MessagingClient {
 	}
 
 	async sendMedia(input: MessagingSendMediaInput): Promise<MessagingMessageOutput> {
-		const resolved = await resolveSendMediaInput(input, this.#storage)
+		const resolved = await resolveSendMediaInput(input, this.#storage, this.#maxMediaBytes)
 		return this.#ops.sendMedia(resolved)
 	}
 
 	async sendMediaBatch(input: MessagingSendMediaBatchInput): Promise<MessagingSendMediaBatchOutput> {
-		const resolved = await resolveSendMediaBatchInput(input, this.#storage)
-		return this.#ops.sendMediaBatch(resolved)
+		return resolveAndSendMediaBatch(input, this.#storage, this.#maxMediaBytes, (resolved) =>
+			this.#ops.sendMediaBatch(resolved)
+		)
 	}
 
 	async downloadFile(input: MessagingDownloadFileInput): Promise<MessagingDownloadFileOutput> {

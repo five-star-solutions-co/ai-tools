@@ -251,6 +251,8 @@ export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 	const intervalMs = deps.intervalMs ?? DEFAULT_TYPING_INTERVAL_MS
 	const sleep = deps.sleep ?? sleepMs
 	let active = false
+	/** Bumped on every stop so a stale loop cannot observe a later start. */
+	let generation = 0
 	let loop: Promise<void> | null = null
 	let wakeSleep: (() => void) | undefined
 
@@ -276,11 +278,11 @@ export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 			void sleep(intervalMs).then(done)
 		})
 
-	/** After the initial pulse: sleep, then send, repeat until stop. */
-	const run = async () => {
-		while (active) {
+	/** After the initial pulse: sleep, then send, repeat until stop or generation changes. */
+	const run = async (gen: number) => {
+		while (active && gen === generation) {
 			await waitInterval()
-			if (!active) return
+			if (!active || gen !== generation) return
 			await pulseOnce()
 		}
 	}
@@ -289,16 +291,18 @@ export function createTypingPulse(deps: TypingPulseDeps): TypingPulse {
 		start: async () => {
 			if (active) return
 			active = true
+			const gen = generation
 			await pulseOnce()
-			if (!active) return
+			if (!active || gen !== generation) return
 			if (loop === null) {
-				loop = run().finally(() => {
+				loop = run(gen).finally(() => {
 					loop = null
 				})
 			}
 		},
 		stop: () => {
 			active = false
+			generation += 1
 			wakeSleep?.()
 		}
 	}

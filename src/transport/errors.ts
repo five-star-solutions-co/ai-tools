@@ -65,9 +65,34 @@ export function assertHttpStatusOk(
 	throwHttpStatus(label, status, retryAfterMsFromHeader(headers.get('retry-after')))
 }
 
+/** True if error or any nested `cause` is an AbortError (ofetch wraps abort in FetchError). */
+export function isAbortErrorChain(error: unknown): boolean {
+	let current: unknown = error
+	const seen = new Set<unknown>()
+	while (current !== undefined && current !== null && !seen.has(current)) {
+		seen.add(current)
+		if (isError(current) && (current.name === 'AbortError' || current.name === 'TimeoutError')) {
+			return true
+		}
+		if (isError(current) && 'cause' in current) {
+			current = current.cause
+			continue
+		}
+		break
+	}
+	return false
+}
+
 /** Map ofetch / AbortError / unknown network failures to ToolError. */
 export function mapTransportNetworkError(error: unknown, label: string): never {
 	if (error instanceof ToolError) throw error
+	if (isAbortErrorChain(error)) {
+		throw new ToolError(`${label} request was aborted`, {
+			code: 'timeout',
+			retryable: true,
+			cause: error
+		})
+	}
 	if (error instanceof FetchError) {
 		const status = error.statusCode ?? error.response?.status
 		if (isNumber(status) && Number.isFinite(status)) {
@@ -76,13 +101,6 @@ export function mapTransportNetworkError(error: unknown, label: string): never {
 		}
 		throw new ToolError(error.message || `${label} request failed`, {
 			code: 'upstream',
-			retryable: true,
-			cause: error
-		})
-	}
-	if (isError(error) && error.name === 'AbortError') {
-		throw new ToolError(`${label} request was aborted`, {
-			code: 'timeout',
 			retryable: true,
 			cause: error
 		})

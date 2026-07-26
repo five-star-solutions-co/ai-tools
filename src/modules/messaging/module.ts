@@ -50,7 +50,7 @@ export const messagingSendChatActionTool = defineTool({
 	id: 'messaging-send-chat-action',
 	name: 'messagingSendChatAction',
 	description:
-		'Show a chat action on the conversation (typing, upload_photo, upload_document, …). Optional reply_to_message_id anchors a thread when the channel uses thread-scoped status.',
+		'Show a chat action on the conversation when supported (typing, upload_photo, upload_document, …). Optional reply_to_message_id anchors a thread when the channel uses thread-scoped status.',
 	inputSchema: messagingSendChatActionInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'none',
@@ -65,7 +65,7 @@ export const messagingStopTypingTool = defineTool({
 	id: 'messaging-stop-typing',
 	name: 'messagingStopTyping',
 	description:
-		'Stop a typing or busy indicator on the conversation. Optional reply_to_message_id clears thread-scoped status when the channel uses it.',
+		'Stop a typing or busy indicator on the conversation when supported. Optional reply_to_message_id clears thread-scoped status when the channel uses it.',
 	inputSchema: messagingStopTypingInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'none',
@@ -80,7 +80,7 @@ export const messagingSetReactionTool = defineTool({
 	id: 'messaging-set-reaction',
 	name: 'messagingSetReaction',
 	description:
-		'Set an emoji reaction on a message. Returns optional message_id when the channel creates a separate reaction message — store it for clearReaction.',
+		'Set an emoji reaction on a message when supported. Returns optional message_id when the channel creates a separate reaction message — store it for clearReaction.',
 	inputSchema: messagingSetReactionInputSchema,
 	outputSchema: messagingReactionOutputSchema,
 	sideEffect: 'write',
@@ -92,7 +92,7 @@ export const messagingClearReactionTool = defineTool({
 	id: 'messaging-clear-reaction',
 	name: 'messagingClearReaction',
 	description:
-		'Clear a reaction on a message. Pass emoji when required. When setReaction returned a message_id, pass that id instead of the target message id.',
+		'Clear a reaction on a message when supported. Pass emoji when required. When setReaction returned a message_id, pass that id instead of the target message id.',
 	inputSchema: messagingClearReactionInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'write',
@@ -142,7 +142,7 @@ export const messagingDownloadFileTool = defineTool({
 export const messagingAnswerCallbackTool = defineTool({
 	id: 'messaging-answer-callback',
 	name: 'messagingAnswerCallback',
-	description: 'Acknowledge an inbound interactive callback (toast, alert, or response URL).',
+	description: 'Acknowledge an inbound interactive callback when supported (toast, alert, or response URL).',
 	inputSchema: messagingAnswerCallbackInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'write',
@@ -156,7 +156,7 @@ export const messagingAnswerCallbackTool = defineTool({
 export const messagingReadTool = defineTool({
 	id: 'messaging-read',
 	name: 'messagingRead',
-	description: 'Mark conversation messages as read up to message_id.',
+	description: 'Mark conversation messages as read up to message_id when supported.',
 	inputSchema: messagingReadInputSchema,
 	outputSchema: messagingOkOutputSchema,
 	sideEffect: 'write',

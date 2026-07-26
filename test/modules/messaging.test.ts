@@ -372,16 +372,23 @@ describe('messaging seam', () => {
 
 	test('sendMedia from ArtifactRef source loads object storage', async () => {
 		const restore = mockFetch((url, init) => {
-			if (url.includes('media.example') && (init?.method === 'GET' || !init?.method)) {
+			const method = (init?.method ?? 'GET').toUpperCase()
+			if (url.includes('media.example') && method === 'HEAD') {
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-length': '3', 'content-type': 'image/png' }
+				})
+			}
+			if (url.includes('media.example') && method === 'GET') {
 				return new Response(new Uint8Array([1, 2, 3]), {
 					status: 200,
-					headers: { 'content-type': 'image/png' }
+					headers: { 'content-type': 'image/png', 'content-length': '3' }
 				})
 			}
 			if (url.includes('sendDocument') || url.includes('sendPhoto')) {
 				return new Response(JSON.stringify({ ok: true, result: { message_id: 7 } }), { status: 200 })
 			}
-			return new Response(`unexpected ${url}`, { status: 500 })
+			return new Response(`unexpected ${method} ${url}`, { status: 500 })
 		})
 		try {
 			const client = MessagingClient.fromAuth({
@@ -463,6 +470,53 @@ describe('messaging seam', () => {
 			threw = true
 		}
 		expect(threw).toBe(true)
+	})
+
+	test('sendMediaBatch keeps partial results when one ArtifactRef fails', async () => {
+		const restore = mockFetch((url, init) => {
+			const method = (init?.method ?? 'GET').toUpperCase()
+			if (url.includes('media.example') && url.includes('good.bin') && method === 'HEAD') {
+				return new Response(null, { status: 200, headers: { 'content-length': '1' } })
+			}
+			if (url.includes('media.example') && url.includes('good.bin') && method === 'GET') {
+				return new Response(new Uint8Array([1]), { status: 200 })
+			}
+			if (url.includes('media.example') && url.includes('missing.bin') && method === 'HEAD') {
+				return new Response(null, { status: 404 })
+			}
+			if (url.includes('sendDocument') || url.includes('sendPhoto')) {
+				return new Response(JSON.stringify({ ok: true, result: { message_id: 42 } }), { status: 200 })
+			}
+			return new Response(`unexpected ${method} ${url}`, { status: 500 })
+		})
+		try {
+			const client = MessagingClient.fromAuth({
+				provider: 'telegram',
+				bot_token: '123:ABC',
+				storage: {
+					access_key_id: 'AKIAtest',
+					secret_access_key: 'secret',
+					region: 'us-east-1',
+					bucket: 'media',
+					endpoint: 'https://media.example'
+				}
+			})
+			const batch = await client.sendMediaBatch({
+				chat_id: '99',
+				items: [
+					{ kind: 'document', source: { store: 'object', key: 'good.bin', filename: 'g.bin' } },
+					{ kind: 'document', source: { store: 'object', key: 'missing.bin', filename: 'm.bin' } }
+				]
+			})
+			expect(batch.results.succeeded).toBe(1)
+			expect(batch.results.failed).toBe(1)
+			expect(batch.message_ids).toEqual(['42'])
+			expect(batch.results.results[0]?.ok).toBe(true)
+			expect(batch.results.results[1]?.ok).toBe(false)
+			expect(batch.results.results[1]?.error?.code).toBe('not_found')
+		} finally {
+			restore()
+		}
 	})
 
 	test('telegram sendMediaBatch uses sendMediaGroup for homogeneous 2+ photos', async () => {

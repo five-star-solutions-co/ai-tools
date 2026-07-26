@@ -1,6 +1,7 @@
 import { flatMap, isPlainObject, isString } from 'es-toolkit'
 import { toJSONSchema } from 'zod'
 
+import { moduleSeamKeys } from '../generated/module-keys'
 import type { ModuleDefinition, ToolDefinition } from './types'
 import { duplicatesBy } from './unique'
 
@@ -15,21 +16,8 @@ const FORBIDDEN_MODEL_COPY =
 const FORBIDDEN_SEAM_BRAND_COPY =
 	/\b(Telegram|Slack|iMessage|Resend|Cloudflare|Textract|Gotenberg|Pinecone|Qdrant|Supabase|WooCommerce|Katana|Amazon|Bot Framework|Microsoft Teams|Photon|Spectrum|Mastra|PgVector|OpenAI)\b|\bS3\b|\bR2\b/
 
-/** Module ids under `src/modules/` that are capability seams (not pure brand packs). */
-const SEAM_MODULE_IDS = new Set([
-	'content-type',
-	'document-extract',
-	'document-render',
-	'email',
-	'email-message',
-	'file-convert',
-	'files',
-	'messaging',
-	'mime',
-	'rag',
-	'vector-store',
-	'web-fetch'
-])
+/** Seam module ids from codegen (`src/modules/*` only — not hand-maintained). */
+const SEAM_MODULE_IDS = new Set<string>(moduleSeamKeys)
 
 const KEBAB_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
 

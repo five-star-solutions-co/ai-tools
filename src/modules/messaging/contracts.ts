@@ -4,7 +4,6 @@
 
 import { z } from 'zod'
 
-import { artifactRefSchema } from '../../shared/artifact'
 import { batchResultSchema } from '../../shared/batch'
 import { imessageAuthSchema } from '../../vendors/imessage'
 import { s3AuthSchema } from '../../vendors/s3'
@@ -144,6 +143,17 @@ export const messagingClearReactionInputSchema = z.object({
 	emoji: z.string().min(1).max(64).optional().describe('Emoji to clear when the channel requires a reaction name')
 })
 
+/** Messaging only resolves object-store artifacts (not host-mapped keys). */
+export const messagingObjectArtifactRefSchema = z.object({
+	store: z.literal('object').describe('Object storage owned by bound messaging storage auth'),
+	key: z.string().min(1).describe('Object key'),
+	media_type: z.string().min(1).optional().describe('MIME or format hint when known'),
+	filename: z.string().min(1).optional().describe('Original or display file name'),
+	byte_length: z.int().min(0).optional().describe('Size in bytes when known')
+})
+
+export type MessagingObjectArtifactRef = z.infer<typeof messagingObjectArtifactRefSchema>
+
 const messagingMediaBodyFields = {
 	kind: z.enum(['photo', 'document']).describe('Media kind'),
 	body_base64: z
@@ -151,9 +161,9 @@ const messagingMediaBodyFields = {
 		.min(1)
 		.optional()
 		.describe('File body as base64. Omit when source is set. Prefer source for large files.'),
-	source: artifactRefSchema
+	source: messagingObjectArtifactRefSchema
 		.optional()
-		.describe('Durable ArtifactRef (store object). Prefer for large files. Requires bound storage auth.'),
+		.describe('Object-store ArtifactRef (store must be object). Prefer for large files. Requires bound storage auth.'),
 	file_name: z
 		.string()
 		.min(1)
@@ -171,7 +181,7 @@ const messagingMediaBodyFields = {
 function refineMediaBody(
 	val: {
 		body_base64?: string | undefined
-		source?: z.infer<typeof artifactRefSchema> | undefined
+		source?: MessagingObjectArtifactRef | undefined
 		file_name?: string | undefined
 	},
 	ctx: z.RefinementCtx
@@ -249,7 +259,7 @@ export const messagingDownloadFileOutputSchema = z.object({
 	file_name: z.string(),
 	file_size: z.number().optional(),
 	body_base64: z.string().optional().describe('Downloaded file body as base64 when destination_key is omitted'),
-	artifact: artifactRefSchema.optional().describe('Object-store ArtifactRef when destination_key is set')
+	artifact: messagingObjectArtifactRefSchema.optional().describe('Object-store ArtifactRef when destination_key is set')
 })
 
 export const messagingAnswerCallbackInputSchema = z.object({

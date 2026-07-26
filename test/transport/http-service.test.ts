@@ -89,4 +89,22 @@ describe('HttpService', () => {
 			globalThis.fetch = original
 		}
 	})
+
+	test('maps FetchError wrapping AbortError to timeout', async () => {
+		const { FetchError } = await import('ofetch')
+		const { mapTransportNetworkError, isAbortErrorChain } = await import('../../src/transport/errors')
+		const abort = new Error('aborted')
+		abort.name = 'AbortError'
+		const wrapped = new FetchError('[GET] aborted')
+		// ofetch attaches cause on the error object
+		Object.assign(wrapped, { cause: abort })
+		expect(isAbortErrorChain(wrapped)).toBe(true)
+		try {
+			mapTransportNetworkError(wrapped, 'Example')
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error)).toBe(true)
+			if (isToolError(error)) expect(error.code).toBe('timeout')
+		}
+	})
 })

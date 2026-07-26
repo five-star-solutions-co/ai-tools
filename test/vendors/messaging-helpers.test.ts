@@ -54,4 +54,39 @@ describe('createTypingPulse', () => {
 		pulse.stop()
 		await Promise.resolve()
 	})
+
+	test('stop then immediate start does not double-pulse from the old loop', async () => {
+		const sends: number[] = []
+		const sleepResolvers: Array<() => void> = []
+
+		const pulse = createTypingPulse({
+			intervalMs: 100,
+			send: async () => {
+				sends.push(sends.length)
+			},
+			sleep: () =>
+				new Promise<void>((resolve) => {
+					sleepResolvers.push(resolve)
+				})
+		})
+
+		await pulse.start()
+		expect(sends).toHaveLength(1)
+		expect(sleepResolvers).toHaveLength(1)
+
+		pulse.stop()
+		await pulse.start()
+		// Initial + restart only (stale loop must not pulse after stop).
+		expect(sends).toHaveLength(2)
+
+		// Completing the interrupted wait must not fire a third send from the dead loop.
+		sleepResolvers[0]?.()
+		await Promise.resolve()
+		await Promise.resolve()
+		expect(sends).toHaveLength(2)
+
+		pulse.stop()
+		sleepResolvers[1]?.()
+		await Promise.resolve()
+	})
 })

@@ -33,6 +33,20 @@ Releases are cut by semantic-release from conventional commits. See [docs/versio
 
 Notes for the next cut (hand-maintained until semantic-release rewrites on release). Empty `## [1.x.x]` sections above are produced by release automation.
 
+### BREAKING CHANGE
+
+Public surfaces removed or renamed since **v1.6.1** — next release **must** be a **major** (use `BREAKING CHANGE` footer / `type!:` on the release commit).
+
+| Removed / changed | Migration |
+| --- | --- |
+| `@harryy/ai-tools/mime` | Use `@harryy/ai-tools/email-message` (parse/build) and/or `content-type` |
+| `@harryy/ai-tools/storage` | Use `@harryy/ai-tools/s3` (or nested S3 auth on `files` / messaging media) |
+| `@harryy/ai-tools/r2` | Use `s3` with R2 S3-compatible `endpoint` |
+| `@harryy/ai-tools/supabase-storage` | Use S3-compatible storage or host Supabase client |
+| `messaging-unsend` tool / seam `unsend` | Use `@harryy/ai-tools/imessage` `imessage-unsend` (or channel vendor) |
+| email-message attachment `mimeType` | Renamed to **`mime_type`** |
+| messaging media `source.store: 'host'` | Not accepted; use `store: 'object'` + nested `storage` auth |
+
 ### Historical note
 
 Early public notes under **0.0.1** below are archival. MIME parse/build is **`email-message`** (not a `mime` pack). Object store is **`s3`** (+ nested S3 on `files` / artifact media); there is no multi-provider `storage` seam or published `r2` / `supabase-storage` packs.

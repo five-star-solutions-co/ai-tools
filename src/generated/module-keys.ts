@@ -33,3 +33,20 @@ export const moduleKeys = [
 ] as const
 
 export type ModuleKey = (typeof moduleKeys)[number]
+
+/** Capability seams under src/modules (brand-neutral model copy). */
+export const moduleSeamKeys = [
+	'content-type',
+	'document-extract',
+	'document-render',
+	'email',
+	'email-message',
+	'file-convert',
+	'files',
+	'messaging',
+	'rag',
+	'vector-store',
+	'web-fetch'
+] as const
+
+export type ModuleSeamKey = (typeof moduleSeamKeys)[number]
