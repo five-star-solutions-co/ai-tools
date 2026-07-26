@@ -165,27 +165,8 @@ export type S3AuthFromEnv = {
 	session_token?: string
 }
 
-/**
- * Local MinIO auth — hardcoded compose defaults.
- * Optional env overrides only if all of ACCESS/SECRET/REGION/BUCKET are set.
- */
+/** Local MinIO — always compose defaults (never env). */
 export function s3AuthFromEnv(): S3AuthFromEnv {
-	const access_key_id = env('AI_TOOLS_S3_ACCESS_KEY_ID')
-	const secret_access_key = env('AI_TOOLS_S3_SECRET_ACCESS_KEY')
-	const region = env('AI_TOOLS_S3_REGION')
-	const bucket = env('AI_TOOLS_S3_BUCKET')
-	if (access_key_id && secret_access_key && region && bucket) {
-		const endpoint = env('AI_TOOLS_S3_ENDPOINT')
-		const session_token = env('AI_TOOLS_S3_SESSION_TOKEN')
-		return {
-			access_key_id,
-			secret_access_key,
-			region,
-			bucket,
-			...(endpoint ? { endpoint } : {}),
-			...(session_token ? { session_token } : {})
-		}
-	}
 	return { ...IT.minio }
 }
 
@@ -224,33 +205,29 @@ export function supabaseAuthFromEnv(): SupabaseAuthFromEnv | undefined {
 	}
 }
 
+/** Local Qdrant — always compose defaults (never env). */
 export function qdrantUrlFromEnv(): string {
-	return env('AI_TOOLS_QDRANT_URL') ?? IT.qdrant.url
+	return IT.qdrant.url
 }
 
 export function qdrantCollectionFromEnv(): string {
-	return env('AI_TOOLS_QDRANT_COLLECTION') ?? IT.qdrant.collection
+	return IT.qdrant.collection
 }
 
 export function qdrantApiKeyFromEnv(): string | undefined {
-	return env('AI_TOOLS_QDRANT_API_KEY')
+	return undefined
 }
 
+/** Local Gotenberg — always compose defaults (never env). */
 export function gotenbergBaseUrlFromEnv(): string {
-	return env('AI_TOOLS_GOTENBERG_BASE_URL') ?? IT.gotenberg.baseUrl
+	return IT.gotenberg.baseUrl
 }
 
-/** Optional basic-auth for Gotenberg (compose default: none). */
 export function gotenbergAuthHeadersFromEnv(): {
 	gotenberg_api_username?: string
 	gotenberg_api_password?: string
 } {
-	const user = env('AI_TOOLS_GOTENBERG_USER')
-	if (!user) return {}
-	return {
-		gotenberg_api_username: user,
-		gotenberg_api_password: env('AI_TOOLS_GOTENBERG_PASSWORD') ?? ''
-	}
+	return {}
 }
 
 export function browserNavigateUrlFromEnv(): string {
