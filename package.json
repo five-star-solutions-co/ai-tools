@@ -61,6 +61,14 @@
 			"types": "./dist/vendors/bedrock-agentcore-code-interpreter/index.d.ts",
 			"default": "./dist/vendors/bedrock-agentcore-code-interpreter/index.js"
 		},
+		"./browser": {
+			"types": "./dist/modules/browser/index.d.ts",
+			"default": "./dist/modules/browser/index.js"
+		},
+		"./calendar": {
+			"types": "./dist/modules/calendar/index.d.ts",
+			"default": "./dist/modules/calendar/index.js"
+		},
 		"./cloudflare-browser": {
 			"types": "./dist/vendors/cloudflare-browser/index.d.ts",
 			"default": "./dist/vendors/cloudflare-browser/index.js"
@@ -72,6 +80,10 @@
 		"./content-type": {
 			"types": "./dist/modules/content-type/index.d.ts",
 			"default": "./dist/modules/content-type/index.js"
+		},
+		"./crypto": {
+			"types": "./dist/modules/crypto/index.d.ts",
+			"default": "./dist/modules/crypto/index.js"
 		},
 		"./document": {
 			"types": "./dist/modules/document/index.d.ts",
@@ -109,6 +121,10 @@
 			"types": "./dist/vendors/gotenberg/index.d.ts",
 			"default": "./dist/vendors/gotenberg/index.js"
 		},
+		"./image": {
+			"types": "./dist/modules/image/index.d.ts",
+			"default": "./dist/modules/image/index.js"
+		},
 		"./imessage": {
 			"types": "./dist/vendors/imessage/index.d.ts",
 			"default": "./dist/vendors/imessage/index.js"
@@ -125,6 +141,10 @@
 			"types": "./dist/modules/messaging/index.d.ts",
 			"default": "./dist/modules/messaging/index.js"
 		},
+		"./pdf": {
+			"types": "./dist/modules/pdf/index.d.ts",
+			"default": "./dist/modules/pdf/index.js"
+		},
 		"./pinecone": {
 			"types": "./dist/vendors/pinecone/index.d.ts",
 			"default": "./dist/vendors/pinecone/index.js"
@@ -132,6 +152,10 @@
 		"./qdrant": {
 			"types": "./dist/vendors/qdrant/index.d.ts",
 			"default": "./dist/vendors/qdrant/index.js"
+		},
+		"./queue": {
+			"types": "./dist/modules/queue/index.d.ts",
+			"default": "./dist/modules/queue/index.js"
 		},
 		"./rag": {
 			"types": "./dist/modules/rag/index.d.ts",
@@ -156,6 +180,10 @@
 		"./slack": {
 			"types": "./dist/vendors/slack/index.d.ts",
 			"default": "./dist/vendors/slack/index.js"
+		},
+		"./sqs": {
+			"types": "./dist/vendors/sqs/index.d.ts",
+			"default": "./dist/vendors/sqs/index.js"
 		},
 		"./supabase-vector": {
 			"types": "./dist/vendors/supabase-vector/index.d.ts",
@@ -233,6 +261,7 @@
 		"fast-xml-parser": "5.10.1",
 		"file-type": "22.0.1",
 		"html-to-text": "10.0.0",
+		"ical.js": "2.2.1",
 		"image-size": "2.0.2",
 		"mammoth": "1.9.1",
 		"mime": "4.1.0",
@@ -240,10 +269,12 @@
 		"ofetch": "1.5.1",
 		"p-map": "7.0.6",
 		"p-retry": "8.0.0",
+		"pdf-lib": "1.17.1",
 		"pdfjs-dist": "5.2.133",
 		"postal-mime": "2.7.5",
 		"pptx-automizer": "0.8.2",
 		"pptxgenjs": "3.12.0",
+		"sharp": "0.35.3",
 		"unpdf": "1.0.6",
 		"zod": "4.4.3"
 	},
