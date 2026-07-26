@@ -26,7 +26,6 @@ export const moduleKeys = [
 	'teams',
 	'telegram',
 	'textract',
-	'transmute',
 	'vector-store',
 	'web-fetch',
 	'woocommerce'

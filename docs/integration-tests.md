@@ -55,7 +55,7 @@ Migrations under `supabase/migrations/` create `ai_tools_vectors`, `match_vector
 
 **Local (compose + supabase):** qdrant, minio/s3, gotenberg, supabase storage/vector, mastra-vector (same Postgres).
 
-**Cloud / external keys still needed:** Resend, CF email/browser, Telegram, Slack, Teams, iMessage proxy, Pinecone, Woo, Katana, Amazon, Transmute, Textract, embed models.
+**Cloud / external keys still needed:** Resend, CF email/browser, Telegram, Slack, Teams, iMessage proxy, Pinecone, Woo, Katana, Amazon, Textract, embed models.
 
 ---
 
@@ -129,7 +129,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/signed URL/multipart |
 | gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot |
 | cloudflare-browser | CF browser token + S3 | renderPdf + renderScreenshot |
-| transmute | base URL + token + S3 | convert + convertBatch |
+
 | textract | `TEXTRACT_*` only (no MinIO fallback) | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
 | **katana** | `KATANA_API_KEY` | **read-only** list/get all entity surfaces + inventory |
@@ -150,7 +150,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | files | S3 | list/search/stat/put/get/delete/copy/mkdir/move/multipart |
 | messaging | TG / Slack / iMessage / Teams when env set | send/edit/chatAction/stopTyping/setReaction/clearReaction/sendMedia/sendMediaBatch; Telegram also downloadFile; iMessage reaction clear + outbound read **400** + inbound read (`IMESSAGE_INBOUND_MESSAGE_ID`); TG/Slack/Teams `read` intentional no-op. Unsend is **not** on the seam (vendor `imessage` only). Not covered: interactive `answerCallback` (except iMessage pure no-op); Slack/Teams/iMessage `downloadFile` |
 | document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot |
-| file-convert | Transmute + S3 | convert |
+| file-convert | Gotenberg + S3 | office-to-pdf |
 | document-extract | Textract | extractText |
 | vector-store | any vector backend | provider matrix |
 | rag | embed + vector backend | ingest/retrieve/delete (qdrant uses `AI_TOOLS_QDRANT_RAG_COLLECTION` default `ai_tools_rag_it`) |

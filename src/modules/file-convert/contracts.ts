@@ -2,27 +2,27 @@ import { z } from 'zod'
 
 import { batchResultSchema } from '../../shared/batch'
 import {
-	transmuteAuthSchema,
-	transmuteConvertBatchInputSchema,
-	transmuteConvertInputSchema,
-	transmuteConvertOutputSchema
-} from '../../vendors/transmute'
+	gotenbergAuthSchema,
+	gotenbergConvertBatchInputSchema,
+	gotenbergConvertInputSchema,
+	gotenbergConvertOutputSchema
+} from '../../vendors/gotenberg'
 
 export const MAX_BATCH_CONVERT = 10
 
-export const transmuteFileConvertAuthSchema = transmuteAuthSchema.extend({
-	provider: z.literal('transmute')
+export const gotenbergFileConvertAuthSchema = gotenbergAuthSchema.extend({
+	provider: z.literal('gotenberg')
 })
 
-export type TransmuteFileConvertAuth = z.infer<typeof transmuteFileConvertAuthSchema>
+export type GotenbergFileConvertAuth = z.infer<typeof gotenbergFileConvertAuthSchema>
 
-export const fileConvertAuthSchema = z.discriminatedUnion('provider', [transmuteFileConvertAuthSchema])
+export const fileConvertAuthSchema = z.discriminatedUnion('provider', [gotenbergFileConvertAuthSchema])
 
 export type FileConvertAuth = z.infer<typeof fileConvertAuthSchema>
 
-export const convertInputSchema = transmuteConvertInputSchema
-export const convertOutputSchema = transmuteConvertOutputSchema
-export const convertBatchInputSchema = transmuteConvertBatchInputSchema
+export const convertInputSchema = gotenbergConvertInputSchema
+export const convertOutputSchema = gotenbergConvertOutputSchema
+export const convertBatchInputSchema = gotenbergConvertBatchInputSchema
 export const convertBatchOutputSchema = batchResultSchema(convertOutputSchema)
 
 export type ConvertInput = z.infer<typeof convertInputSchema>

@@ -50,8 +50,42 @@ export const gotenbergRenderOutputSchema = z.object({
 	kind: z.enum(['pdf', 'screenshot'])
 })
 
+/** Office document → PDF via LibreOffice (not HTML print). */
+export const gotenbergConvertPathSchema = z.enum(['office-to-pdf']).describe('Closed conversion path')
+
+export const gotenbergConvertInputSchema = z.object({
+	source: artifactRefSchema.describe('Input artifact in object storage (office document)'),
+	path: gotenbergConvertPathSchema.default('office-to-pdf').describe('Conversion path (currently office-to-pdf only)'),
+	output_key: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Object key for the PDF result. Defaults to source key with .pdf extension'),
+	filename: z.string().min(1).optional().describe('Upload filename when source has none')
+})
+
+export const gotenbergConvertOutputSchema = z.object({
+	source: artifactRefSchema,
+	result: artifactRefSchema,
+	path: gotenbergConvertPathSchema
+})
+
+export const MAX_BATCH_CONVERT = 10
+
+export const gotenbergConvertBatchInputSchema = z.object({
+	items: z
+		.array(gotenbergConvertInputSchema)
+		.min(1)
+		.max(MAX_BATCH_CONVERT)
+		.describe(`Conversions to run (max ${MAX_BATCH_CONVERT})`)
+})
+
 export type GotenbergViewport = z.infer<typeof gotenbergViewportSchema>
 export type GotenbergRenderSource = z.infer<typeof gotenbergRenderSourceSchema>
 export type GotenbergRenderPdfInput = z.infer<typeof gotenbergRenderPdfInputSchema>
 export type GotenbergRenderScreenshotInput = z.infer<typeof gotenbergRenderScreenshotInputSchema>
 export type GotenbergRenderOutput = z.infer<typeof gotenbergRenderOutputSchema>
+export type GotenbergConvertPath = z.infer<typeof gotenbergConvertPathSchema>
+export type GotenbergConvertInput = z.infer<typeof gotenbergConvertInputSchema>
+export type GotenbergConvertOutput = z.infer<typeof gotenbergConvertOutputSchema>
+export type GotenbergConvertBatchInput = z.infer<typeof gotenbergConvertBatchInputSchema>

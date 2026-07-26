@@ -57,12 +57,13 @@ services:
       exit 0;
       "
 
-  # HTML/URL → PDF — vendors/gotenberg + document-render
+  # Document stack — Chromium HTML render + LibreOffice office→PDF
+  # vendors/gotenberg, document-render, file-convert (see docker/README.md)
   gotenberg:
     image: gotenberg/gotenberg:8
     command:
       - gotenberg
-      - --api-timeout=60s
+      - --api-timeout=120s
     ports:
       - '127.0.0.1:3000:3000'
     healthcheck:

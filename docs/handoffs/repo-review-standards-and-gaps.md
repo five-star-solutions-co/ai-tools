@@ -151,7 +151,7 @@ Extract / convert / render accept ArtifactRef so large payloads do not enter the
 | `messaging` | multi-provider | telegram, slack, teams, imessage — shared verbs |
 | `document-extract` | multi-provider | textract only |
 | `document-render` | multi-provider | gotenberg, cloudflare-browser |
-| `file-convert` | multi-provider | transmute (+ nested S3 storage auth) |
+| `file-convert` | multi-provider | gotenberg LibreOffice `office-to-pdf` (+ nested S3 storage) |
 | `web-fetch` | host policy | allowlisted HTTP |
 | `vector-store` | multi-provider | qdrant, pinecone, supabase, mastra |
 | `rag` | nested | chunk + OpenAI-compatible embed + nested vector-store |
@@ -161,7 +161,7 @@ Extract / convert / render accept ArtifactRef so large payloads do not enter the
 
 ### 2.3 Vendors (`src/vendors/`)
 
-resend, cloudflare-email, telegram, slack, teams, imessage, s3, qdrant, pinecone, supabase-vector, mastra-vector, textract, transmute, gotenberg, cloudflare-browser, woocommerce, katana, amazon-sp-api
+resend, cloudflare-email, telegram, slack, teams, imessage, s3, qdrant, pinecone, supabase-vector, mastra-vector, textract, gotenberg, cloudflare-browser, woocommerce, katana, amazon-sp-api
 
 ### 2.4 Vertical kits (not packs)
 

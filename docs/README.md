@@ -42,7 +42,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/files` | [files](./modules/files.md) — path root over storage |
 | `@harryy/ai-tools/document-extract` | [document-extract](./modules/document-extract.md) — `textract` |
 | `@harryy/ai-tools/document-render` | [document-render](./modules/document-render.md) — `gotenberg`, `cloudflare-browser` |
-| `@harryy/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — `transmute` |
+| `@harryy/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — Gotenberg `office-to-pdf` |
 | `@harryy/ai-tools/web-fetch` | [web-fetch](./modules/web-fetch.md) |
 | `@harryy/ai-tools/vector-store` | [vector-store](./modules/vector-store.md) — providers: `qdrant`, `pinecone`, `supabase`, `mastra` |
 | `@harryy/ai-tools/rag` | [rag](./modules/rag.md) — chunk + host embed route + nested vector-store |
@@ -68,7 +68,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/supabase-vector` | [supabase-vector](./vendors/supabase-vector.md) — pgvector |
 | `@harryy/ai-tools/mastra-vector` | [mastra-vector](./vendors/mastra-vector.md) — `@mastra/pg` PgVector |
 | `@harryy/ai-tools/textract` | [textract](./vendors/textract.md) |
-| `@harryy/ai-tools/transmute` | [transmute](./vendors/transmute.md) |
+
 | `@harryy/ai-tools/gotenberg` | [gotenberg](./vendors/gotenberg.md) |
 | `@harryy/ai-tools/cloudflare-browser` | [cloudflare-browser](./vendors/cloudflare-browser.md) |
 | `@harryy/ai-tools/woocommerce` | [woocommerce](./vendors/woocommerce.md) |
@@ -80,7 +80,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | Dir | Used by |
 | --- | --- |
 | `vendors/_email/` | resend, cloudflare-email (+ email seam) |
-| `vendors/_storage/` | s3 (+ nested S3 on files / transmute / render) |
+| `vendors/_storage/` | s3 (+ nested S3 on files / convert / render) |
 | `vendors/_messaging/` | telegram (live message / typing pulse helpers) |
 | `vendors/_vector/` | qdrant, pinecone, supabase-vector (+ vector-store seam) |
 

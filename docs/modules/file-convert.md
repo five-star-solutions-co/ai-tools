@@ -5,16 +5,24 @@
 | **Import** | `@harryy/ai-tools/file-convert` |
 | **Kind** | multi-provider **seam** (`src/modules/file-convert`) |
 | **Module id** | `file-convert` |
-| **Auth** | Host union: `provider: 'transmute'` + nested `storage` |
+| **Auth** | Host union: `provider: 'gotenberg'` + nested `storage` |
 | **Tools** | `file-convert`, `file-convert-batch` |
 
-## Bind (Transmute)
+Office documents → PDF via self-hosted **Gotenberg LibreOffice**.  
+**Not** HTML/URL print — use [document-render](./document-render.md) (Chromium / Cloudflare Browser).
+
+## Paths
+
+| `path` | Behavior |
+| --- | --- |
+| `office-to-pdf` | docx, pptx, xlsx, odt, rtf, … → PDF |
+
+## Bind
 
 ```ts
 withAuth(fileConvertModule, {
-  provider: 'transmute',
-  transmute_base_url: 'https://transmute.example',
-  transmute_token: '…',
+  provider: 'gotenberg',
+  gotenberg_base_url: 'http://localhost:3000',
   storage: {
     access_key_id: '…',
     secret_access_key: '…',
@@ -25,8 +33,10 @@ withAuth(fileConvertModule, {
 })
 ```
 
-Nested `storage` is S3 auth fields only (no nested `provider`).
+Nested `storage` is S3 auth only (no nested `provider`).
 
-Tools only take `ArtifactRef` + format — no credentials on model inputs. Nested `storage` is host-only.
+## Docker
 
-Vendor pack: [transmute](../vendors/transmute.md). Spec: [artifacts-extract-convert](../specs/artifacts-extract-convert.md).
+Use official Gotenberg image (compose already includes it). See [docker/README.md](../../docker/README.md).
+
+Vendor pack: [gotenberg](../vendors/gotenberg.md).

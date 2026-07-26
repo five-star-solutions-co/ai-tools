@@ -35,7 +35,6 @@ export default defineConfig({
 		'vendors/teams/index': 'src/vendors/teams/index.ts',
 		'vendors/telegram/index': 'src/vendors/telegram/index.ts',
 		'vendors/textract/index': 'src/vendors/textract/index.ts',
-		'vendors/transmute/index': 'src/vendors/transmute/index.ts',
 		'modules/vector-store/index': 'src/modules/vector-store/index.ts',
 		'modules/web-fetch/index': 'src/modules/web-fetch/index.ts',
 		'vendors/woocommerce/index': 'src/vendors/woocommerce/index.ts'

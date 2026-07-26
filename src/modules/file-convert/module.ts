@@ -15,7 +15,7 @@ export const fileConvertTool = defineTool({
 	id: 'file-convert',
 	name: 'convertFile',
 	description:
-		'Convert a file ArtifactRef via the bound conversion provider. Reads from object storage, converts, writes the result back, and returns a new ArtifactRef. Source store must be object.',
+		'Convert an office document ArtifactRef to PDF (path office-to-pdf: docx, pptx, xlsx, odt, …). Not for HTML print layouts — use document render for those. Writes PDF to object storage.',
 	inputSchema: convertInputSchema,
 	outputSchema: convertOutputSchema,
 	sideEffect: 'write',
@@ -27,7 +27,7 @@ export const fileConvertBatchTool = defineTool({
 	id: 'file-convert-batch',
 	name: 'convertFiles',
 	description:
-		'Convert up to 10 file ArtifactRefs. Returns per-item success or error without aborting the whole batch.',
+		'Convert up to 10 office document ArtifactRefs to PDF. Per-item success or error without aborting the batch.',
 	inputSchema: convertBatchInputSchema,
 	outputSchema: convertBatchOutputSchema,
 	sideEffect: 'write',
@@ -38,7 +38,8 @@ export const fileConvertBatchTool = defineTool({
 export const fileConvertModule = defineModule({
 	id: 'file-convert',
 	title: 'File Convert',
-	description: 'Convert ArtifactRef objects via the host-bound provider and write results back to object storage.',
+	description:
+		'Office document to PDF conversion via the host-bound provider (LibreOffice). Distinct from HTML/URL render.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: fileConvertAuthSchema },
 	tools: [fileConvertTool, fileConvertBatchTool]

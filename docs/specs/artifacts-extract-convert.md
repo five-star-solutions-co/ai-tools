@@ -8,7 +8,7 @@ Package: `@harryy/ai-tools`
 - Keep **file bytes out of the LLM**. Tools pass **ArtifactRef** only.
 - **One path** for all sizes (no small/large tiers).
 - **Reuse** `s3-storage` concepts, `aws4fetch`, `ofetch` — no in-process Office/PDF stacks.
-- Extract via **AWS Textract**; convert via **self-hosted Transmute**.
+- Extract via **AWS Textract**; convert via **self-hosted Gotenberg LibreOffice** (office → PDF). HTML print via **document-render** (Chromium / Cloudflare Browser).
 
 ## ArtifactRef
 
@@ -118,40 +118,33 @@ One `GetDocumentTextDetection` call (paginate tokens if needed for full text). *
 
 ## File convert (`@harryy/ai-tools/file-convert`)
 
-**Backend:** self-hosted **[Transmute](https://github.com/transmute-app/transmute)** (recommended).  
-Privacy: files stay on your converter host. Offline relative to third-party SaaS.
+**Backend:** self-hosted **[Gotenberg](https://gotenberg.dev/)** LibreOffice module.  
+Closed path: **`office-to-pdf`** (docx, pptx, xlsx, odt, rtf, … → PDF).  
+HTML/URL layout print is **document-render** (Chromium / Cloudflare Browser), not this module.
 
 ### Tools
 
 | Tool id | sideEffect | Behavior |
 | --- | --- | --- |
-| `file-convert` | `write` | Convert `source` ArtifactRef to `output_format`; write result to S3; return new ArtifactRef. |
+| `file-convert` | `write` | `path: office-to-pdf`; read `source` from S3; LO convert; write PDF ArtifactRef |
+| `file-convert-batch` | `write` | Same, up to 10 items |
 
 ### Flow (one await)
 
 1. Get object bytes from S3 (`source.key`).
-2. `POST {transmute}/api/files` multipart upload (Bearer API token).
-3. `POST {transmute}/api/conversions` `{ id, output_format, quality? }` — **synchronous** Transmute path.
-4. `GET {transmute}/api/files/{converted_id}` download bytes.
-5. Put to S3 at `output_key` (or derived key).
-6. Return `{ source, result: ArtifactRef, transmute_file_id? }`.
-
-If Transmute is slow, the tool still awaits the HTTP call (host/Worker timeout applies). No agent-facing job id for convert v1 (Transmute sync conversions API).
+2. `POST {gotenberg}/forms/libreoffice/convert` multipart.
+3. Put PDF bytes to S3 at `output_key` (or derived `.pdf` key).
+4. Return `{ source, result: ArtifactRef, path: 'office-to-pdf' }`.
 
 ### Auth (host-facing)
 
 ```ts
 {
-  transmute_base_url: string   // e.g. https://convert.internal:3313
-  transmute_token: string      // Bearer (JWT or API key)
-  storage: {
-    access_key_id: string
-    secret_access_key: string
-    region: string
-    bucket: string
-    endpoint?: string            // R2/MinIO OK for convert storage
-    session_token?: string
-  }
+  provider: 'gotenberg'
+  gotenberg_base_url: string
+  gotenberg_api_username?: string
+  gotenberg_api_password?: string
+  storage: { access_key_id, secret_access_key, region, bucket, endpoint?, session_token? }
 }
 ```
 
@@ -160,20 +153,18 @@ If Transmute is slow, the tool still awaits the HTTP call (host/Worker timeout a
 ```ts
 {
   source: ArtifactRef
-  output_format: string        // e.g. pdf, png, md
-  output_key?: string          // default: derived from source key + extension
-  quality?: string
-  filename?: string            // upload name hint
+  path: 'office-to-pdf'   // closed enum
+  output_key?: string
+  filename?: string
 }
 ```
 
 ## README recommendation
 
-Self-host **Transmute** for conversion (REST API, private, Docker).  
-Use **AWS Textract** for OCR/text extract (not offline).  
-Use **S3/R2** for ArtifactRef storage (R2 OK for convert; **AWS S3 required** for Textract document location).
-
-Optional later: Gotenberg for HTML→PDF only; Stirling-PDF for PDF ops.
+Self-host **Gotenberg** for office→PDF (+ optional Chromium self-host).  
+Managed **Cloudflare Browser** for HTML→PDF/PNG.  
+**AWS Textract** for OCR/text extract.  
+**S3/R2** for ArtifactRef storage (R2 OK for convert/render; **AWS S3 required** for Textract document location).
 
 ## Out of scope (v1)
 

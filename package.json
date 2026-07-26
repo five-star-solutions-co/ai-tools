@@ -145,10 +145,6 @@
 			"types": "./dist/vendors/textract/index.d.ts",
 			"default": "./dist/vendors/textract/index.js"
 		},
-		"./transmute": {
-			"types": "./dist/vendors/transmute/index.d.ts",
-			"default": "./dist/vendors/transmute/index.js"
-		},
 		"./vector-store": {
 			"types": "./dist/modules/vector-store/index.d.ts",
 			"default": "./dist/modules/vector-store/index.js"

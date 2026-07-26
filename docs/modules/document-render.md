@@ -8,7 +8,7 @@
 | **Auth** | Host union: `provider: 'gotenberg' \| 'cloudflare-browser'` + nested `storage` |
 | **Tools** | `document-render-pdf`, `document-render-screenshot`, batches |
 
-HTML or URL → PDF / PNG via a browser/print engine. **Not** format conversion (`file-convert` / Transmute).
+HTML or URL → PDF / PNG via a browser/print engine. **Not** office format conversion ([file-convert](./file-convert.md) / LibreOffice).
 
 ## Providers
 

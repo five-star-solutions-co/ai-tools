@@ -1,5 +1,7 @@
 /**
- * Gotenberg vendor client (HTML/URL → PDF or screenshot).
+ * Gotenberg vendor client.
+ * Chromium: HTML/URL → PDF or screenshot.
+ * LibreOffice: office documents → PDF (file convert).
  * Host: `new GotenbergClient(auth)`. Agent tools: `fromContext(ctx)`.
  */
 
@@ -7,17 +9,30 @@ import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
 import { artifactRefSchema } from '../../shared/artifact'
+import { runBatchItems } from '../../shared/batch'
+import { toArrayBuffer } from '../../shared/bytes'
 import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import { S3Client } from '../s3'
 import type {
 	GotenbergAuth,
+	GotenbergConvertBatchInput,
+	GotenbergConvertInput,
+	GotenbergConvertOutput,
 	GotenbergRenderOutput,
 	GotenbergRenderPdfInput,
 	GotenbergRenderScreenshotInput
 } from './contracts'
-import { gotenbergAuthSchema, gotenbergRenderOutputSchema } from './contracts'
-import { appendSource, defaultRenderKey, htmlPath } from './domain'
+import { gotenbergAuthSchema, gotenbergConvertOutputSchema, gotenbergRenderOutputSchema } from './contracts'
+import {
+	appendSource,
+	defaultRenderKey,
+	guessOfficeMediaType,
+	htmlPath,
+	LIBREOFFICE_CONVERT_PATH,
+	officeToPdfResultKey,
+	officeUploadName
+} from './domain'
 
 export type GotenbergClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -65,6 +80,52 @@ export class GotenbergClient {
 	/** Chromium HTML/URL → PNG screenshot; store result in object storage. */
 	async renderScreenshot(input: GotenbergRenderScreenshotInput): Promise<GotenbergRenderOutput> {
 		return this.#renderAndStore('screenshot', input)
+	}
+
+	/**
+	 * LibreOffice convert: office document in object storage → PDF ArtifactRef.
+	 * Path: office-to-pdf only (docx/pptx/xlsx/odt/…). Not for HTML layout print.
+	 */
+	async convert(input: GotenbergConvertInput): Promise<GotenbergConvertOutput> {
+		if (input.source.store !== 'object') {
+			throw new ToolError('Gotenberg convert requires source.store "object"', { code: 'bad_input' })
+		}
+		// path is a closed enum (office-to-pdf); future paths branch here.
+
+		const bytes = await this.#storage.getBytes(input.source.key)
+		const filename = officeUploadName(input.source, input.filename)
+		const mediaType = guessOfficeMediaType(filename, input.source.media_type)
+
+		const form = new FormData()
+		const blob = new Blob([toArrayBuffer(bytes)], { type: mediaType })
+		form.append('files', blob, filename)
+
+		const { bytes: outBytes } = await this.#http.bytes('POST', LIBREOFFICE_CONVERT_PATH, {
+			label: 'Gotenberg libreoffice convert',
+			body: form
+		})
+
+		const resultKey = officeToPdfResultKey(input.source.key, input.output_key)
+		const resultName = filename.replace(/\.[^./]+$/, '') + '.pdf'
+		await this.#storage.putBytes(resultKey, outBytes, 'application/pdf')
+
+		const result = artifactRefSchema.parse({
+			store: 'object',
+			key: resultKey,
+			media_type: 'application/pdf',
+			filename: resultName,
+			byte_length: outBytes.byteLength
+		})
+
+		return gotenbergConvertOutputSchema.parse({
+			source: input.source,
+			result,
+			path: 'office-to-pdf'
+		})
+	}
+
+	async convertBatch(input: GotenbergConvertBatchInput) {
+		return runBatchItems(input.items, (item) => this.convert(item))
 	}
 
 	async #renderAndStore(

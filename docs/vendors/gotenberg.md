@@ -7,7 +7,7 @@
 | **Module id** | `gotenberg` |
 | **Client** | `GotenbergClient` |
 
-Self-hosted Gotenberg HTML/URL → PDF / screenshot. Writes result to nested S3 storage as `ArtifactRef`.
+Self-hosted [Gotenberg](https://gotenberg.dev/) — Chromium + LibreOffice. Results written to nested S3 as `ArtifactRef`.
 
 ## Auth
 
@@ -16,36 +16,27 @@ Self-hosted Gotenberg HTML/URL → PDF / screenshot. Writes result to nested S3 
   gotenberg_base_url: string
   gotenberg_api_username?: string
   gotenberg_api_password?: string
-  storage: {
-    access_key_id: string
-    secret_access_key: string
-    region: string
-    bucket: string
-    endpoint?: string
-    session_token?: string
-  }
+  storage: { access_key_id, secret_access_key, region, bucket, endpoint?, session_token? }
 }
 ```
 
-## Tools
+## Tools / client methods
 
-`gotenberg-render-pdf`, `gotenberg-render-screenshot`.
+| Method | Tool id | Engine |
+| --- | --- | --- |
+| `renderPdf` | `gotenberg-render-pdf` | Chromium HTML/URL → PDF |
+| `renderScreenshot` | `gotenberg-render-screenshot` | Chromium HTML/URL → PNG |
+| `convert` | `gotenberg-convert` | LibreOffice `office-to-pdf` |
+| `convertBatch` | `gotenberg-convert-batch` | same, batch |
 
-## Bind
+## Docker
 
-```ts
-import { GotenbergClient, gotenbergModule } from '@harryy/ai-tools/gotenberg'
-import { withAuth } from '@harryy/ai-tools/core'
-
-withAuth(gotenbergModule, {
-  gotenberg_base_url: 'http://localhost:3000',
-  storage: {
-    access_key_id: '…',
-    secret_access_key: '…',
-    region: 'auto',
-    bucket: 'artifacts',
-  },
-})
+```bash
+docker run --rm -p 127.0.0.1:3000:3000 gotenberg/gotenberg:8
+# or: bun run integration:up:compose  (see docker/README.md)
 ```
 
-Seam: [document-render](../modules/document-render.md) with `provider: 'gotenberg'`.
+## Seams
+
+- [document-render](../modules/document-render.md) — `provider: 'gotenberg'` (Chromium)
+- [file-convert](../modules/file-convert.md) — `provider: 'gotenberg'` (LibreOffice)

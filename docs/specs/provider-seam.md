@@ -62,7 +62,7 @@ src/modules/<capability>/
 
 | `document-extract` | `textract` |
 | `document-render` | `gotenberg`, `cloudflare-browser` |
-| `file-convert` | `transmute` (+ nested S3 `storage`) |
+| `file-convert` | `gotenberg` LibreOffice `office-to-pdf` (+ nested S3 `storage`) |
 | `files` | nested S3 `storage` + `root_prefix` (not a multi-provider seam) |
 | `vector-store` | `qdrant`, `pinecone`, `supabase`, `mastra` (wrap vendor packs) |
 | `rag` | nested `vector_store` + OpenAI-compatible `embed` auth |

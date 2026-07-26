@@ -17,11 +17,10 @@ describe('file-convert', () => {
 		expect(fileConvertModule.tools.some((t) => t.id === 'file-convert-batch')).toBe(true)
 	})
 
-	test('transmute provider converts and writes result', async () => {
+	test('gotenberg provider converts office doc to pdf and writes result', async () => {
 		const bound = withAuth(fileConvertModule, {
-			provider: 'transmute',
-			transmute_base_url: 'https://transmute.example',
-			transmute_token: 'tok',
+			provider: 'gotenberg',
+			gotenberg_base_url: 'http://gotenberg.example',
 			storage: {
 				access_key_id: 'AKIAtest',
 				secret_access_key: 'secret',
@@ -38,49 +37,14 @@ describe('file-convert', () => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
 			const method = init?.method ?? (input instanceof Request ? input.method : 'GET')
 
-			if (url.includes('artifacts') && url.includes('in.md') && method === 'GET') {
-				return new Response('# hi', { status: 200 })
+			if (url.includes('artifacts') && url.includes('in.docx') && method === 'GET') {
+				return new Response(new Uint8Array([1, 2, 3, 4]), { status: 200 })
 			}
-			if (url.includes('transmute.example') && url.endsWith('/api/files') && method === 'POST') {
-				return new Response(
-					JSON.stringify({
-						message: 'ok',
-						metadata: {
-							id: 'src-1',
-							storage_path: '/data/src-1.md',
-							original_filename: 'in.md',
-							media_type: 'md',
-							extension: 'md',
-							size_bytes: 4,
-							sha256_checksum: 'x',
-							user_id: 'u',
-							compatible_formats: { pdf: [] }
-						}
-					}),
-					{ status: 200, headers: { 'content-type': 'application/json' } }
-				)
-			}
-			if (url.includes('/api/conversions') && method === 'POST') {
-				const body = typeof init?.body === 'string' ? init.body : ''
-				expect(body).toContain('src-1')
-				expect(body).toContain('pdf')
-				return new Response(
-					JSON.stringify({
-						id: 'out-1',
-						storage_path: '/data/out-1.pdf',
-						original_filename: 'in.pdf',
-						media_type: 'pdf',
-						extension: 'pdf',
-						size_bytes: 3,
-						sha256_checksum: 'y',
-						user_id: 'u',
-						compatible_formats: {}
-					}),
-					{ status: 200, headers: { 'content-type': 'application/json' } }
-				)
-			}
-			if (url.includes('/api/files/out-1') && method === 'GET') {
-				return new Response(new Uint8Array([1, 2, 3]), { status: 200 })
+			if (url.includes('gotenberg.example') && url.includes('/forms/libreoffice/convert') && method === 'POST') {
+				return new Response(new Uint8Array([9, 9, 9]), {
+					status: 200,
+					headers: { 'content-type': 'application/pdf' }
+				})
 			}
 			if (url.includes('artifacts') && method === 'PUT') {
 				expect(url).toContain('in.pdf')
@@ -92,18 +56,23 @@ describe('file-convert', () => {
 		try {
 			const result = asRecord(
 				await runTool(tool, {
-					source: { store: 'object', key: 'docs/in.md', filename: 'in.md', media_type: 'md' },
-					output_format: 'pdf'
+					source: {
+						store: 'object',
+						key: 'docs/in.docx',
+						filename: 'in.docx',
+						media_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+					},
+					path: 'office-to-pdf'
 				})
 			)
-			expect(result['provider_source_id']).toBe('src-1')
-			expect(result['provider_result_id']).toBe('out-1')
+			expect(result['path']).toBe('office-to-pdf')
 			const out = result['result']
 			expect(isPlainObject(out)).toBe(true)
 			if (isPlainObject(out)) {
 				expect(out['store']).toBe('object')
 				expect(out['key']).toBe('docs/in.pdf')
 				expect(out['byte_length']).toBe(3)
+				expect(out['media_type']).toBe('application/pdf')
 			}
 		} finally {
 			globalThis.fetch = original

@@ -1,12 +1,12 @@
 /**
- * File-convert seam client — picks transmute (and future providers) from host auth.
+ * File-convert seam client — picks gotenberg (LibreOffice) from host auth.
  */
 
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
 import { fileConvertAuthSchema } from './contracts'
 import type { ConvertBatchInput, ConvertInput, FileConvertAuth, FileConvertOps } from './contracts'
-import { TransmuteFileConvertProvider } from './providers/transmute'
+import { GotenbergFileConvertProvider } from './providers/gotenberg'
 
 function transportOptions(ctx: ToolContext) {
 	return {
@@ -18,8 +18,8 @@ function transportOptions(ctx: ToolContext) {
 function providerFor(auth: FileConvertAuth, ctx: ToolContext): FileConvertOps {
 	const options = transportOptions(ctx)
 	switch (auth.provider) {
-		case 'transmute':
-			return new TransmuteFileConvertProvider(auth, options)
+		case 'gotenberg':
+			return new GotenbergFileConvertProvider(auth, options)
 	}
 }
 

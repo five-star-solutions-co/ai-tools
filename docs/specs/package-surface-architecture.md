@@ -131,7 +131,7 @@ src/modules/<capability>/
 | `messaging` | telegram, slack, teams, imessage | Thin shared channel verbs over chat vendors |
 | `document-extract` | textract | ArtifactRef text extract |
 | `document-render` | gotenberg, cloudflare-browser | HTML/URL → PDF / screenshot |
-| `file-convert` | transmute | Format conversion (not browser print) |
+| `file-convert` | gotenberg (LibreOffice) | Office → PDF only (not HTML print) |
 | `web-fetch` | host allowlist | Free-form allowlisted HTTP |
 | `email-message` | none | Email message parse/build |
 | `content-type` | none | MIME type ↔ extension |
@@ -162,7 +162,7 @@ src/modules/<capability>/
 
 #### `document-render` vs `file-convert`
 
-| | `file-convert` (Transmute, …) | `document-render` |
+| | `file-convert` (LibreOffice / Gotenberg, …) | `document-render` |
 | --- | --- | --- |
 | Input | Documents / images / formats | HTML string, URL, template |
 | Output | Converted file | Print PDF, screenshot PNG |
@@ -331,7 +331,7 @@ See [http-and-aws-services.md](../reference/http-and-aws-services.md).
 | Capability | Self-hosted / first-party | Managed optional |
 | --- | --- | --- |
 | document-render | **Gotenberg**, Browserless, Playwright server | Cloudflare Browser Rendering |
-| file-convert | **Transmute**, LibreOffice headless stacks | Cloud convert APIs |
+| file-convert | **Gotenberg LibreOffice**, LO headless | Cloud convert APIs |
 | document-extract | ocrmypdf / tesseract / docling services | **Textract** |
 | speech | Whisper / faster-whisper, Piper | ElevenLabs, Deepgram |
 | browser | Browserless, Playwright | Firecrawl cloud |

@@ -122,7 +122,7 @@ defineTool / defineModule
 | `@harryy/ai-tools/rag` | embed + nested vector-store | `rag-*` | [rag](./docs/modules/rag.md) |
 | `@harryy/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
 | `@harryy/ai-tools/document-render` | multi-provider | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
-| `@harryy/ai-tools/file-convert` | multi-provider | `file-convert`, `file-convert-batch` | [file-convert](./docs/modules/file-convert.md) |
+| `@harryy/ai-tools/file-convert` | gotenberg LO | `file-convert` (`office-to-pdf`), batch | [file-convert](./docs/modules/file-convert.md) |
 | `@harryy/ai-tools/web-fetch` | host policy | `web-fetch-get`, `web-fetch-request` | [web-fetch](./docs/modules/web-fetch.md) |
 | `@harryy/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
 | `@harryy/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
@@ -143,8 +143,8 @@ defineTool / defineModule
 | `@harryy/ai-tools/supabase-vector` | `supabase-vector-*` (pgvector/PostgREST) | [supabase-vector](./docs/vendors/supabase-vector.md) |
 | `@harryy/ai-tools/mastra-vector` | `mastra-vector-*` (PgVector, node) | [mastra-vector](./docs/vendors/mastra-vector.md) |
 | `@harryy/ai-tools/textract` | `textract-extract-text`, `-get-status`, `-extract-text-batch` | [textract](./docs/vendors/textract.md) |
-| `@harryy/ai-tools/transmute` | `transmute-convert`, `-convert-batch` | [transmute](./docs/vendors/transmute.md) |
-| `@harryy/ai-tools/gotenberg` | `gotenberg-render-pdf`, `-render-screenshot` | [gotenberg](./docs/vendors/gotenberg.md) |
+
+| `@harryy/ai-tools/gotenberg` | render PDF/screenshot + `office-to-pdf` convert | [gotenberg](./docs/vendors/gotenberg.md) |
 | `@harryy/ai-tools/cloudflare-browser` | `cloudflare-browser-render-pdf`, `-render-screenshot` | [cloudflare-browser](./docs/vendors/cloudflare-browser.md) |
 | `@harryy/ai-tools/woocommerce` | orders, notes, refunds, products, variations, customers, coupons, categories | [woocommerce](./docs/vendors/woocommerce.md) |
 | `@harryy/ai-tools/katana` | sales/purchase/manufacturing orders, products, materials, customers, suppliers, inventory | [katana](./docs/vendors/katana.md) |
@@ -183,8 +183,8 @@ Codegen owns `package.json` exports for packs under `src/modules|vendors/<key>/`
 
 - Objects are **S3 keys** (`ArtifactRef`), not base64 in the model. Spec: [artifacts-extract-convert](./docs/specs/artifacts-extract-convert.md).
 - **Extract:** Amazon Textract (object must live in AWS S3 Textract can read).
-- **Convert:** self-host [Transmute](https://github.com/transmute-app/transmute).
-- **Render:** Gotenberg or Cloudflare Browser Rendering → storage `ArtifactRef`.
+- **Convert (office→PDF):** self-host [Gotenberg](https://gotenberg.dev/) LibreOffice (`file-convert` path `office-to-pdf`).
+- **Render (HTML/URL):** Gotenberg Chromium or Cloudflare Browser Rendering → storage `ArtifactRef`.
 
 ## Release
 
