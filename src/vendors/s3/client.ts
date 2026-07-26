@@ -50,6 +50,19 @@ import {
 
 export type S3ClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
+export type S3ByteRange = {
+	start_byte: number
+	end_byte: number
+}
+
+export type S3ByteRangeResult = {
+	bytes: Uint8Array
+	start_byte: number
+	end_byte: number
+	total_bytes?: number | undefined
+	content_type?: string | undefined
+}
+
 function objectNotFound(): never {
 	throw new ToolError('Object not found', { code: 'not_found' })
 }
@@ -397,6 +410,66 @@ export class S3Client {
 		} catch (error) {
 			remapNotFound(error)
 		}
+	}
+
+	async getBytesRange(key: string, range: S3ByteRange): Promise<S3ByteRangeResult> {
+		const requestedBytes = range.end_byte - range.start_byte + 1
+		if (
+			!Number.isSafeInteger(range.start_byte) ||
+			!Number.isSafeInteger(range.end_byte) ||
+			range.start_byte < 0 ||
+			requestedBytes < 1
+		) {
+			throw new ToolError('Byte range must use non-negative inclusive offsets with end_byte >= start_byte', {
+				code: 'bad_input'
+			})
+		}
+		if (requestedBytes > MAX_OBJECT_BYTES) {
+			tooLarge(MAX_OBJECT_BYTES, requestedBytes, 'Byte range exceeds download limit')
+		}
+
+		const head = await this.head({ key })
+		if (!head.exists) objectNotFound()
+		if (head.content_length !== undefined && range.start_byte >= head.content_length) {
+			throw new ToolError('Byte range starts beyond the end of the object', {
+				code: 'bad_input',
+				details: { start_byte: range.start_byte, content_length: head.content_length }
+			})
+		}
+
+		const headers: Record<string, string> = {
+			Range: `bytes=${range.start_byte}-${range.end_byte}`
+		}
+		if (head.etag) headers['If-Match'] = head.etag.startsWith('"') ? head.etag : `"${head.etag}"`
+
+		let response
+		try {
+			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), {
+				label: 'S3 range get',
+				headers,
+				maxBytes: requestedBytes
+			})
+		} catch (error) {
+			if (isToolError(error) && error.details?.['status'] === 412) {
+				throw new ToolError('Object changed during download', {
+					code: 'upstream',
+					details: { status: 412, key },
+					cause: error
+				})
+			}
+			remapNotFound(error)
+		}
+
+		const out: S3ByteRangeResult = {
+			bytes: response.bytes,
+			start_byte: range.start_byte,
+			end_byte: range.start_byte + response.bytes.byteLength - 1
+		}
+		const totalBytes = contentRangeTotal(response.headers.get('content-range')) ?? head.content_length
+		const contentType = response.headers.get('content-type') ?? head.content_type
+		if (totalBytes !== undefined) out.total_bytes = totalBytes
+		if (contentType) out.content_type = contentType
+		return out
 	}
 
 	/** Host-facing raw upload. */

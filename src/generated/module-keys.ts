@@ -2,6 +2,7 @@
 /** Flat public export keys under src/{modules,vendors}. */
 export const moduleKeys = [
 	'amazon-sp-api',
+	'artifacts',
 	'bedrock-agentcore-browser',
 	'bedrock-agentcore-code-interpreter',
 	'cloudflare-browser',
@@ -25,9 +26,11 @@ export const moduleKeys = [
 	'rag',
 	'resend',
 	's3',
+	'scheduler',
 	'skills',
 	'slack',
 	'supabase-vector',
+	'tasks',
 	'teams',
 	'telegram',
 	'textract',
@@ -40,6 +43,7 @@ export type ModuleKey = (typeof moduleKeys)[number]
 
 /** Capability seams under src/modules (brand-neutral model copy). */
 export const moduleSeamKeys = [
+	'artifacts',
 	'content-type',
 	'document',
 	'document-extract',
@@ -50,7 +54,9 @@ export const moduleSeamKeys = [
 	'files',
 	'messaging',
 	'rag',
+	'scheduler',
 	'skills',
+	'tasks',
 	'vector-store',
 	'web-fetch'
 ] as const

@@ -6,7 +6,7 @@ Scope: **modules only** (`src/modules/*`). Vendors: [package-surface-architectur
 
 ## Goals
 
-- Tools are **capability-generic** (email, storage, extract, convert).
+- Tools are **capability-generic** (email, artifacts, tasks, scheduler).
 - Hosts pick a **provider** at bind time via auth `{ provider, … }`.
 - Provider implementations are isolated behind a **type class** (`*Ops`) per module.
 - Auth never appears on model-facing tool schemas.
@@ -27,6 +27,8 @@ Scope: **modules only** (`src/modules/*`). Vendors: [package-surface-architectur
 3. Client: `switch (auth.provider)` (or equivalent) → provider instance; tools call `*Client.fromContext(ctx)`.
 
 Gold example: `src/modules/email/` (`providers/resend.ts`, `providers/cloudflare.ts`).
+
+An explicit product decision may lock a host-backed or single-provider seam before a second provider exists. The provider discriminator and ops boundary remain required so the model-facing contract does not become vendor-shaped.
 
 ## Module layout
 
@@ -59,11 +61,13 @@ src/modules/<capability>/
 | Module | Providers |
 | --- | --- |
 | `email` | `cloudflare`, `resend` |
-
+| `artifacts` | `object`, `host` |
 | `document-extract` | `textract` |
 | `document-render` | `gotenberg`, `cloudflare-browser` |
 | `file-convert` | `gotenberg` LibreOffice `office-to-pdf` (+ nested S3 `storage`) |
 | `files` | nested S3 `storage` + `root_prefix` (not a multi-provider seam) |
+| `tasks` | `host` task-definition backend |
+| `scheduler` | `eventbridge` |
 | `vector-store` | `qdrant`, `pinecone`, `supabase`, `mastra` (wrap vendor packs) |
 | `rag` | nested `vector_store` + OpenAI-compatible `embed` auth |
 

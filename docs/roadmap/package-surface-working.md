@@ -41,11 +41,13 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `content-type` | Done | pure type ↔ extension |
 | `email-message` | Done | pure parse/build MIME |
 | `files` | Done | path root over nested S3: list/search/stat/get/put/delete/copy/move/mkdir + multipart |
+| `artifacts` | Done | object + host providers; create and bounded byte/line reads |
 | `document-render` | Done | gotenberg + cloudflare-browser |
 | `vector-store` / `rag` | Done | qdrant+pinecone+supabase+mastra; chunk/embed/retrieve |
 | `messaging` (thin multi-provider seam) | **Done** | Shared verbs; wraps telegram/slack/teams/imessage vendors |
 | `skills` | Done | host-bound catalog; list/get/search |
-| `scheduler` | Not started | Defer capability seam until a second backend shares the verbs |
+| `tasks` | Done | host-backed portable task-definition CRUD |
+| `scheduler` | Done | capability seam over EventBridge; single provider by product decision |
 | `eventbridge-scheduler` | Done | vendor pack |
 | `bedrock-agentcore-code-interpreter` | Done | sessions + execute + files |
 | `bedrock-agentcore-browser` | Done | session lifecycle + stream endpoints (no faked click tools) |

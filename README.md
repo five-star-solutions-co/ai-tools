@@ -83,7 +83,7 @@ src/
 
 | Root | Role |
 | --- | --- |
-| **`modules/`** | Capability seams we own; multi-provider when 2+ backends share verbs |
+| **`modules/`** | Capability seams we own; usually multi-provider, with explicit product-locked host or single-provider seams |
 | **`vendors/`** | Full first-party API of one product; grow tools over time |
 | **`vendors/_…`** | Vertical kits (codegen-skipped); shared by packs in that category |
 
@@ -118,6 +118,7 @@ defineTool / defineModule
 | `@harryy/ai-tools/email` | multi-provider | `email-send`, `email-send-batch` | [email](./docs/modules/email.md) |
 | `@harryy/ai-tools/messaging` | multi-provider | `messaging-send-text`, edit, media, reactions, … (telegram/slack/teams/imessage) | [messaging](./docs/modules/messaging.md) |
 | `@harryy/ai-tools/files` | path root over nested S3 | `files-*` | [files](./docs/modules/files.md) |
+| `@harryy/ai-tools/artifacts` | object + host providers | `artifacts-create`, `-read-range`, `-read-lines` | [artifacts](./docs/modules/artifacts.md) |
 | `@harryy/ai-tools/vector-store` | qdrant, pinecone, supabase, mastra | `vector-store-*` | [vector-store](./docs/modules/vector-store.md) |
 | `@harryy/ai-tools/rag` | embed + nested vector-store | `rag-*` | [rag](./docs/modules/rag.md) |
 | `@harryy/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
@@ -128,6 +129,8 @@ defineTool / defineModule
 | `@harryy/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
 | `@harryy/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
 | `@harryy/ai-tools/skills` | host-bound catalog | `skills-list`, `skills-get`, `skills-search` | [skills](./docs/modules/skills.md) |
+| `@harryy/ai-tools/tasks` | host-backed definitions | `tasks-create`, `-get`, `-list`, `-update`, `-delete` | [tasks](./docs/modules/tasks.md) |
+| `@harryy/ai-tools/scheduler` | eventbridge provider | `scheduler-create`, `-update`, `-get`, `-list`, `-delete` | [scheduler](./docs/modules/scheduler.md) |
 
 ### Vendors (`vendors/`)
 

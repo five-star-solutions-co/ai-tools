@@ -49,6 +49,10 @@
 			"types": "./dist/vendors/amazon-sp-api/index.d.ts",
 			"default": "./dist/vendors/amazon-sp-api/index.js"
 		},
+		"./artifacts": {
+			"types": "./dist/modules/artifacts/index.d.ts",
+			"default": "./dist/modules/artifacts/index.js"
+		},
 		"./bedrock-agentcore-browser": {
 			"types": "./dist/vendors/bedrock-agentcore-browser/index.d.ts",
 			"default": "./dist/vendors/bedrock-agentcore-browser/index.js"
@@ -141,6 +145,10 @@
 			"types": "./dist/vendors/s3/index.d.ts",
 			"default": "./dist/vendors/s3/index.js"
 		},
+		"./scheduler": {
+			"types": "./dist/modules/scheduler/index.d.ts",
+			"default": "./dist/modules/scheduler/index.js"
+		},
 		"./skills": {
 			"types": "./dist/modules/skills/index.d.ts",
 			"default": "./dist/modules/skills/index.js"
@@ -152,6 +160,10 @@
 		"./supabase-vector": {
 			"types": "./dist/vendors/supabase-vector/index.d.ts",
 			"default": "./dist/vendors/supabase-vector/index.js"
+		},
+		"./tasks": {
+			"types": "./dist/modules/tasks/index.d.ts",
+			"default": "./dist/modules/tasks/index.js"
 		},
 		"./teams": {
 			"types": "./dist/vendors/teams/index.d.ts",

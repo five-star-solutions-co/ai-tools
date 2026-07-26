@@ -1,5 +1,5 @@
 export { S3Client } from './client'
-export type { S3ClientOptions } from './client'
+export type { S3ByteRange, S3ByteRangeResult, S3ClientOptions } from './client'
 export {
 	abortMultipartUploadInputSchema,
 	abortMultipartUploadOutputSchema,

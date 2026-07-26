@@ -55,7 +55,24 @@ Migrations under `supabase/migrations/` create `ai_tools_vectors`, `match_vector
 
 **Local (compose + supabase):** qdrant, minio/s3, gotenberg, supabase storage/vector, mastra-vector (same Postgres).
 
-**Cloud / external keys still needed:** Resend, CF email/browser, Telegram, Slack, Teams, iMessage proxy, Pinecone, Woo, Katana, Amazon, Textract, embed models.
+**Cloud / external keys still needed:** Resend, CF email/browser, Telegram, Slack, Teams, iMessage proxy, Pinecone, Woo, Katana, Amazon SP-API (LWA), AWS IAM services, embed models.
+
+### Shared AWS IAM (one key for all AWS cloud live IT)
+
+Use **one** access key for Textract, Bedrock AgentCore, EventBridge Scheduler, and Amazon SP-API **SigV4**:
+
+| Var | Role |
+| --- | --- |
+| `AI_TOOLS_AWS_ACCESS_KEY_ID` | required |
+| `AI_TOOLS_AWS_SECRET_ACCESS_KEY` | required |
+| `AI_TOOLS_AWS_REGION` | required default region |
+| `AI_TOOLS_AWS_SESSION_TOKEN` | optional |
+
+Optional per-service region overrides (still use the same key): `AI_TOOLS_TEXTRACT_REGION`, `AI_TOOLS_BEDROCK_AGENTCORE_REGION`, `AI_TOOLS_EVENTBRIDGE_SCHEDULER_REGION`, `AI_TOOLS_AMAZON_REGION`.
+
+**Not** shared with MinIO: local object store stays on `AI_TOOLS_S3_*` only.
+
+Service-specific non-credential env remains (buckets, ARNs, SP-API LWA client id/secret/refresh, marketplace ids, etc.).
 
 ---
 
@@ -66,7 +83,7 @@ Live IT aims for **full client-method smoke** when env is set:
 | Area | Policy |
 | --- | --- |
 | **WooCommerce, Katana, Amazon SP-API** | **Read-only only** — list/get/search. **No** create/update/delete/refunds/notes writes / `createReport` |
-| All other vendors + seams | Exercise every public client method that can run without inbound webhooks/interactive callbacks |
+| All other vendors + seams | Exercise public client methods that can run without inbound webhooks/interactive callbacks |
 | Missing env | `describe.skip` (not a failure) |
 | Optional secondary resources | If list is empty, get-by-id branches no-op |
 
@@ -75,6 +92,7 @@ Live IT aims for **full client-method smoke** when env is set:
 - Telegram/Slack/Teams `answerCallback` (needs interactive payload / `response_url`)
 - Slack/Teams/iMessage `downloadFile` without a provider `file_id` from an **inbound** attachment (Telegram can round-trip: `sendMedia` → `file_id` → `downloadFile`)
 - Amazon `createReport` (write)
+- Bedrock AgentCore interactive browser automation beyond session start/get/stop (host/Playwright on stream endpoints)
 
 ### Slack bot scopes (full live IT — hard fail if missing)
 
@@ -109,51 +127,62 @@ The test **always** `deleteWebhook` in `finally` (drops pending updates). Do not
 ## Commands
 
 ```bash
-bun test                    # unit only
-bun run test:integration    # live (skips missing env)
+bun test                    # unit only (default CI gate)
+bun run test:integration    # live under test/integration/vendors + seams
 bun test test/integration/vendors/resend.live.test.ts
 ```
 
 ---
 
-## Vendors (live files under `test/integration/vendors/`)
+## Vendors (`test/integration/vendors/`)
 
 | Vendor | Env (prefix `AI_TOOLS_`) | Smoke (high level) |
 | --- | --- | --- |
 | resend | `RESEND_API_KEY`, `FROM`, `TO` | send + sendBatch |
 | cloudflare-email | `CF_EMAIL_*` | send + sendBatch |
-| telegram | `TELEGRAM_BOT_TOKEN` (+ chat; optional `TELEGRAM_WEBHOOK_URL` / `SECRET`) | getBot, webhook info, set/delete webhook, send/edit/action/react/media/group, downloadFile |
-| slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`) | getBot, listConversations, send/edit/action/react/media — **reinstall after scopes** (below) |
-| teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ `CHAT_ID`, `SERVICE_URL`) | getBot; optional send/edit/action/react/media |
-| imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** (user-sent msg for successful `/v1/read`) | send/edit/typing/react/media/unsend; outbound read expects **400**; inbound read must succeed |
+| telegram | `TELEGRAM_BOT_TOKEN` (+ chat; optional webhook URL/secret) | getBot, webhook, send/edit/action/react/media/group, downloadFile |
+| slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`) | getBot, listConversations, send/edit/action/react/media |
+| teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL) | getBot; optional send/edit/action/react/media |
+| imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** | send/edit/typing/react/media/unsend; inbound read |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/signed URL/multipart |
 | gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot |
 | cloudflare-browser | CF browser token + S3 | renderPdf + renderScreenshot |
-
-| textract | `TEXTRACT_*` only (no MinIO fallback) | extractText + extractTextBatch + getStatus |
+| textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
-| **katana** | `KATANA_API_KEY` | **read-only** list/get all entity surfaces + inventory |
-| **amazon-sp-api** | LWA + IAM + marketplace (+ optional `AMAZON_CATALOG_KEYWORDS`) | **read-only** orders/items/inventory/reports/catalog |
-| qdrant | `QDRANT_URL` (+ collection) | upsert/query/delete (dim-safe collection helper) |
-| pinecone | API key + base URL (+ `PINECONE_DIMENSION`, default 512) | upsert/query/delete |
+| **katana** | `KATANA_API_KEY` | **read-only** list/get entity surfaces + inventory |
+| **amazon-sp-api** | LWA (`AMAZON_CLIENT_*` / refresh) + shared `AWS_*` IAM + marketplace/endpoint | **read-only** orders/items/inventory/reports/catalog |
+| qdrant | `QDRANT_URL` (+ collection) | upsert/query/delete |
+| pinecone | API key + base URL (+ dimension) | upsert/query/delete |
 | supabase-vector | Supabase URL + service role | upsert/query/delete |
 | mastra-vector | `MASTRA_DB_URL` | upsert/query/delete |
+| eventbridge-scheduler | shared `AWS_*` + `EVENTBRIDGE_SCHEDULER_TARGET_ARN` + `ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
+| bedrock-agentcore-browser | shared `AWS_*` (+ optional browser id) | start/get/stop session |
+| bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional interpreter id) | start session, executeCode, stop |
+
+Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and have no live files.
+
+---
 
 ## Seams (`test/integration/seams/`)
 
 | Seam | Env | Smoke |
 | --- | --- | --- |
-| content-type, mime, email-message | none | pure |
+| content-type | none | pure helpers + tool |
+| email-message | none | pure parse/build |
+| skills | none | bound catalog list/search/get |
 | web-fetch | network | GET example.com |
 | email | Resend and/or CF email | send + sendBatch per provider |
-| storage | S3 and/or R2 and/or Supabase | full object surface per provider |
 | files | S3 | list/search/stat/put/get/delete/copy/mkdir/move/multipart |
-| messaging | TG / Slack / iMessage / Teams when env set | send/edit/chatAction/stopTyping/setReaction/clearReaction/sendMedia/sendMediaBatch; Telegram also downloadFile; iMessage reaction clear + outbound read **400** + inbound read (`IMESSAGE_INBOUND_MESSAGE_ID`); TG/Slack/Teams `read` intentional no-op. Unsend is **not** on the seam (vendor `imessage` only). Not covered: interactive `answerCallback` (except iMessage pure no-op); Slack/Teams/iMessage `downloadFile` |
+| artifacts | S3 or host callbacks | create/readRange/readLines |
+| tasks | host callbacks | create/get/list/update/delete |
+| scheduler | EventBridge Scheduler | create/get/list/update/delete with a disabled schedule |
+| document | S3 | buildText/read/editText + buildSpreadsheet/read |
+| messaging | TG / Slack / iMessage / Teams when env set | send/edit/chatAction/stopTyping/reactions/media; Telegram downloadFile; iMessage unsend is **vendor-only** |
 | document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot |
 | file-convert | Gotenberg + S3 | office-to-pdf |
 | document-extract | Textract | extractText |
 | vector-store | any vector backend | provider matrix |
-| rag | embed + vector backend | ingest/retrieve/delete (qdrant uses `AI_TOOLS_QDRANT_RAG_COLLECTION` default `ai_tools_rag_it`) |
+| rag | embed + vector backend | ingest/retrieve/delete (qdrant / pinecone / supabase / mastra) |
 
 ---
 

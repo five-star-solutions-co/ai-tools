@@ -649,9 +649,9 @@ Full lock: [`docs/specs/host-integration-kernel.md`](../specs/host-integration-k
 | H-03 | Generic hooks | **Done** — `withHooks` / hooks on bind |
 | H-04 | Richer `ToolMeta` | **Done** — additive host hints + catalog |
 | H-05 | Registry + catalog discovery | **Tabled.** Search/read over registered tools; prefer names `catalog-search-tools` / `catalog-read-tool` (not “meta tools”) |
-| H-06 | Public artifacts surface | `@harryy/ai-tools/artifacts` + bounded files reads (range/lines/create artifact) — related to G-04 |
-| H-07 | Task contracts | Package Zod + tools only; host supplies backend (no host DB/deploy code in package) |
-| H-08 | Scheduler + EventBridge provider | EventBridge vendor done; scheduler seam deferred until a second backend shares the verbs |
+| H-06 | Public artifacts surface | **Done**: `@harryy/ai-tools/artifacts` with object/host providers and bounded range/line/create tools |
+| H-07 | Task contracts | **Done**: host-backed task-definition Zod contracts and CRUD tools; no host persistence code |
+| H-08 | Scheduler + EventBridge provider | **Done**: scheduler seam over the EventBridge vendor; single provider by explicit product decision |
 | H-09 | Bedrock AgentCore packs | **Done** — `bedrock-agentcore-code-interpreter` + `bedrock-agentcore-browser` vendors |
 | H-10 | Skills defs (portable) | **Done** — `modules/skills` schemas + list/get/search over host-bound catalog |
 | H-11 | Host adoption | Loader: registry → bind → hooks → adapter; map legacy host tool ids → kebab ids |
@@ -661,7 +661,7 @@ Full lock: [`docs/specs/host-integration-kernel.md`](../specs/host-integration-k
 1. H-01 → H-02 → H-03 → H-04  
 2. Host import of **existing** packs (H-11) in parallel once bind works  
 3. H-05 catalog discovery  
-4. H-06 artifacts; then H-07–H-10 product-driven  
+4. H-06 through H-10 are done  
 
 Other agent hygiene (G-03 mime, G-05 messaging no-ops, …) stays orthogonal.
 

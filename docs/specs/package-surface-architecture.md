@@ -54,12 +54,12 @@ Related:
 
 | Kind | Preferred source path | Module id style | When to use |
 | --- | --- | --- | --- |
-| **Platform capability** | `src/modules/<capability>/` | Capability name (`email`, `files`) | Small stable contracts; **2+ swappable providers** with same verbs |
+| **Platform capability** | `src/modules/<capability>/` | Capability name (`email`, `files`) | Small stable contracts; usually **2+ swappable providers**, or an explicitly product-locked host/single-provider seam |
 | **Vendor pack** | `src/vendors/<vendor>/` | Vendor name (`resend`, `telegram`, `s3`, …) | Full first-party API; grow tools over time (includes chat + object stores) |
 
 **3rd party → vendors; seams → modules.** Chat platforms, email ESPs, and object store (`s3`, S3-compatible including R2 endpoint) are **vendor packs**. Platform **seams** (files, document-render, email, messaging, …) stay under **modules/**. There is **no** multi-provider `storage` seam — object CRUD is `@harryy/ai-tools/s3`; `files` is path-rooted manage with nested S3 auth.
 
-**Thin seams are allowed** when 2+ backends share the same verbs: they wrap vendor clients and must **not** shrink or replace full packs. Native-only APIs stay on the vendor. Do **not** invent a fat multi-provider facade that erases vendor surface.
+**Thin seams are allowed** when 2+ backends share the same verbs, or when an explicit product decision locks a capability contract before the second provider. They wrap vendor clients and must **not** shrink or replace full packs. Native-only APIs stay on the vendor. Do **not** invent a fat multi-provider facade that erases vendor surface.
 
 Public imports stay **flat** regardless of source lane:
 
@@ -127,6 +127,7 @@ src/modules/<capability>/
 | Module | Providers (today) | Notes |
 | --- | --- | --- |
 | `files` | nested S3 `storage` + `root_prefix` | Path-rooted manage over S3Client |
+| `artifacts` | object, host | ArtifactRef create + bounded byte/line reads |
 | `email` | resend, cloudflare | Thin send/batch seam over email vendors |
 | `messaging` | telegram, slack, teams, imessage | Thin shared channel verbs over chat vendors |
 | `document-extract` | textract | ArtifactRef text extract |
@@ -136,6 +137,8 @@ src/modules/<capability>/
 | `web-fetch` | host allowlist | Free-form allowlisted HTTP |
 | `email-message` | none | Email message parse/build |
 | `content-type` | none | MIME type ↔ extension |
+| `tasks` | host | Portable task-definition CRUD; host owns persistence and execution |
+| `scheduler` | eventbridge | Shared schedule verbs over EventBridge Scheduler vendor |
 | `vector-store` | qdrant, pinecone, supabase, mastra | Upsert / query / delete vectors |
 | `rag` | nested vector_store + embed | Chunk + OpenAI-compatible embed + store/retrieve |
 
