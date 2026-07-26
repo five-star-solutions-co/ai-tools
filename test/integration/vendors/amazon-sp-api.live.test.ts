@@ -1,24 +1,20 @@
 /**
  * Amazon SP-API live IT — read-only only (no createReport or other writes).
+ * SigV4 IAM uses shared AI_TOOLS_AWS_*; LWA app credentials stay Amazon-specific.
  */
 import { describe, expect, test } from 'bun:test'
 
 import { AmazonSpApiClient } from '../../../src/vendors/amazon-sp-api'
-import { env } from '../env'
+import { awsCredentialsFromEnv, env } from '../env'
 
 const clientId = env('AI_TOOLS_AMAZON_CLIENT_ID')
 const clientSecret = env('AI_TOOLS_AMAZON_CLIENT_SECRET')
 const refreshToken = env('AI_TOOLS_AMAZON_REFRESH_TOKEN')
-const accessKeyId = env('AI_TOOLS_AMAZON_ACCESS_KEY_ID')
-const secretAccessKey = env('AI_TOOLS_AMAZON_SECRET_ACCESS_KEY')
-const region = env('AI_TOOLS_AMAZON_REGION')
+const aws = awsCredentialsFromEnv({ regionEnv: 'AI_TOOLS_AMAZON_REGION' })
 const endpoint = env('AI_TOOLS_AMAZON_ENDPOINT')
 const marketplaceIds = env('AI_TOOLS_AMAZON_MARKETPLACE_IDS')
 const catalogKeywords = env('AI_TOOLS_AMAZON_CATALOG_KEYWORDS')
-const run =
-	clientId && clientSecret && refreshToken && accessKeyId && secretAccessKey && region && endpoint && marketplaceIds
-		? describe
-		: describe.skip
+const run = clientId && clientSecret && refreshToken && aws && endpoint && marketplaceIds ? describe : describe.skip
 
 function client() {
 	const ep = endpoint!
@@ -33,11 +29,12 @@ function client() {
 		client_id: clientId!,
 		client_secret: clientSecret!,
 		refresh_token: refreshToken!,
-		access_key_id: accessKeyId!,
-		secret_access_key: secretAccessKey!,
-		region: region!,
+		access_key_id: aws!.access_key_id,
+		secret_access_key: aws!.secret_access_key,
+		region: aws!.region,
 		endpoint: ep,
-		marketplace_ids: marketplaceIds!.split(',').map((s) => s.trim())
+		marketplace_ids: marketplaceIds!.split(',').map((s) => s.trim()),
+		...(aws!.session_token && { session_token: aws!.session_token })
 	})
 }
 

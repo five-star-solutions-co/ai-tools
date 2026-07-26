@@ -144,7 +144,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`) | getBot, listConversations, send/edit/action/react/media |
 | teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL) | getBot; optional send/edit/action/react/media |
 | imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** | send/edit/typing/react/media/unsend; inbound read |
-| s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/signed URL/multipart |
+| s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/getBytesRange/signed URL/multipart |
 | gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot |
 | cloudflare-browser | CF browser token + S3 | renderPdf + renderScreenshot |
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
@@ -156,8 +156,8 @@ bun test test/integration/vendors/resend.live.test.ts
 | supabase-vector | Supabase URL + service role | upsert/query/delete |
 | mastra-vector | `MASTRA_DB_URL` | upsert/query/delete |
 | eventbridge-scheduler | shared `AWS_*` + `EVENTBRIDGE_SCHEDULER_TARGET_ARN` + `ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
-| bedrock-agentcore-browser | shared `AWS_*` (+ optional browser id) | start/get/stop session |
-| bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional interpreter id) | start session, executeCode, stop |
+| bedrock-agentcore-browser | shared `AWS_*` (+ optional browser id) | start/get/stop; optional CDP navigate via automation stream (`AI_TOOLS_BEDROCK_BROWSER_NAVIGATE_URL`, default `https://example.com`; set `AI_TOOLS_BEDROCK_BROWSER_SKIP_NAVIGATE=1` to skip) |
+| bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional interpreter id) | getSession, executeCode, executeCommand, write/list/read/remove files, startCommand/getTask/stopTask, stopSession |
 
 Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and have no live files.
 
@@ -173,9 +173,9 @@ Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and 
 | web-fetch | network | GET example.com |
 | email | Resend and/or CF email | send + sendBatch per provider |
 | files | S3 | list/search/stat/put/get/delete/copy/mkdir/move/multipart |
-| artifacts | S3 or host callbacks | create/readRange/readLines |
-| tasks | host callbacks | create/get/list/update/delete |
-| scheduler | EventBridge Scheduler | create/get/list/update/delete with a disabled schedule |
+| artifacts | host callbacks (always) + S3 object provider | create/readRange/readLines |
+| tasks | host callbacks (always) | create/get/list/update/delete |
+| scheduler | shared `AWS_*` + EventBridge target/role ARNs | create/get/list/update/delete (DISABLED schedule) |
 | document | S3 | buildText/read/editText + buildSpreadsheet/read |
 | messaging | TG / Slack / iMessage / Teams when env set | send/edit/chatAction/stopTyping/reactions/media; Telegram downloadFile; iMessage unsend is **vendor-only** |
 | document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot |

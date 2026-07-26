@@ -36,9 +36,18 @@ run('live vendor s3', () => {
 		const raw = await client.getBytes(bytesKey)
 		expect(raw.byteLength).toBeGreaterThan(0)
 
+		// getBytesRange (added for artifacts bounded reads)
+		const rangeKey = objectKey('ai-tools-s3-range')
+		await client.putBytes(rangeKey, new TextEncoder().encode('0123456789'), 'text/plain')
+		const ranged = await client.getBytesRange(rangeKey, { start_byte: 2, end_byte: 5 })
+		expect(new TextDecoder().decode(ranged.bytes)).toBe('2345')
+		expect(ranged.start_byte).toBe(2)
+		expect(ranged.end_byte).toBe(5)
+
 		await client.delete({ key })
 		await client.delete({ key: copyKey })
 		await client.delete({ key: bytesKey })
+		await client.delete({ key: rangeKey })
 	})
 
 	test('createSignedUrl get', async () => {

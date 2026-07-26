@@ -64,4 +64,51 @@ describe('bedrock-agentcore-browser', () => {
 			restore()
 		}
 	})
+
+	test('get and stop session paths', async () => {
+		const restore = mockFetch(async (input) => {
+			const url = requestUrl(input)
+			if (url.includes('/sessions/get')) {
+				expect(url).toContain('sessionId=b1')
+				return new Response(JSON.stringify({ sessionId: 'b1', status: 'READY', browserIdentifier: 'aws.browser.v1' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+			}
+			if (url.includes('/sessions/stop')) {
+				expect(url).toContain('sessionId=b1')
+				return new Response(JSON.stringify({ sessionId: 'b1', status: 'TERMINATED' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+			}
+			return new Response(`unexpected ${url}`, { status: 500 })
+		})
+		try {
+			const client = new BedrockAgentCoreBrowserClient(auth)
+			const got = await client.getSession({ session_id: 'b1' })
+			expect(got.session_id).toBe('b1')
+			expect(got.status).toBe('READY')
+			const stopped = await client.stopSession({ session_id: 'b1' })
+			expect(stopped.session_id).toBe('b1')
+			expect(stopped.status).toBe('TERMINATED')
+		} finally {
+			restore()
+		}
+	})
+
+	test('getSession maps 404 to ToolError not_found', async () => {
+		const restore = mockFetch(async () => new Response('missing', { status: 404 }))
+		try {
+			const client = new BedrockAgentCoreBrowserClient(auth)
+			await client.getSession({ session_id: 'nope' })
+			expect.unreachable()
+		} catch (error) {
+			expect(error).toBeInstanceOf(Error)
+			const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined
+			expect(code).toBe('not_found')
+		} finally {
+			restore()
+		}
+	})
 })

@@ -124,4 +124,47 @@ describe('eventbridge-scheduler', () => {
 			restore()
 		}
 	})
+
+	test('update puts schedule body', async () => {
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			expect(req.method.toUpperCase()).toBe('PUT')
+			expect(req.url).toContain('/schedules/nightly-report')
+			const body = asRecord(JSON.parse(await req.text()))
+			expect(body['ScheduleExpression']).toBe('rate(2 days)')
+			return new Response(
+				JSON.stringify({ ScheduleArn: 'arn:aws:scheduler:us-east-1:123:schedule/default/nightly-report' }),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
+		})
+		try {
+			const client = new EventBridgeSchedulerClient(auth)
+			const out = await client.update({
+				name: 'nightly-report',
+				schedule_expression: 'rate(2 days)',
+				task_ref: 'ops.nightly'
+			})
+			expect(out.name).toBe('nightly-report')
+		} finally {
+			restore()
+		}
+	})
+
+	test('delete hits schedule path with group', async () => {
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			expect(req.method.toUpperCase()).toBe('DELETE')
+			const url = new URL(req.url)
+			expect(url.pathname).toContain('/schedules/nightly-report')
+			expect(url.searchParams.get('groupName')).toBe('default')
+			return new Response(null, { status: 200 })
+		})
+		try {
+			const client = new EventBridgeSchedulerClient(auth)
+			const out = await client.delete({ name: 'nightly-report' })
+			expect(out).toEqual({ name: 'nightly-report', deleted: true })
+		} finally {
+			restore()
+		}
+	})
 })

@@ -10,7 +10,7 @@ import type { VectorStoreOps } from '../../src/modules/vector-store'
 import type { VectorMatch } from '../../src/vendors/_vector'
 import { sleep, uniqueId } from './env'
 
-export { env, requireEnv, uniqueId, assertLocalUrl, sleep, s3AuthFromEnv } from './env'
+export { env, requireEnv, uniqueId, assertLocalUrl, sleep, awsCredentialsFromEnv, s3AuthFromEnv } from './env'
 export { assertLocalUrl as assertLocalDbUrl } from './env'
 
 export const sampleVectorA = [0.12, 0.34, 0.56]
