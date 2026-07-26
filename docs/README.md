@@ -43,6 +43,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/document-extract` | [document-extract](./modules/document-extract.md) — `textract` |
 | `@harryy/ai-tools/document-render` | [document-render](./modules/document-render.md) — `gotenberg`, `cloudflare-browser` |
 | `@harryy/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — Gotenberg `office-to-pdf` |
+| `@harryy/ai-tools/document` | [document](./modules/document.md) — read / build / edit spreadsheets |
 | `@harryy/ai-tools/web-fetch` | [web-fetch](./modules/web-fetch.md) |
 | `@harryy/ai-tools/vector-store` | [vector-store](./modules/vector-store.md) — providers: `qdrant`, `pinecone`, `supabase`, `mastra` |
 | `@harryy/ai-tools/rag` | [rag](./modules/rag.md) — chunk + host embed route + nested vector-store |

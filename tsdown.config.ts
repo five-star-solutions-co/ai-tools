@@ -14,6 +14,7 @@ export default defineConfig({
 		'vendors/cloudflare-browser/index': 'src/vendors/cloudflare-browser/index.ts',
 		'vendors/cloudflare-email/index': 'src/vendors/cloudflare-email/index.ts',
 		'modules/content-type/index': 'src/modules/content-type/index.ts',
+		'modules/document/index': 'src/modules/document/index.ts',
 		'modules/document-extract/index': 'src/modules/document-extract/index.ts',
 		'modules/document-render/index': 'src/modules/document-render/index.ts',
 		'modules/email/index': 'src/modules/email/index.ts',

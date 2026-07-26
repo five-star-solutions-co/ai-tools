@@ -123,6 +123,7 @@ defineTool / defineModule
 | `@harryy/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
 | `@harryy/ai-tools/document-render` | multi-provider | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
 | `@harryy/ai-tools/file-convert` | gotenberg LO | `file-convert` (`office-to-pdf`), batch | [file-convert](./docs/modules/file-convert.md) |
+| `@harryy/ai-tools/document` | reader/builder | `document-read`, build text/docx/pptx/xlsx, edit spreadsheet | [document](./docs/modules/document.md) |
 | `@harryy/ai-tools/web-fetch` | host policy | `web-fetch-get`, `web-fetch-request` | [web-fetch](./docs/modules/web-fetch.md) |
 | `@harryy/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
 | `@harryy/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |

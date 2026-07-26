@@ -5,6 +5,7 @@ export const moduleKeys = [
 	'cloudflare-browser',
 	'cloudflare-email',
 	'content-type',
+	'document',
 	'document-extract',
 	'document-render',
 	'email',
@@ -36,6 +37,7 @@ export type ModuleKey = (typeof moduleKeys)[number]
 /** Capability seams under src/modules (brand-neutral model copy). */
 export const moduleSeamKeys = [
 	'content-type',
+	'document',
 	'document-extract',
 	'document-render',
 	'email',

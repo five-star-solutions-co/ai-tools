@@ -35,6 +35,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `r2` / `supabase-storage` | **Removed** | Cloudflare R2 REST + Supabase Storage packs deleted; use S3-compatible `s3` (R2 endpoint) when needed |
 | `document-extract` | Done | textract only |
 | `file-convert` | Done | gotenberg LibreOffice `office-to-pdf` |
+| `document` | Done | read (txt/md/json/csv/html/pdf/docx/pptx/xlsx/image) + build text/docx/pptx/xlsx + edit spreadsheet |
 | `web-fetch` | Done | allowlisted HttpService |
 | `mime` | **Removed** | Stub pack deleted; use `email-message` / `content-type` |
 | `content-type` | Done | pure type ↔ extension |

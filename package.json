@@ -61,6 +61,10 @@
 			"types": "./dist/modules/content-type/index.d.ts",
 			"default": "./dist/modules/content-type/index.js"
 		},
+		"./document": {
+			"types": "./dist/modules/document/index.d.ts",
+			"default": "./dist/modules/document/index.js"
+		},
 		"./document-extract": {
 			"types": "./dist/modules/document-extract/index.d.ts",
 			"default": "./dist/modules/document-extract/index.js"
@@ -193,14 +197,20 @@
 	},
 	"dependencies": {
 		"aws4fetch": "1.0.20",
+		"docx": "9.5.1",
 		"es-toolkit": "1.49.0",
+		"exceljs": "4.4.0",
 		"fast-xml-parser": "5.10.1",
+		"jszip": "3.10.1",
+		"mammoth": "1.9.1",
 		"mime": "4",
 		"mimetext": "3.0.28",
 		"ofetch": "1.5.1",
 		"p-map": "7.0.6",
 		"p-retry": "8.0.0",
 		"postal-mime": "2.7.5",
+		"pptxgenjs": "3.12.0",
+		"unpdf": "1.0.6",
 		"zod": "4.4.3"
 	},
 	"devDependencies": {
