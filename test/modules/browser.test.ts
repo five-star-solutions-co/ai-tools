@@ -12,7 +12,7 @@ const auth = {
 	provider: 'bedrock-agentcore',
 	access_key_id: 'AKIAtest',
 	secret_access_key: 'secret',
-	region: 'us-west-2'
+	region: 'us-east-1'
 } as const
 
 describe('browser', () => {

@@ -26,9 +26,11 @@ bun run integration:e2e
 `scripts/integration-e2e.ts` (Bun) runs in parallel where possible:
 
 1. **parallel up:** `docker compose up -d --wait` + `bunx supabase start` (`Promise.all`)
-2. `bunx supabase status -o env` → single-write API URL, DB URL, service_role into `.env` (no secrets printed)
+2. `bun run integration:env` → **in-place upsert** of API URL, DB URL, service_role + compose defaults into `.env` (existing keys rewritten where they sit; missing keys appended once; no secrets printed)
 3. **parallel tests:** `bun test --parallel --max-concurrency=<cpu>`
 4. **parallel down:** compose + `bunx supabase stop` (always, even on failure)
+
+`bun run integration:up` also ends with `integration:env` so Supabase/local defaults stay updated without duplicating lines.
 
 Manual parallel helpers:
 
@@ -65,7 +67,7 @@ Use **one** access key for Textract, Bedrock AgentCore, EventBridge Scheduler, a
 | --- | --- |
 | `AI_TOOLS_AWS_ACCESS_KEY_ID` | required |
 | `AI_TOOLS_AWS_SECRET_ACCESS_KEY` | required |
-| `AI_TOOLS_AWS_REGION` | required default region |
+| `AI_TOOLS_AWS_REGION` | required default region (this package IT: `us-east-1`) |
 | `AI_TOOLS_AWS_SESSION_TOKEN` | optional |
 
 Optional per-service region overrides (still use the same key): `AI_TOOLS_TEXTRACT_REGION`, `AI_TOOLS_BEDROCK_AGENTCORE_REGION`, `AI_TOOLS_EVENTBRIDGE_SCHEDULER_REGION`, `AI_TOOLS_AMAZON_REGION`.

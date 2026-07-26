@@ -25,7 +25,7 @@ function mockFetch(handler: (input: RequestInfo | URL, init?: RequestInit) => Re
 const auth = {
 	access_key_id: 'AKIAtest',
 	secret_access_key: 'secret',
-	region: 'us-west-2'
+	region: 'us-east-1'
 } as const
 
 describe('bedrock-agentcore-browser', () => {

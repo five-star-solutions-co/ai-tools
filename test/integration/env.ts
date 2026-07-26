@@ -37,7 +37,7 @@ export function sleep(ms: number): Promise<void> {
  * | --- | --- |
  * | `AI_TOOLS_AWS_ACCESS_KEY_ID` | required |
  * | `AI_TOOLS_AWS_SECRET_ACCESS_KEY` | required |
- * | `AI_TOOLS_AWS_REGION` | required (default region) |
+ * | `AI_TOOLS_AWS_REGION` | required (package IT default: us-east-1) |
  * | `AI_TOOLS_AWS_SESSION_TOKEN` | optional |
  *
  * Pass `regionEnv` to prefer a service-specific region (still falls back to `AI_TOOLS_AWS_REGION`).
