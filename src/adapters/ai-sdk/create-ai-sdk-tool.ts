@@ -9,13 +9,8 @@ import { runTool } from '../../core/with-auth'
 
 type AiSdkTool = ReturnType<typeof dynamicTool>
 
-/** AI SDK execute options for host `createContext`. */
-export type AiSdkExecuteOptions = {
-	abortSignal?: AbortSignal
-	toolCallId?: string
-	messages?: unknown
-	experimental_context?: unknown
-} & Record<string, unknown>
+/** Exact execute options supplied by the installed AI SDK. */
+export type AiSdkExecuteOptions = Parameters<NonNullable<AiSdkTool['execute']>>[1]
 
 export type AiSdkToolsOptions = {
 	context?: ToolContext

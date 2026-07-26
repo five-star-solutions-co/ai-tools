@@ -1,6 +1,6 @@
 import { toolRef } from './hooks'
 import { ToolError } from './errors'
-import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition, ToolMeta } from './types'
+import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition, ToolExecution, ToolMeta } from './types'
 
 function assertAuth<TAuth>(auth: AuthDefinition<TAuth>, value: unknown): TAuth | undefined {
 	if (auth.type === 'none') {
@@ -21,13 +21,22 @@ export function withAuthTool<TInput, TOutput>(
 	tool: ToolDefinition<TInput, TOutput>,
 	auth: unknown
 ): ToolDefinition<TInput, TOutput> {
+	const previous = tool.execution ?? { run: tool.execute }
+	const bindContext = async (ctx: ToolContext): Promise<ToolContext> => {
+		const base = previous.bindContext ? await previous.bindContext(ctx) : ctx
+		return {
+			...base,
+			...(auth !== undefined && { auth })
+		}
+	}
+	const execution: ToolExecution = {
+		...previous,
+		bindContext
+	}
 	return {
 		...tool,
-		execute: async (input, ctx) =>
-			tool.execute(input, {
-				...ctx,
-				...(auth !== undefined && { auth })
-			})
+		execution,
+		execute: async (input, ctx) => execution.run(input, await bindContext(ctx))
 	}
 }
 
@@ -47,7 +56,7 @@ type RunnableTool<TInput, TOutput> = {
 	name?: string
 	description?: string
 	meta?: ToolMeta
-	hooks?: ToolDefinition['hooks']
+	execution?: ToolExecution | undefined
 	inputSchema: ToolDefinition<TInput, TOutput>['inputSchema']
 	outputSchema: ToolDefinition<TInput, TOutput>['outputSchema']
 	execute: (input: unknown, ctx: ToolContext) => Promise<unknown>
@@ -59,7 +68,8 @@ export async function runTool<TInput, TOutput>(
 	input: TInput,
 	ctx: ToolContext = {}
 ): Promise<TOutput> {
-	const hooks = tool.hooks
+	const execution = tool.execution
+	const hooks = execution?.hooks
 	const ref = toolRef({
 		id: tool.id ?? 'tool',
 		name: tool.name ?? 'tool',
@@ -77,22 +87,29 @@ export async function runTool<TInput, TOutput>(
 		throw error
 	}
 
-	const raw = await tool.execute(parsedIn.data, ctx)
+	let boundCtx = ctx
+	try {
+		if (execution?.bindContext) boundCtx = await execution.bindContext(ctx)
+		const event = { tool: ref, input: parsedIn.data, ctx: boundCtx }
+		if (hooks?.beforeExecute) await hooks.beforeExecute(event)
 
-	const parsedOut = tool.outputSchema.safeParse(raw)
-	if (!parsedOut.success) {
-		const error = new ToolError('Tool returned invalid output', {
-			code: 'internal',
-			details: { issues: parsedOut.error.issues.map((i) => i.message) }
-		})
-		if (hooks?.onError) await hooks.onError({ tool: ref, input: parsedIn.data, ctx, error })
+		const raw = await (execution?.run ?? tool.execute)(parsedIn.data, boundCtx)
+		const parsedOut = tool.outputSchema.safeParse(raw)
+		if (!parsedOut.success) {
+			throw new ToolError('Tool returned invalid output', {
+				code: 'internal',
+				details: { issues: parsedOut.error.issues.map((i) => i.message) }
+			})
+		}
+
+		if (hooks?.afterExecute) await hooks.afterExecute({ ...event, output: parsedOut.data })
+		return parsedOut.data
+	} catch (error) {
+		if (hooks?.onError) {
+			await hooks.onError({ tool: ref, input: parsedIn.data, ctx: boundCtx, error })
+		}
 		throw error
 	}
-
-	if (hooks?.afterExecute) {
-		await hooks.afterExecute({ tool: ref, input: parsedIn.data, ctx, output: parsedOut.data })
-	}
-	return parsedOut.data
 }
 
 export function listTools(module: ModuleDefinition): readonly ToolDefinition[] {

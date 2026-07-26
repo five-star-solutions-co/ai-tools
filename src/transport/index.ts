@@ -4,7 +4,14 @@
  */
 
 export { AwsService } from './aws-service'
-export type { AwsCredentials, AwsServiceOptions, AwsCallOptions, AwsQueryResult, AwsBytesResult } from './aws-service'
+export type {
+	AwsBytesOptions,
+	AwsBytesResult,
+	AwsCallOptions,
+	AwsCredentials,
+	AwsQueryResult,
+	AwsServiceOptions
+} from './aws-service'
 export {
 	assertHttpStatusOk,
 	httpErrorCode,
@@ -14,4 +21,11 @@ export {
 } from './errors'
 export type { StatusThrowOptions } from './errors'
 export { HttpService } from './http-service'
-export type { HttpBody, HttpBytesResult, HttpCallOptions, HttpQueryResult, HttpServiceOptions } from './http-service'
+export type {
+	HttpBody,
+	HttpBytesOptions,
+	HttpBytesResult,
+	HttpCallOptions,
+	HttpQueryResult,
+	HttpServiceOptions
+} from './http-service'

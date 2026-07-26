@@ -67,7 +67,9 @@ import {
 await runTool(tool, input, ctx?)
 ```
 
-Validates input, calls execute, validates output against `outputSchema`.
+Validates input, resolves bound context, runs before/after/error hooks around the
+leaf execute, then validates output against `outputSchema`. Every hook phase sees
+the same resolved context.
 
 ## Contracts
 

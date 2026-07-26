@@ -221,4 +221,76 @@ describe('s3', () => {
 			globalThis.fetch = original
 		}
 	})
+
+	test('bounded get returns an empty object without an unsatisfiable Range request', async () => {
+		const original = globalThis.fetch
+		let gets = 0
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			if (req.method === 'HEAD') {
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-length': '0', 'content-type': 'application/octet-stream', etag: '"empty"' }
+				})
+			}
+			if (req.method === 'GET') gets += 1
+			return new Response('unexpected', { status: 500 })
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client(auth)
+			const result = await client.get({ key: 'empty.bin', encoding: 'base64' })
+			expect(result).toEqual({
+				key: 'empty.bin',
+				body: '',
+				encoding: 'base64',
+				content_type: 'application/octet-stream',
+				content_length: 0
+			})
+			expect(gets).toBe(0)
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('bounded get rejects a larger Content-Range even when the returned chunk is small', async () => {
+		const original = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			if (req.method === 'HEAD') {
+				return new Response(null, { status: 200, headers: { 'content-length': '1' } })
+			}
+			return new Response(new Uint8Array(5), {
+				status: 206,
+				headers: { 'content-length': '5', 'content-range': 'bytes 0-4/20' }
+			})
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client(auth)
+			await client.getBytes('grew.bin', { maxBytes: 10 })
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error)).toBe(true)
+			if (isToolError(error)) {
+				expect(error.code).toBe('too_large')
+				expect(error.details?.['content_length']).toBe(20)
+			}
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('getBytes rejects invalid limits before network I/O', async () => {
+		let fetched = false
+		const client = new S3Client(auth, {
+			fetch: async () => {
+				fetched = true
+				return new Response()
+			}
+		})
+
+		expect(client.getBytes('x', { maxBytes: Number.NaN })).rejects.toMatchObject({ code: 'bad_input' })
+		expect(fetched).toBe(false)
+	})
 })

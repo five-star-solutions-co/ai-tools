@@ -3,7 +3,7 @@
  * Host: `new S3Client(auth)`. Agent tools: `fromContext(ctx)`.
  */
 
-import { isNil, isString } from 'es-toolkit'
+import { isNil, isNumber, isString } from 'es-toolkit'
 
 import { isToolError, ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
@@ -57,6 +57,20 @@ function objectNotFound(): never {
 function remapNotFound(error: unknown): never {
 	if (isToolError(error) && error.code === 'not_found') objectNotFound()
 	throw error
+}
+
+function tooLarge(maxBytes: number, contentLength: number, message: string, cause?: unknown): never {
+	throw new ToolError(message, {
+		code: 'too_large',
+		details: { max_bytes: maxBytes, content_length: contentLength },
+		...(cause !== undefined && { cause })
+	})
+}
+
+function assertByteLimit(maxBytes: number): void {
+	if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
+		throw new ToolError('Download limit must be a non-negative safe integer', { code: 'bad_input' })
+	}
 }
 
 export class S3Client {
@@ -115,19 +129,23 @@ export class S3Client {
 		return out
 	}
 
-	/** HEAD size gate + Range GET (and If-Match when etag known). Never buffers past maxBytes+1. */
+	/** HEAD size gate plus a bounded Range GET, with If-Match when an etag is known. */
 	async #getBounded(
 		key: string,
 		maxBytes: number,
 		limitMessage: string
 	): Promise<{ bytes: Uint8Array; headers: Headers; head: HeadObjectOutput }> {
+		assertByteLimit(maxBytes)
 		const head = await this.head({ key })
 		if (!head.exists) objectNotFound()
 		if (!isNil(head.content_length) && head.content_length > maxBytes) {
-			throw new ToolError(limitMessage, {
-				code: 'too_large',
-				details: { max_bytes: maxBytes, content_length: head.content_length }
-			})
+			tooLarge(maxBytes, head.content_length, limitMessage)
+		}
+		if (head.content_length === 0) {
+			const headers = new Headers({ 'content-length': '0' })
+			if (head.content_type) headers.set('content-type', head.content_type)
+			if (head.etag) headers.set('etag', `"${head.etag}"`)
+			return { bytes: new Uint8Array(), headers, head }
 		}
 
 		const headers: Record<string, string> = { Range: `bytes=0-${maxBytes}` }
@@ -135,8 +153,21 @@ export class S3Client {
 
 		let response
 		try {
-			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), { label: 'S3 get', headers })
+			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), {
+				label: 'S3 get',
+				headers,
+				maxBytes
+			})
 		} catch (error) {
+			if (isToolError(error) && error.code === 'too_large') {
+				const observed = error.details?.['content_length']
+				tooLarge(
+					maxBytes,
+					isNumber(observed) && Number.isFinite(observed) ? observed : maxBytes + 1,
+					limitMessage,
+					error
+				)
+			}
 			if (isToolError(error) && error.details?.['status'] === 412) {
 				throw new ToolError('Object changed during download', {
 					code: 'upstream',
@@ -147,15 +178,8 @@ export class S3Client {
 			remapNotFound(error)
 		}
 
-		if (response.bytes.byteLength > maxBytes) {
-			throw new ToolError(limitMessage, {
-				code: 'too_large',
-				details: {
-					max_bytes: maxBytes,
-					content_length: contentRangeTotal(response.headers.get('content-range')) ?? response.bytes.byteLength
-				}
-			})
-		}
+		const total = contentRangeTotal(response.headers.get('content-range'))
+		if (total !== undefined && total > maxBytes) tooLarge(maxBytes, total, limitMessage)
 		return { bytes: response.bytes, headers: response.headers, head }
 	}
 
@@ -188,16 +212,7 @@ export class S3Client {
 
 	async put(input: PutObjectInput): Promise<PutObjectOutput> {
 		const encoding = input.body_encoding ?? 'utf8'
-		let bodyBytes: Uint8Array
-		try {
-			bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
-		} catch (error) {
-			if (isToolError(error) && error.code === 'bad_input') throw error
-			throw new ToolError('Invalid body encoding for putObject', {
-				code: 'bad_input',
-				cause: error
-			})
-		}
+		const bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
 		if (bodyBytes.byteLength > MAX_OBJECT_BYTES) {
 			throw new ToolError('Object exceeds 5 MiB upload limit', {
 				code: 'too_large',
@@ -303,16 +318,7 @@ export class S3Client {
 
 	async uploadPart(input: UploadPartInput): Promise<UploadPartOutput> {
 		const encoding = input.body_encoding ?? 'utf8'
-		let bodyBytes: Uint8Array
-		try {
-			bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
-		} catch (error) {
-			if (isToolError(error) && error.code === 'bad_input') throw error
-			throw new ToolError('Invalid body encoding for uploadPart', {
-				code: 'bad_input',
-				cause: error
-			})
-		}
+		const bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
 		if (bodyBytes.byteLength > MAX_MULTIPART_PART_BYTES) {
 			throw new ToolError('Multipart part exceeds 25 MiB upload limit', {
 				code: 'too_large',

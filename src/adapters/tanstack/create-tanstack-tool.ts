@@ -9,11 +9,7 @@ import { runTool } from '../../core/with-auth'
 
 type TanStackServerTool = ReturnType<ReturnType<typeof toolDefinition>['server']>
 
-/** TanStack execute context for host `createContext`. */
-export type TanStackExecuteContext = {
-	abortSignal?: AbortSignal
-	requestId?: string
-} & Record<string, unknown>
+export type TanStackExecuteContext = Parameters<NonNullable<TanStackServerTool['execute']>>[1]
 
 export type TanStackToolsOptions = {
 	context?: ToolContext

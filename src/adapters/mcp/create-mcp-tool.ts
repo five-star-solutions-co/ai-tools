@@ -1,4 +1,5 @@
 import { isFunction, isPlainObject, isString, keyBy, mapValues } from 'es-toolkit'
+import type { ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { toJSONSchema } from 'zod'
 
 import { mergeToolContext } from '../../core/context'
@@ -34,9 +35,11 @@ export type McpCallToolResult = {
 	structuredContent?: Record<string, unknown>
 }
 
+export type McpRequestExtra = Parameters<ToolCallback>[0]
+
 /**
  * Minimal surface of `@modelcontextprotocol/sdk` `McpServer.registerTool`
- * so hosts can register without this package hard-depending on the SDK types.
+ * used by the optional MCP adapter peer.
  */
 export type McpServerLike = {
 	registerTool: (
@@ -48,8 +51,7 @@ export type McpServerLike = {
 			outputSchema?: unknown
 			title?: string
 		},
-		// MCP passes parsed args + request extras (includes AbortSignal as `signal` in recent SDKs).
-		cb: (args: unknown, extra: { signal?: AbortSignal }) => Promise<unknown>
+		cb: (args: unknown, extra: McpRequestExtra) => Promise<unknown>
 	) => unknown
 }
 
@@ -136,13 +138,6 @@ export function createMcpTools(source: ToolSource): McpToolset {
 		}
 	}
 }
-
-/** Host-facing MCP request extras (`createContext`). */
-export type McpRequestExtra = {
-	signal?: AbortSignal
-	requestId?: string
-	sessionId?: string
-} & Record<string, unknown>
 
 export type RegisterMcpToolsOptions = {
 	/**

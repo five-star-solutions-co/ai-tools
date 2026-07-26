@@ -1,7 +1,5 @@
 import type { z } from 'zod'
 
-import type { ToolHooks } from './hooks'
-
 export type ToolRuntime = 'both' | 'edge' | 'node'
 
 export type ToolSideEffect = 'delete' | 'none' | 'read' | 'send' | 'write'
@@ -28,6 +26,31 @@ export type ToolContext<TAuth = unknown> = {
  * type assertions. `defineTool` validates via inputSchema first.
  */
 export type ToolExecute = (input: unknown, ctx: ToolContext) => Promise<unknown>
+
+export type ToolHookToolRef = Pick<ToolDefinition, 'id' | 'name' | 'description' | 'meta'>
+
+export type ToolHookEvent = {
+	tool: ToolHookToolRef
+	input: unknown
+	ctx: ToolContext
+}
+
+export type ToolHooks = {
+	beforeExecute?: (event: ToolHookEvent) => void | Promise<void>
+	/** Runs after successful output validation. */
+	afterExecute?: (event: ToolHookEvent & { output: unknown }) => void | Promise<void>
+	onError?: (event: ToolHookEvent & { error: unknown }) => void | Promise<void>
+}
+
+/**
+ * Internal execution plan carried through auth/context/hook wrappers.
+ * `runTool` is the only consumer; direct `.execute` still applies bound context.
+ */
+export type ToolExecution = {
+	bindContext?: (ctx: ToolContext) => ToolContext | Promise<ToolContext>
+	hooks?: ToolHooks
+	run: ToolExecute
+}
 
 /**
  * Tool metadata: runtime/sideEffect for contracts; optional host-facing **hints**
@@ -62,8 +85,8 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
 	name: string
 	outputSchema: z.ZodType<TOutput>
 	execute: ToolExecute
-	/** Host hooks from `withHooks` / `bindModule` (not model-facing). */
-	hooks?: ToolHooks | undefined
+	/** @internal Host execution plan composed by core helpers. */
+	execution?: ToolExecution | undefined
 }
 
 /**

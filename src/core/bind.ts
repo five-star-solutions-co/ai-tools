@@ -3,10 +3,9 @@
  */
 
 import { mergeToolContext } from './context'
-import { runWithHooks, toolRef } from './hooks'
 import type { ToolHooks } from './hooks'
 import { ToolError } from './errors'
-import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition } from './types'
+import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition, ToolExecution } from './types'
 
 function assertAuth<TAuth>(auth: AuthDefinition<TAuth>, value: unknown): TAuth | undefined {
 	if (auth.type === 'none') {
@@ -53,21 +52,20 @@ export function bindTool<TInput, TOutput, TAuth = unknown>(
 	moduleAuth: AuthDefinition<TAuth>,
 	options: BindModuleOptions<TAuth>
 ): ToolDefinition<TInput, TOutput> {
-	const hooks = options.hooks
+	const previous = tool.execution ?? { run: tool.execute }
+	const bindContext = async (ctx: ToolContext): Promise<ToolContext> => {
+		const base = previous.bindContext ? await previous.bindContext(ctx) : ctx
+		return resolveBoundContext(moduleAuth, base, options)
+	}
+	const execution: ToolExecution = {
+		...previous,
+		bindContext,
+		...(options.hooks && { hooks: options.hooks })
+	}
 	return {
 		...tool,
-		...(hooks && { hooks }),
-		execute: async (input, ctx) => {
-			let bound = ctx
-			try {
-				bound = await resolveBoundContext(moduleAuth, ctx, options)
-			} catch (error) {
-				if (hooks?.onError) await hooks.onError({ tool: toolRef(tool), input, ctx, error })
-				throw error
-			}
-			if (!hooks) return tool.execute(input, bound)
-			return runWithHooks(tool, input, bound, hooks)
-		}
+		execution,
+		execute: async (input, ctx) => execution.run(input, await bindContext(ctx))
 	}
 }
 

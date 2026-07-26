@@ -84,16 +84,39 @@ describe('adapters', () => {
 		expect(runTool(echoTool, { message: 'direct' })).resolves.toEqual({ message: 'direct' })
 	})
 
-	test('createContext is typed on adapter options (not unknown)', () => {
-		// Compile-time: createContext param is MastraExecuteContext, not unknown.
-		const tools = createMastraTools(echoModule, {
+	test('createContext uses installed framework execution types', () => {
+		const mastra = createMastraTools(echoModule, {
 			createContext: (context) => {
-				const id: string | undefined = context.toolCallId
 				const signal: AbortSignal | undefined = context.abortSignal
-				return { extras: { id: id ?? 'none', has_signal: signal !== undefined } }
+				const requestContext = context.requestContext
+				return { extras: { has_request: requestContext !== undefined, has_signal: signal !== undefined } }
 			}
 		})
-		expect(tools['echo-message']).toBeDefined()
+		const aiSdk = createAiSdkTools(echoModule, {
+			createContext: (context) => {
+				const id: string = context.toolCallId
+				const messages = context.messages
+				return { extras: { id, message_count: messages.length } }
+			}
+		})
+		const tanstack = createTanStackTools(echoModule, {
+			createContext: (context) => {
+				const id: string | undefined = context?.toolCallId
+				const emit = context?.emitCustomEvent
+				return { extras: { id, can_emit: typeof emit === 'function' } }
+			}
+		})
+		registerMcpTools({ registerTool: () => ({}) }, echoModule, {
+			createContext: (extra) => {
+				const requestId: string | number = extra.requestId
+				const signal: AbortSignal = extra.signal
+				return { extras: { requestId, aborted: signal.aborted } }
+			}
+		})
+
+		expect(mastra['echo-message']).toBeDefined()
+		expect(aiSdk['echo-message']).toBeDefined()
+		expect(tanstack).toHaveLength(1)
 	})
 
 	test('createContext undefined signal does not erase framework abort', async () => {

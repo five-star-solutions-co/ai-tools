@@ -177,6 +177,50 @@ describe('withHooks (H-03)', () => {
 		const boundOut = await runTool(bound.tools[0]!, { message: 'x' })
 		expect(boundOut).toBe('x!')
 	})
+
+	test('static auth is bound before every hook phase', async () => {
+		const seen: unknown[] = []
+		const hooked = withHooks(withAuth(echoModule, { api_key: 'secret' }), {
+			beforeExecute: ({ ctx }) => {
+				seen.push(ctx.auth)
+			},
+			afterExecute: ({ ctx }) => {
+				seen.push(ctx.auth)
+			}
+		})
+
+		await runTool(hooked.tools[0]!, { message: 'x' })
+		expect(seen).toEqual([{ api_key: 'secret' }, { api_key: 'secret' }])
+	})
+
+	test('afterExecute failures reach onError with the same bound context', async () => {
+		const seen: unknown[] = []
+		const hooked = withHooks(withAuth(echoModule, { api_key: 'secret' }), {
+			afterExecute: ({ ctx }) => {
+				seen.push(ctx.auth)
+				throw new Error('audit failed')
+			},
+			onError: ({ ctx }) => {
+				seen.push(ctx.auth)
+			}
+		})
+
+		expect(runTool(hooked.tools[0]!, { message: 'x' })).rejects.toThrow('audit failed')
+		expect(seen).toEqual([{ api_key: 'secret' }, { api_key: 'secret' }])
+	})
+
+	test('direct execute applies binding but not runTool hooks', async () => {
+		const events: string[] = []
+		const hooked = withHooks(withAuth(echoModule, { api_key: 'secret' }), {
+			beforeExecute: () => {
+				events.push('before')
+			}
+		})
+
+		const output = await hooked.tools[0]!.execute({ message: 'x' }, {})
+		expect(output).toEqual({ message: 'x', key_prefix: 'sec' })
+		expect(events).toEqual([])
+	})
 })
 
 describe('mergeToolContext (undefined overlay)', () => {
@@ -270,16 +314,24 @@ describe('bindModule (H-01)', () => {
 	})
 
 	test('hooks see bound auth context', async () => {
-		const seen: unknown[] = []
+		const seen: ToolContext[] = []
 		const bound = bindModule(echoModule, {
 			resolveAuth: async () => ({ api_key: 'bound' }),
+			resolveContext: async () => ({ extras: { org_id: 'tenant' } }),
 			hooks: {
 				beforeExecute: async ({ ctx }) => {
-					seen.push(ctx.auth)
+					seen.push(ctx)
+				},
+				afterExecute: async ({ ctx }) => {
+					seen.push(ctx)
 				}
 			}
 		})
 		await runTool(bound.tools[0]!, { message: 'x' })
-		expect(seen[0]).toEqual({ api_key: 'bound' })
+		expect(seen).toHaveLength(2)
+		for (const ctx of seen) {
+			expect(ctx.auth).toEqual({ api_key: 'bound' })
+			expect(ctx.extras).toEqual({ org_id: 'tenant' })
+		}
 	})
 })

@@ -1,4 +1,5 @@
 import { createTool } from '@mastra/core/tools'
+import type { ToolExecutionContext } from '@mastra/core/tools'
 import { keyBy, mapValues } from 'es-toolkit'
 
 import { mergeAdapterToolContext } from '../framework-context'
@@ -9,13 +10,7 @@ import { runTool } from '../../core/with-auth'
 
 type MastraTool = ReturnType<typeof createTool>
 
-/** Mastra execute context for host `createContext`. */
-export type MastraExecuteContext = {
-	abortSignal?: AbortSignal
-	toolCallId?: string
-	requestContext?: unknown
-	tracingContext?: unknown
-} & Record<string, unknown>
+export type MastraExecuteContext = ToolExecutionContext
 
 export type MastraToolsOptions = {
 	context?: ToolContext

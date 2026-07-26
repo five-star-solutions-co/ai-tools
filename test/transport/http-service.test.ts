@@ -13,7 +13,7 @@ describe('HttpService', () => {
 				status: 200,
 				headers: { 'content-type': 'application/json' }
 			})
-		}) as typeof globalThis.fetch
+		}) as unknown as typeof globalThis.fetch
 
 		try {
 			const http = new HttpService({
@@ -35,7 +35,7 @@ describe('HttpService', () => {
 			const body = typeof init?.body === 'string' ? init.body : ''
 			expect(body).toContain('hello')
 			return new Response(JSON.stringify({ id: '1' }), { status: 200 })
-		}) as typeof globalThis.fetch
+		}) as unknown as typeof globalThis.fetch
 
 		try {
 			const http = new HttpService({ baseURL: 'https://api.example.com', label: 'Example' })
@@ -88,6 +88,55 @@ describe('HttpService', () => {
 		} finally {
 			globalThis.fetch = original
 		}
+	})
+
+	test('bytes cancels a streaming response above maxBytes', async () => {
+		const original = globalThis.fetch
+		let pulls = 0
+		let cancelled = false
+		globalThis.fetch = (async () => {
+			const body = new ReadableStream<Uint8Array>({
+				pull(controller) {
+					pulls += 1
+					controller.enqueue(new Uint8Array(6))
+				},
+				cancel() {
+					cancelled = true
+				}
+			})
+			return new Response(body, { status: 200 })
+		}) as unknown as typeof globalThis.fetch
+
+		try {
+			const http = new HttpService({ baseURL: 'https://api.example.com', label: 'Example' })
+			await http.bytes('GET', '/bin', { maxBytes: 10 })
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error)).toBe(true)
+			if (isToolError(error)) {
+				expect(error.code).toBe('too_large')
+				expect(error.details?.['max_bytes']).toBe(10)
+			}
+			expect(cancelled).toBe(true)
+			expect(pulls).toBeLessThanOrEqual(3)
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('bytes rejects invalid maxBytes before fetch', async () => {
+		let fetched = false
+		const http = new HttpService({
+			fetch: async () => {
+				fetched = true
+				return new Response()
+			}
+		})
+
+		expect(http.bytes('GET', 'https://api.example.com/bin', { maxBytes: -1 })).rejects.toMatchObject({
+			code: 'bad_input'
+		})
+		expect(fetched).toBe(false)
 	})
 
 	test('maps FetchError wrapping AbortError to timeout', async () => {

@@ -27,6 +27,7 @@ import { HttpService } from '../../transport/http-service'
 const http = new HttpService({ baseURL, headers, label: 'Resend', fetch, signal })
 await http.post('/emails', body)
 await http.bytes('GET', '/file')
+await http.bytes('GET', '/bounded-file', { maxBytes: 5 * 1024 * 1024 })
 await http.get('/x', { noThrow: true })
 ```
 
@@ -41,7 +42,7 @@ await aws.sign(url, { signQuery: true })
 | API | Role |
 | --- | --- |
 | `query` | Parsed body; throws `ToolError` on non-2xx by default |
-| `bytes` | Binary body |
+| `bytes` | Binary body; optional `maxBytes` uses a bounded stream |
 | `get` / `post` / `put` / `patch` / `delete` / `head` | Sugar |
 | `noThrow` / `allowStatuses` | Opt out of default throw |
 | `AwsService.sign` | Presigned URLs |

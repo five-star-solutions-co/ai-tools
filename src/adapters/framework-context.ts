@@ -12,29 +12,21 @@ export function frameworkSignalContext(context: unknown, key: 'abortSignal' | 's
 	return signal ? { signal } : {}
 }
 
-/** Plain copy of a framework execute bag. */
-export function copyFrameworkBag(value: unknown): Record<string, unknown> {
-	if (value === null || typeof value !== 'object') return {}
-	const out: Record<string, unknown> = {}
-	for (const key of Object.keys(value)) out[key] = Reflect.get(value, key)
-	return out
-}
-
 /**
  * framework signal ← static context ← createContext(bag).
  * `undefined` overlay fields do not erase base values.
  */
-export async function mergeAdapterToolContext(
-	frameworkContext: unknown,
+export async function mergeAdapterToolContext<TFrameworkContext>(
+	frameworkContext: TFrameworkContext,
 	options: {
 		context?: ToolContext | undefined
-		createContext?: ((bag: Record<string, unknown>) => ToolContext | Promise<ToolContext>) | undefined
+		createContext?: ((context: TFrameworkContext) => ToolContext | Promise<ToolContext>) | undefined
 	} = {},
 	signalKey: 'abortSignal' | 'signal' = 'abortSignal'
 ): Promise<ToolContext> {
 	let ctx = mergeToolContext(frameworkSignalContext(frameworkContext, signalKey), options.context ?? {})
 	if (options.createContext) {
-		ctx = mergeToolContext(ctx, await options.createContext(copyFrameworkBag(frameworkContext)))
+		ctx = mergeToolContext(ctx, await options.createContext(frameworkContext))
 	}
 	return ctx
 }

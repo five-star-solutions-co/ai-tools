@@ -22,6 +22,7 @@ export type AwsServiceOptions = AwsCredentials & HttpServiceOptions
 
 export type {
 	HttpCallOptions as AwsCallOptions,
+	HttpBytesOptions as AwsBytesOptions,
 	HttpQueryResult as AwsQueryResult,
 	HttpBytesResult as AwsBytesResult
 } from './http-service'

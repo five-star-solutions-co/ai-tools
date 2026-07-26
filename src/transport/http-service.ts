@@ -7,6 +7,7 @@ import { createFetch } from 'ofetch'
 import type { CreateFetchOptions, FetchOptions } from 'ofetch'
 import { trimEnd } from 'es-toolkit'
 
+import { ToolError } from '../core/errors'
 import type { FetchLike } from '../core/types'
 import { assertHttpStatusOk, mapTransportNetworkError } from './errors'
 
@@ -46,6 +47,11 @@ export type HttpCallOptions = {
 	signal?: AbortSignal
 	/** Override error label for this call. */
 	label?: string
+}
+
+export type HttpBytesOptions = HttpCallOptions & {
+	/** Stop reading and throw `too_large` once the response exceeds this many bytes. */
+	maxBytes?: number
 }
 
 export type HttpQueryResult = {
@@ -104,14 +110,32 @@ export class HttpService {
 		return this.#raw(method, path, options)
 	}
 
-	/** Binary body (`responseType: "arrayBuffer"`). ofetch puts ArrayBuffer in `_data`. */
-	async bytes(method: string, path: string, options: HttpCallOptions = {}): Promise<HttpBytesResult> {
-		const res = await this.#raw(method, path, options, {
-			responseType: 'arrayBuffer'
+	/**
+	 * Binary body. `maxBytes` switches to streaming and cancels before an
+	 * oversized response is materialized.
+	 */
+	async bytes(method: string, path: string, options: HttpBytesOptions = {}): Promise<HttpBytesResult> {
+		const { maxBytes, ...requestOptions } = options
+		if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 0)) {
+			throw new ToolError('Response byte limit must be a non-negative safe integer', { code: 'bad_input' })
+		}
+
+		const res = await this.#raw(method, path, requestOptions, {
+			responseType: maxBytes === undefined ? 'arrayBuffer' : 'stream'
 		})
-		return {
-			...res,
-			bytes: new Uint8Array(res.data)
+		if (maxBytes === undefined) {
+			return {
+				...res,
+				bytes: new Uint8Array(res.data)
+			}
+		}
+
+		const label = options.label ?? this.#defaultLabel
+		try {
+			const bytes = await readBoundedBytes(res.data, res.headers, maxBytes, label)
+			return { ...res, bytes }
+		} catch (error) {
+			mapTransportNetworkError(error, label)
 		}
 	}
 
@@ -138,6 +162,75 @@ export class HttpService {
 	head(path: string, options: HttpCallOptions = {}): Promise<HttpQueryResult> {
 		return this.query('HEAD', path, options)
 	}
+}
+
+function isReadableByteStream(value: unknown): value is ReadableStream<unknown> {
+	return value instanceof ReadableStream
+}
+
+function contentLength(headers: Headers): number | undefined {
+	const value = headers.get('content-length')
+	if (value === null || !/^\d+$/.test(value)) return undefined
+	const parsed = Number(value)
+	return Number.isSafeInteger(parsed) ? parsed : undefined
+}
+
+function responseTooLarge(label: string, maxBytes: number, observedBytes: number): never {
+	throw new ToolError(`${label} response exceeds byte limit`, {
+		code: 'too_large',
+		details: { max_bytes: maxBytes, content_length: observedBytes }
+	})
+}
+
+async function readBoundedBytes(data: unknown, headers: Headers, maxBytes: number, label: string): Promise<Uint8Array> {
+	const declaredLength = contentLength(headers)
+	if (declaredLength !== undefined && declaredLength > maxBytes) {
+		if (isReadableByteStream(data)) {
+			try {
+				await data.cancel()
+			} catch {
+				// Preserve the stable too_large error.
+			}
+		}
+		responseTooLarge(label, maxBytes, declaredLength)
+	}
+	if (data === null || data === undefined) return new Uint8Array()
+	if (!isReadableByteStream(data)) {
+		throw new ToolError(`${label} returned an invalid byte stream`, { code: 'upstream' })
+	}
+
+	const reader = data.getReader()
+	const chunks: Uint8Array[] = []
+	let total = 0
+	try {
+		while (true) {
+			const chunk = await reader.read()
+			if (chunk.done) break
+			if (!(chunk.value instanceof Uint8Array)) {
+				throw new ToolError(`${label} returned an invalid byte chunk`, { code: 'upstream' })
+			}
+			total += chunk.value.byteLength
+			if (total > maxBytes) {
+				try {
+					await reader.cancel()
+				} catch {
+					// Preserve the stable too_large error.
+				}
+				responseTooLarge(label, maxBytes, declaredLength ?? total)
+			}
+			chunks.push(chunk.value)
+		}
+	} finally {
+		reader.releaseLock()
+	}
+
+	const bytes = new Uint8Array(total)
+	let offset = 0
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset)
+		offset += chunk.byteLength
+	}
+	return bytes
 }
 
 function createOfetch(options: HttpServiceOptions): OfetchInstance {
