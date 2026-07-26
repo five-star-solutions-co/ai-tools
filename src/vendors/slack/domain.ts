@@ -240,18 +240,28 @@ export function parseUploadUrl(value: Record<string, unknown>): { upload_url: st
 	return { upload_url: uploadUrl, file_id: fileId }
 }
 
-/** Prefer message ts from shares; fall back to uploaded file id. */
-export function parseUploadComplete(value: Record<string, unknown>): SlackMessageOutput {
+/**
+ * Prefer message ts from shares; fall back to uploaded file id.
+ * Always surface `file_id` when known so hosts can download the just-uploaded file.
+ */
+export function parseUploadComplete(value: Record<string, unknown>, knownFileId?: string): SlackMessageOutput {
 	const files = value['files']
 	if (Array.isArray(files) && files.length > 0) {
 		const first = files[0]
 		if (isPlainObject(first)) {
+			const fromFile = isString(first['id']) && first['id'].length > 0 ? first['id'] : undefined
+			const fileId = fromFile ?? knownFileId
 			const fromShares = extractTsFromShares(first['shares'])
-			if (fromShares) return { message_id: fromShares }
-			if (isString(first['id']) && first['id'].length > 0) {
-				return { message_id: first['id'] }
+			if (fromShares) {
+				return { message_id: fromShares, ...(fileId && { file_id: fileId }) }
+			}
+			if (fileId) {
+				return { message_id: fileId, file_id: fileId }
 			}
 		}
+	}
+	if (knownFileId) {
+		return { message_id: knownFileId, file_id: knownFileId }
 	}
 	throw new ToolError('Slack files.completeUploadExternal returned invalid payload', { code: 'upstream' })
 }

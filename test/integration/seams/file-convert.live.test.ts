@@ -48,5 +48,21 @@ run('live seam file-convert (gotenberg libreoffice)', () => {
 		expect(out.result.media_type).toBe('application/pdf')
 		expect(out.result.key.endsWith('.pdf')).toBe(true)
 		expect((out.result.byte_length ?? 0) > 0).toBe(true)
+
+		const batch = await client.convertBatch({
+			items: [
+				{
+					source: {
+						store: 'object',
+						key: sourceKey,
+						filename: 'hello.rtf',
+						media_type: 'application/rtf'
+					},
+					path: 'office-to-pdf'
+				}
+			]
+		})
+		expect(batch.results.length).toBe(1)
+		expect(batch.succeeded + batch.failed).toBe(1)
 	})
 })

@@ -322,6 +322,7 @@ describe('slack module', () => {
 			})
 			expect(steps).toEqual(['getUploadURL', 'upload', 'complete'])
 			expect(out.message_id).toBe('99.1')
+			expect(out.file_id).toBe('F123')
 		} finally {
 			globalThis.fetch = original
 		}

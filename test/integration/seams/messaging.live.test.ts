@@ -129,7 +129,7 @@ runTg('live seam messaging (telegram)', () => {
 
 runSlack('live seam messaging (slack)', () => {
 	test(
-		'full surface: send edit action stopTyping react media batch read no-op',
+		'full surface: send edit thread-typing react media download batch read + answerCallback no-op',
 		async () => {
 			const client = MessagingClient.fromAuth({
 				provider: 'slack',
@@ -150,8 +150,13 @@ runSlack('live seam messaging (slack)', () => {
 			})
 			expect(edited.message_id).toBeTruthy()
 
-			await client.sendChatAction({ chat_id, action: 'typing' })
-			await client.stopTyping({ chat_id })
+			// Slack assistant status requires thread_ts.
+			await client.sendChatAction({
+				chat_id,
+				action: 'typing',
+				reply_to_message_id: msg.message_id
+			})
+			await client.stopTyping({ chat_id, reply_to_message_id: msg.message_id })
 
 			const reaction = await client.setReaction({
 				chat_id,
@@ -165,14 +170,23 @@ runSlack('live seam messaging (slack)', () => {
 				emoji: 'thumbsup'
 			})
 
+			const mediaBody = 'slack seam media'
 			const media = await client.sendMedia({
 				chat_id,
 				kind: 'document',
 				file_name: 'msg-slack.txt',
-				body_base64: Buffer.from('slack seam media').toString('base64'),
+				body_base64: Buffer.from(mediaBody).toString('base64'),
 				content_type: 'text/plain'
 			})
 			expect(media.message_id).toBeTruthy()
+			expect(media.file_id).toBeTruthy()
+
+			const downloaded = await client.downloadFile({
+				file_id: media.file_id!,
+				file_name: 'msg-slack-dl.txt'
+			})
+			expect(downloaded.body_base64).toBeDefined()
+			expect(Buffer.from(downloaded.body_base64!, 'base64').toString('utf8')).toBe(mediaBody)
 
 			const batch = await client.sendMediaBatch({
 				chat_id,
@@ -196,6 +210,8 @@ runSlack('live seam messaging (slack)', () => {
 			expect(batch.results.failed).toBe(0)
 
 			await expectWarnNoOp(() => client.read({ chat_id, message_id: msg.message_id }), ['slack', 'read'])
+			// Non-URL callback is a successful no-op on Slack.
+			await client.answerCallback({ callback_query_id: 'not-a-response-url' })
 		},
 		{ timeout: 60_000 }
 	)
@@ -296,6 +312,17 @@ runIm('live seam messaging (imessage)', () => {
 
 			// Pure no-op on iMessage (no interactive callbacks). Unsend is vendor-only (imessage pack).
 			await client.answerCallback({ callback_query_id: 'n/a' })
+
+			const imFileId = env('AI_TOOLS_IMESSAGE_FILE_ID')
+			if (imFileId) {
+				const downloaded = await client.downloadFile({
+					chat_id,
+					file_id: imFileId,
+					file_name: 'imessage-dl.bin'
+				})
+				expect(downloaded.body_base64).toBeDefined()
+				expect(downloaded.body_base64!.length).toBeGreaterThan(0)
+			}
 		},
 		{ timeout: 120_000 }
 	)
@@ -375,6 +402,19 @@ runTeams('live seam messaging (teams)', () => {
 			expect(batch.results.failed).toBe(0)
 
 			await expectWarnNoOp(() => client.read({ chat_id, message_id: msg.message_id, service_url }), ['teams', 'read'])
+
+			// Non-URL callback is a successful no-op on Teams.
+			await client.answerCallback({ callback_query_id: 'not-an-invoke-reply-url' })
+
+			const teamsFileUrl = env('AI_TOOLS_TEAMS_FILE_URL')
+			if (teamsFileUrl) {
+				const downloaded = await client.downloadFile({
+					file_id: teamsFileUrl,
+					file_name: 'teams-dl.bin'
+				})
+				expect(downloaded.body_base64).toBeDefined()
+				expect(downloaded.body_base64!.length).toBeGreaterThan(0)
+			}
 		},
 		{ timeout: 60_000 }
 	)

@@ -2,10 +2,13 @@ import { describe, expect, test } from 'bun:test'
 
 import { CloudflareBrowserClient } from '../../../src/vendors/cloudflare-browser'
 import { env, s3AuthFromEnv } from '../helpers'
+import { cdpNavigate } from '../helpers/cdp-navigate'
 
 const accountId = env('AI_TOOLS_CF_BROWSER_ACCOUNT_ID') ?? env('AI_TOOLS_CF_EMAIL_ACCOUNT_ID')
 const apiToken = env('AI_TOOLS_CF_BROWSER_API_TOKEN')
 const storage = s3AuthFromEnv('AI_TOOLS_S3')
+const navigateUrl = env('AI_TOOLS_BEDROCK_BROWSER_NAVIGATE_URL') ?? 'https://example.com'
+const skipNavigate = env('AI_TOOLS_BEDROCK_BROWSER_SKIP_NAVIGATE') === '1'
 const runRender = accountId && apiToken && storage ? describe : describe.skip
 const runSession = accountId && apiToken ? describe : describe.skip
 
@@ -41,7 +44,7 @@ runRender('live vendor cloudflare-browser rendering', () => {
 
 runSession('live vendor cloudflare-browser sessions', () => {
 	test(
-		'start get and stop session',
+		'start get stop + optional CDP navigate',
 		async () => {
 			const client = new CloudflareBrowserClient({
 				account_id: accountId!,
@@ -52,7 +55,15 @@ runSession('live vendor cloudflare-browser sessions', () => {
 			try {
 				const got = await client.getSession({ session_id: started.session_id })
 				expect(got.session_id).toBe(started.session_id)
-				expect(got.websocket_debugger_url ?? started.websocket_debugger_url).toBeTruthy()
+				const stream = got.websocket_debugger_url ?? started.websocket_debugger_url
+				expect(stream).toBeTruthy()
+
+				if (!skipNavigate && stream) {
+					const ok = await cdpNavigate(stream, navigateUrl, 25_000)
+					if (!ok) {
+						console.warn('[cloudflare-browser live] CDP navigate did not complete; session lifecycle still OK')
+					}
+				}
 			} finally {
 				await client.stopSession({ session_id: started.session_id })
 			}

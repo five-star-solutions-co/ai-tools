@@ -78,21 +78,31 @@ Service-specific non-credential env remains (buckets, ARNs, SP-API LWA client id
 
 ## Coverage policy
 
-Live IT aims for **full client-method smoke** when env is set:
+Live IT aims for **full public client-method smoke** when env is set (pack-file matrix is 1:1 with every `src/modules/*` + `src/vendors/*` pack except vertical kits):
 
 | Area | Policy |
 | --- | --- |
 | **WooCommerce, Katana, Amazon SP-API** | **Read-only only** — list/get/search. **No** create/update/delete/refunds/notes writes / `createReport` |
-| All other vendors + seams | Exercise public client methods that can run without inbound webhooks/interactive callbacks |
+| All other vendors + seams | Full public methods that can run without a human-driven inbound interactive event |
 | Missing env | `describe.skip` (not a failure) |
-| Optional secondary resources | If list is empty, get-by-id branches no-op |
+| Optional secondary resources | Seeded via optional env when self-seed is impossible |
 
-**Explicitly not live-covered** (need inbound/interactive state):
+**Self-seeded download round-trips:** Telegram + Slack (`sendMedia` → `file_id` → `downloadFile`).
 
-- Telegram/Slack/Teams `answerCallback` (needs interactive payload / `response_url`)
-- Slack/Teams/iMessage `downloadFile` without a provider `file_id` from an **inbound** attachment (Telegram can round-trip: `sendMedia` → `file_id` → `downloadFile`)
-- Amazon `createReport` (write)
-- Bedrock AgentCore interactive browser automation beyond session start/get/stop (host/Playwright on stream endpoints)
+**Optional inbound-only env** (still covered when set):
+
+| Var | Method |
+| --- | --- |
+| `AI_TOOLS_IMESSAGE_FILE_ID` | iMessage `downloadFile` (attachment message id from inbound) |
+| `AI_TOOLS_TEAMS_FILE_URL` | Teams `downloadFile` (absolute content URL from inbound) |
+| `AI_TOOLS_SLACK_USER_ID` | Slack `postEphemeral` |
+| `AI_TOOLS_IMESSAGE_INBOUND_MESSAGE_ID` | iMessage successful `read` (user-sent message) |
+
+**Explicitly not live-covered** (cannot self-seed without a human press / production write):
+
+- Telegram `answerCallback` (needs a live `callback_query_id` from a button press). Slack/Teams **no-op** path (non-URL id) **is** covered; real `response_url` / invoke reply needs inbound.
+- Amazon SP-API / Katana / WooCommerce **writes** (policy)
+- Full interactive browser automation product surface beyond session lifecycle + CDP navigate (pack API is start/get/stop only)
 
 ### Slack bot scopes (full live IT — hard fail if missing)
 
@@ -141,12 +151,12 @@ bun test test/integration/vendors/resend.live.test.ts
 | resend | `RESEND_API_KEY`, `FROM`, `TO` | send + sendBatch |
 | cloudflare-email | `CF_EMAIL_*` | send + sendBatch |
 | telegram | `TELEGRAM_BOT_TOKEN` (+ chat; optional webhook URL/secret) | getBot, webhook, send/edit/action/react/media/group, downloadFile |
-| slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`) | getBot, listConversations, send/edit/action/react/media |
-| teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL) | getBot; optional send/edit/action/react/media |
-| imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** | send/edit/typing/react/media/unsend; inbound read |
+| slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`; optional `SLACK_USER_ID`) | getBot, listConversations, send/edit, **thread** typing/stopTyping, react, media, **downloadFile round-trip**, answerCallback no-op, optional postEphemeral |
+| teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL; optional `TEAMS_FILE_URL`) | getBot; send/edit/action/react/media; answerCallback no-op; optional downloadFile |
+| imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** (+ optional `IMESSAGE_FILE_ID`) | send/edit/typing/react/media/unsend/read; answerCallback no-op; optional downloadFile |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/getBytesRange/signed URL/multipart |
-| gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot |
-| cloudflare-browser | CF browser token; S3 for render tests | start/get/stop + renderPdf + renderScreenshot |
+| gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot + convert + convertBatch |
+| cloudflare-browser | CF browser token; S3 for render tests | start/get/stop + optional CDP navigate + renderPdf + renderScreenshot |
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
 | **katana** | `KATANA_API_KEY` | **read-only** list/get entity surfaces + inventory |
@@ -154,9 +164,9 @@ bun test test/integration/vendors/resend.live.test.ts
 | qdrant | `QDRANT_URL` (+ collection) | upsert/query/delete |
 | pinecone | API key + base URL (+ dimension) | upsert/query/delete |
 | supabase-vector | Supabase URL + service role | upsert/query/delete |
-| mastra-vector | `MASTRA_DB_URL` | upsert/query/delete |
+| mastra-vector | `MASTRA_DB_URL` | upsert/query/delete (+ disconnect cleanup) |
 | eventbridge-scheduler | shared `AWS_*` + `EVENTBRIDGE_SCHEDULER_TARGET_ARN` + `ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
-| sqs | shared `AWS_*` + `SQS_QUEUE_URL` | send/receive/change visibility/delete |
+| sqs | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
 | bedrock-agentcore-browser | shared `AWS_*` (+ optional browser id) | start/get/stop; optional CDP navigate via automation stream (`AI_TOOLS_BEDROCK_BROWSER_NAVIGATE_URL`, default `https://example.com`; set `AI_TOOLS_BEDROCK_BROWSER_SKIP_NAVIGATE=1` to skip) |
 | bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional interpreter id) | getSession, executeCode, executeCommand, write/list/read/remove files, startCommand/getTask/stopTask, stopSession |
 
@@ -168,27 +178,27 @@ Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and 
 
 | Seam | Env | Smoke |
 | --- | --- | --- |
-| content-type | none | pure helpers + tool |
+| content-type | none | helpers + all 3 tools (get / extension / extensions) |
 | email-message | none | pure parse/build |
 | skills | none | bound catalog list/search/get |
-| web-fetch | network | GET example.com |
+| web-fetch | network | get + request (POST when reachable) |
 | email | Resend and/or CF email | send + sendBatch per provider |
-| files | S3 | list/search/stat/put/get/delete/copy/mkdir/move/multipart |
+| files | S3 | list/search/stat/put/get/delete/copy/mkdir/move/multipart (start/part/complete/abort) |
 | artifacts | host callbacks (always) + S3 object provider | create/readRange/readLines |
 | tasks | host callbacks (always) | create/get/list/update/delete |
 | scheduler | shared `AWS_*` + EventBridge target/role ARNs | create/get/list/update/delete (DISABLED schedule) |
 | queue | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
-| browser | shared `AWS_*` and/or CF browser token | start/get/stop per configured provider |
+| browser | shared `AWS_*` and/or CF browser token | start/get/stop per provider; optional CDP navigate (same navigate env as AgentCore browser) |
 | pdf | S3 | inspect/merge/extract/split/rotate artifacts |
 | image | S3 | metadata/resize/crop/thumbnail/convert artifacts |
-| crypto | none | Web Crypto digest and HMAC round trip |
-| calendar | none | iCalendar build and parse round trip |
-| document | S3 | buildText/read/editText + buildSpreadsheet/read |
-| messaging | TG / Slack / iMessage / Teams when env set | send/edit/chatAction/stopTyping/reactions/media; Telegram downloadFile; iMessage unsend is **vendor-only** |
-| document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot |
-| file-convert | Gotenberg + S3 | office-to-pdf |
-| document-extract | Textract | extractText |
-| vector-store | any vector backend | provider matrix |
+| crypto | none | tools: hash, hmac sign/verify, random bytes |
+| calendar | none | tools: build-ics + parse-ics round trip |
+| document | S3 | text/xlsx/docx/pptx build+edit+read; PDF read |
+| messaging | TG / Slack / iMessage / Teams when env set | full surface incl. Telegram+Slack downloadFile; optional Teams/iMessage download; Slack/Teams answerCallback no-op; iMessage unsend is **vendor-only** |
+| document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot (+ gotenberg batch tools) |
+| file-convert | Gotenberg + S3 | convert + convertBatch office-to-pdf |
+| document-extract | Textract | extractText + extractTextBatch + getStatus |
+| vector-store | any vector backend | upsert/query/delete per provider |
 | rag | embed + vector backend | ingest/retrieve/delete (qdrant / pinecone / supabase / mastra) |
 
 ---

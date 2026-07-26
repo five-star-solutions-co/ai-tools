@@ -9,6 +9,8 @@ const projectSecret = env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
 const chatId = env('AI_TOOLS_IMESSAGE_CHAT_ID')
 /** User-sent message in the same space — required for a successful /v1/read. */
 const inboundMessageId = env('AI_TOOLS_IMESSAGE_INBOUND_MESSAGE_ID')
+/** Optional: Spectrum attachment/voice message id from an inbound message for downloadFile. */
+const inboundFileId = env('AI_TOOLS_IMESSAGE_FILE_ID')
 const run = baseUrl && projectId && projectSecret && chatId ? describe : describe.skip
 
 function client() {
@@ -83,6 +85,16 @@ run('live vendor imessage', () => {
 				content_type: 'text/plain'
 			})
 			expect(media.space_id).toBeTruthy()
+
+			if (inboundFileId) {
+				const downloaded = await c.downloadFile({
+					chat_id: chatId!,
+					file_id: inboundFileId,
+					file_name: 'imessage-dl.bin'
+				})
+				expect(downloaded.body_base64.length).toBeGreaterThan(0)
+			}
+
 			if (media.message_id) {
 				await c.unsend({ chat_id: chatId!, message_id: media.message_id })
 			}

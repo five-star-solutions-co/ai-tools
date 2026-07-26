@@ -7,6 +7,8 @@ const appId = env('AI_TOOLS_TEAMS_APP_ID')
 const appPassword = env('AI_TOOLS_TEAMS_APP_PASSWORD')
 const chatId = env('AI_TOOLS_TEAMS_CHAT_ID')
 const serviceUrl = env('AI_TOOLS_TEAMS_SERVICE_URL')
+/** Optional: absolute content URL from an inbound attachment for downloadFile. */
+const fileUrl = env('AI_TOOLS_TEAMS_FILE_URL')
 const run = appId && appPassword ? describe : describe.skip
 
 run('live vendor teams', () => {
@@ -68,6 +70,17 @@ run('live vendor teams', () => {
 				content_type: 'text/plain'
 			})
 			expect(media.message_id).toBeTruthy()
+
+			// Non-URL callback_query_id is a documented successful no-op.
+			await client.answerCallback({ callback_query_id: 'not-an-invoke-reply-url' })
+
+			if (fileUrl) {
+				const downloaded = await client.downloadFile({
+					file_id: fileUrl,
+					file_name: 'teams-dl.bin'
+				})
+				expect(downloaded.body_base64.length).toBeGreaterThan(0)
+			}
 		},
 		{ timeout: 30_000 }
 	)

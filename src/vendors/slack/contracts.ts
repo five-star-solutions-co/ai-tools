@@ -30,7 +30,8 @@ export const slackSendTextInputSchema = z.object({
 })
 
 export const slackMessageOutputSchema = z.object({
-	message_id: z.string().describe('Slack message timestamp (ts) as string')
+	message_id: z.string().describe('Slack message timestamp (ts) as string'),
+	file_id: z.string().min(1).optional().describe('Slack file id when the message carries an uploaded file (sendMedia)')
 })
 
 export const slackEditTextInputSchema = z.object({

@@ -24,15 +24,15 @@ const catalog: SkillDefinition[] = [
 ]
 
 describe('live seam skills', () => {
-	test('list search get via bound catalog', async () => {
+	test('list search get via bound catalog', () => {
 		const client = new SkillsClient({ skills: catalog })
-		const listed = await client.list({})
+		const listed = client.list({})
 		expect(listed.skills.length).toBe(2)
 
-		const found = await client.search({ query: 'email draft', limit: 5 })
+		const found = client.search({ query: 'email draft', limit: 5 })
 		expect(found.skills[0]?.id).toBe('it-draft')
 
-		const one = await client.get({ id: 'it-summarize' })
+		const one = client.get({ id: 'it-summarize' })
 		expect(one.skill.instructions).toContain('bullet')
 	})
 })

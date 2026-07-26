@@ -5,6 +5,8 @@ import { env } from '../env'
 
 const token = env('AI_TOOLS_SLACK_BOT_TOKEN')
 const channel = env('AI_TOOLS_SLACK_CHANNEL_ID')
+/** Optional: real Slack user id for postEphemeral (bot user alone is not enough). */
+const ephemeralUser = env('AI_TOOLS_SLACK_USER_ID')
 const run = token ? describe : describe.skip
 
 run('live vendor slack', () => {
@@ -17,7 +19,7 @@ run('live vendor slack', () => {
 	})
 
 	test(
-		'channel surface: send edit action react media (optional channel)',
+		'channel surface: send edit thread-typing react media download (+ optional ephemeral; answerCallback no-op)',
 		async () => {
 			if (!channel) return
 			const client = new SlackClient({ bot_token: token! })
@@ -34,7 +36,16 @@ run('live vendor slack', () => {
 			})
 			expect(edited.message_id).toBeTruthy()
 
-			await client.sendChatAction({ chat_id: channel, action: 'typing' })
+			// Real assistant.threads.setStatus path requires thread_ts (reply_to_message_id).
+			await client.sendChatAction({
+				chat_id: channel,
+				action: 'typing',
+				reply_to_message_id: msg.message_id
+			})
+			await client.stopTyping({
+				chat_id: channel,
+				reply_to_message_id: msg.message_id
+			})
 
 			await client.setReaction({
 				chat_id: channel,
@@ -47,15 +58,36 @@ run('live vendor slack', () => {
 				emoji: 'thumbsup'
 			})
 
+			const mediaBody = 'slack media it'
 			const media = await client.sendMedia({
 				chat_id: channel,
 				kind: 'document',
 				file_name: 'ai-tools-it.txt',
-				body_base64: Buffer.from('slack media it').toString('base64'),
+				body_base64: Buffer.from(mediaBody).toString('base64'),
 				content_type: 'text/plain'
 			})
 			expect(media.message_id).toBeTruthy()
+			expect(media.file_id).toBeTruthy()
+
+			const downloaded = await client.downloadFile({
+				file_id: media.file_id!,
+				file_name: 'slack-dl.txt'
+			})
+			expect(downloaded.body_base64.length).toBeGreaterThan(0)
+			expect(Buffer.from(downloaded.body_base64, 'base64').toString('utf8')).toBe(mediaBody)
+
+			if (ephemeralUser) {
+				const eph = await client.postEphemeral({
+					chat_id: channel,
+					user_id: ephemeralUser,
+					text: `[ai-tools it] ephemeral ${Date.now()}`
+				})
+				expect(eph.message_id).toBeTruthy()
+			}
+
+			// Non-URL callback_query_id is a documented successful no-op.
+			await client.answerCallback({ callback_query_id: 'not-a-response-url' })
 		},
-		{ timeout: 30_000 }
+		{ timeout: 60_000 }
 	)
 })

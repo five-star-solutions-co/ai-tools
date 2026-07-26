@@ -260,7 +260,8 @@ export class SlackClient {
 					...(input.caption && { initial_comment: input.caption })
 				},
 				'Slack files.completeUploadExternal'
-			)
+			),
+			upload.file_id
 		)
 	}
 

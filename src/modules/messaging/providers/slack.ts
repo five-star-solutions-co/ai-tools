@@ -90,8 +90,8 @@ export class SlackMessagingProvider implements MessagingOps {
 		})
 	}
 
-	sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
-		return this.#client.sendMedia({
+	async sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
+		const out = await this.#client.sendMedia({
 			chat_id: input.chat_id,
 			kind: input.kind,
 			body_base64: input.body_base64,
@@ -100,6 +100,10 @@ export class SlackMessagingProvider implements MessagingOps {
 			...(input.reply_to_message_id && { reply_to_message_id: input.reply_to_message_id }),
 			...(input.content_type && { content_type: input.content_type })
 		})
+		return {
+			message_id: out.message_id,
+			...(out.file_id && { file_id: out.file_id })
+		}
 	}
 
 	sendMediaBatch(input: MessagingSendMediaBatchResolved): Promise<MessagingSendMediaBatchOutput> {
