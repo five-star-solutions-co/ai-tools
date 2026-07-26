@@ -196,15 +196,9 @@ export function registerMcpTools(
 			},
 			async (args, extra) => {
 				const staticCtx = await resolveMcpStaticContext(options)
-				const createContext = options.createContext
 				const ctx = await mergeAdapterToolContext(
 					extra,
-					{
-						context: staticCtx,
-						...(createContext && {
-							createContext: (fw: unknown) => createContext(asMcpExtra(fw))
-						})
-					},
+					{ context: staticCtx, createContext: options.createContext },
 					'signal'
 				)
 				const value = await runTool(tool, args, ctx)
@@ -212,13 +206,4 @@ export function registerMcpTools(
 			}
 		)
 	}
-}
-
-function asMcpExtra(value: unknown): McpRequestExtra {
-	if (value === null || typeof value !== 'object') return {}
-	const out: McpRequestExtra = {}
-	for (const key of Object.keys(value)) {
-		out[key] = Reflect.get(value, key)
-	}
-	return out
 }

@@ -9,7 +9,7 @@ import { runTool } from '../../core/with-auth'
 
 type MastraTool = ReturnType<typeof createTool>
 
-/** Host-facing shape for Mastra tool execute context (`createContext`). */
+/** Mastra execute context for host `createContext`. */
 export type MastraExecuteContext = {
 	abortSignal?: AbortSignal
 	toolCallId?: string
@@ -22,12 +22,6 @@ export type MastraToolsOptions = {
 	createContext?: (context: MastraExecuteContext) => ToolContext | Promise<ToolContext>
 }
 
-/**
- * Project one kernel tool into a Mastra tool.
- *
- * Stream `toolName` comes from the object key on `agent.tools`, not from `id`.
- * `createMastraTools` keys by `id` so toolName matches id by default.
- */
 export function createMastraTool(tool: ToolDefinition, options: MastraToolsOptions = {}): MastraTool {
 	return createTool({
 		id: tool.id,
@@ -35,32 +29,12 @@ export function createMastraTool(tool: ToolDefinition, options: MastraToolsOptio
 		inputSchema: tool.inputSchema,
 		outputSchema: tool.outputSchema,
 		execute: async (input, context) => {
-			const createContext = options.createContext
-			const ctx = await mergeAdapterToolContext(
-				context,
-				{
-					...(options.context && { context: options.context }),
-					...(createContext && {
-						createContext: (fw: unknown) => createContext(asMastraContext(fw))
-					})
-				},
-				'abortSignal'
-			)
+			const ctx = await mergeAdapterToolContext(context, options, 'abortSignal')
 			return runTool(tool, input, ctx)
 		}
 	})
 }
 
-function asMastraContext(value: unknown): MastraExecuteContext {
-	if (value === null || typeof value !== 'object') return {}
-	const out: MastraExecuteContext = {}
-	for (const key of Object.keys(value)) {
-		out[key] = Reflect.get(value, key)
-	}
-	return out
-}
-
-/** Project tools into a Mastra tools record keyed by tool id. */
 export function createMastraTools(source: ToolSource, options: MastraToolsOptions = {}): Record<string, MastraTool> {
 	const tools = resolveTools(source)
 	assertUniqueBy(

@@ -59,18 +59,6 @@ function remapNotFound(error: unknown): never {
 	throw error
 }
 
-function tooLarge(maxBytes: number, contentLength: number, message: string): never {
-	throw new ToolError(message, {
-		code: 'too_large',
-		details: { max_bytes: maxBytes, content_length: contentLength }
-	})
-}
-
-/** Quote a stripped etag for conditional request headers. */
-function ifMatchValue(etag: string): string {
-	return etag.startsWith('"') ? etag : `"${etag}"`
-}
-
 export class S3Client {
 	readonly #auth: S3Auth
 	readonly #aws: AwsService
@@ -127,10 +115,7 @@ export class S3Client {
 		return out
 	}
 
-	/**
-	 * Bounded download: HEAD size gate, then conditional GET with If-Match (when etag
-	 * known) and a Range capped at maxBytes+1 so a concurrent grow cannot buffer past the limit.
-	 */
+	/** HEAD size gate + Range GET (and If-Match when etag known). Never buffers past maxBytes+1. */
 	async #getBounded(
 		key: string,
 		maxBytes: number,
@@ -139,21 +124,18 @@ export class S3Client {
 		const head = await this.head({ key })
 		if (!head.exists) objectNotFound()
 		if (!isNil(head.content_length) && head.content_length > maxBytes) {
-			tooLarge(maxBytes, head.content_length, limitMessage)
+			throw new ToolError(limitMessage, {
+				code: 'too_large',
+				details: { max_bytes: maxBytes, content_length: head.content_length }
+			})
 		}
 
-		const headers: Record<string, string> = {
-			// Inclusive end index maxBytes → at most maxBytes+1 bytes (overflow probe).
-			Range: `bytes=0-${maxBytes}`
-		}
-		if (head.etag) headers['If-Match'] = ifMatchValue(head.etag)
+		const headers: Record<string, string> = { Range: `bytes=0-${maxBytes}` }
+		if (head.etag) headers['If-Match'] = head.etag.startsWith('"') ? head.etag : `"${head.etag}"`
 
 		let response
 		try {
-			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), {
-				label: 'S3 get',
-				headers
-			})
+			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), { label: 'S3 get', headers })
 		} catch (error) {
 			if (isToolError(error) && error.details?.['status'] === 412) {
 				throw new ToolError('Object changed during download', {
@@ -165,12 +147,16 @@ export class S3Client {
 			remapNotFound(error)
 		}
 
-		const bodyBytes = response.bytes
-		if (bodyBytes.byteLength > maxBytes) {
-			const rangeTotal = contentRangeTotal(response.headers.get('content-range'))
-			tooLarge(maxBytes, rangeTotal ?? bodyBytes.byteLength, limitMessage)
+		if (response.bytes.byteLength > maxBytes) {
+			throw new ToolError(limitMessage, {
+				code: 'too_large',
+				details: {
+					max_bytes: maxBytes,
+					content_length: contentRangeTotal(response.headers.get('content-range')) ?? response.bytes.byteLength
+				}
+			})
 		}
-		return { bytes: bodyBytes, headers: response.headers, head }
+		return { bytes: response.bytes, headers: response.headers, head }
 	}
 
 	async get(input: GetObjectInput): Promise<GetObjectOutput> {
@@ -392,11 +378,7 @@ export class S3Client {
 		return { key: input.key, upload_id: input.upload_id, aborted: true }
 	}
 
-	/**
-	 * Host-facing raw download.
-	 * When `maxBytes` is set: HEAD size gate + conditional Range GET so concurrent
-	 * object growth cannot buffer past the limit.
-	 */
+	/** Host-facing raw download. Pass `maxBytes` to enforce a hard download cap. */
 	async getBytes(key: string, options: { maxBytes?: number } = {}): Promise<Uint8Array> {
 		const maxBytes = options.maxBytes
 		if (maxBytes !== undefined) {

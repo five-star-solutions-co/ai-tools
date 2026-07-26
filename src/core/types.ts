@@ -1,5 +1,7 @@
 import type { z } from 'zod'
 
+import type { ToolHooks } from './hooks'
+
 export type ToolRuntime = 'both' | 'edge' | 'node'
 
 export type ToolSideEffect = 'delete' | 'none' | 'read' | 'send' | 'write'
@@ -60,6 +62,8 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
 	name: string
 	outputSchema: z.ZodType<TOutput>
 	execute: ToolExecute
+	/** Host hooks from `withHooks` / `bindModule` (not model-facing). */
+	hooks?: ToolHooks | undefined
 }
 
 /**

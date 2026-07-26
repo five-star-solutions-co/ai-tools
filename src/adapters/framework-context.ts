@@ -1,11 +1,6 @@
-/**
- * Shared adapter helpers: framework signal + host createContext merge.
- */
-
 import { mergeToolContext } from '../core/context'
 import type { ToolContext } from '../core/types'
 
-/** Read AbortSignal from a framework context object without assertions. */
 export function readAbortSignal(context: unknown, key: 'abortSignal' | 'signal'): AbortSignal | undefined {
 	if (context === null || typeof context !== 'object') return undefined
 	const value = Reflect.get(context, key)
@@ -17,24 +12,29 @@ export function frameworkSignalContext(context: unknown, key: 'abortSignal' | 's
 	return signal ? { signal } : {}
 }
 
+/** Plain copy of a framework execute bag. */
+export function copyFrameworkBag(value: unknown): Record<string, unknown> {
+	if (value === null || typeof value !== 'object') return {}
+	const out: Record<string, unknown> = {}
+	for (const key of Object.keys(value)) out[key] = Reflect.get(value, key)
+	return out
+}
+
 /**
- * defaults (framework signal) ← static options.context ← createContext(framework).
- * Explicit `undefined` from createContext does not erase base fields.
- *
- * `createContext` receives the raw framework bag (`unknown` here so peer SDK types
- * do not fight exactOptionalPropertyTypes). Adapter option types narrow it for hosts.
+ * framework signal ← static context ← createContext(bag).
+ * `undefined` overlay fields do not erase base values.
  */
 export async function mergeAdapterToolContext(
 	frameworkContext: unknown,
 	options: {
 		context?: ToolContext | undefined
-		createContext?: ((frameworkContext: unknown) => ToolContext | Promise<ToolContext>) | undefined
-	},
+		createContext?: ((bag: Record<string, unknown>) => ToolContext | Promise<ToolContext>) | undefined
+	} = {},
 	signalKey: 'abortSignal' | 'signal' = 'abortSignal'
 ): Promise<ToolContext> {
 	let ctx = mergeToolContext(frameworkSignalContext(frameworkContext, signalKey), options.context ?? {})
 	if (options.createContext) {
-		ctx = mergeToolContext(ctx, await options.createContext(frameworkContext))
+		ctx = mergeToolContext(ctx, await options.createContext(copyFrameworkBag(frameworkContext)))
 	}
 	return ctx
 }
