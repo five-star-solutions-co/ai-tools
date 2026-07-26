@@ -131,6 +131,12 @@ defineTool / defineModule
 | `@harryy/ai-tools/skills` | host-bound catalog | `skills-list`, `skills-get`, `skills-search` | [skills](./docs/modules/skills.md) |
 | `@harryy/ai-tools/tasks` | host-backed definitions | `tasks-create`, `-get`, `-list`, `-update`, `-delete` | [tasks](./docs/modules/tasks.md) |
 | `@harryy/ai-tools/scheduler` | eventbridge provider | `scheduler-create`, `-update`, `-get`, `-list`, `-delete` | [scheduler](./docs/modules/scheduler.md) |
+| `@harryy/ai-tools/pdf` | artifact utilities | inspect, merge, extract, split, rotate | [pdf](./docs/modules/pdf.md) |
+| `@harryy/ai-tools/image` | artifact transforms | metadata, resize, crop, thumbnail, convert | [image](./docs/modules/image.md) |
+| `@harryy/ai-tools/crypto` | Web Crypto | hash, HMAC sign/verify, random bytes | [crypto](./docs/modules/crypto.md) |
+| `@harryy/ai-tools/calendar` | pure iCalendar | build and parse ICS | [calendar](./docs/modules/calendar.md) |
+| `@harryy/ai-tools/queue` | sqs provider | enqueue, receive, acknowledge, extend visibility | [queue](./docs/modules/queue.md) |
+| `@harryy/ai-tools/browser` | AgentCore + Cloudflare providers | start, get, stop | [browser](./docs/modules/browser.md) |
 
 ### Vendors (`vendors/`)
 
@@ -143,6 +149,7 @@ defineTool / defineModule
 | `@harryy/ai-tools/teams` | `teams-send-text`, edit, media, Bot Framework activities | [teams](./docs/vendors/teams.md) |
 | `@harryy/ai-tools/imessage` | send/edit/react/unsend/read via photon-rest-proxy | [imessage](./docs/vendors/imessage.md) |
 | `@harryy/ai-tools/s3` | `s3-*` (+ signed URL, multipart) | [s3](./docs/vendors/s3.md) |
+| `@harryy/ai-tools/sqs` | `sqs-send`, `-receive`, `-delete`, `-change-visibility` | [sqs](./docs/vendors/sqs.md) |
 | `@harryy/ai-tools/qdrant` | `qdrant-upsert`, `-query`, `-delete` | [qdrant](./docs/vendors/qdrant.md) |
 | `@harryy/ai-tools/pinecone` | `pinecone-upsert`, `-query`, `-delete` | [pinecone](./docs/vendors/pinecone.md) |
 | `@harryy/ai-tools/supabase-vector` | `supabase-vector-*` (pgvector/PostgREST) | [supabase-vector](./docs/vendors/supabase-vector.md) |
@@ -153,7 +160,7 @@ defineTool / defineModule
 | `@harryy/ai-tools/bedrock-agentcore-browser` | start/stop/get session + stream endpoints | [bedrock-agentcore-browser](./docs/vendors/bedrock-agentcore-browser.md) |
 
 | `@harryy/ai-tools/gotenberg` | render PDF/screenshot + `office-to-pdf` convert | [gotenberg](./docs/vendors/gotenberg.md) |
-| `@harryy/ai-tools/cloudflare-browser` | `cloudflare-browser-render-pdf`, `-render-screenshot` | [cloudflare-browser](./docs/vendors/cloudflare-browser.md) |
+| `@harryy/ai-tools/cloudflare-browser` | sessions + PDF/screenshot quick actions | [cloudflare-browser](./docs/vendors/cloudflare-browser.md) |
 | `@harryy/ai-tools/woocommerce` | orders, notes, refunds, products, variations, customers, coupons, categories | [woocommerce](./docs/vendors/woocommerce.md) |
 | `@harryy/ai-tools/katana` | sales/purchase/manufacturing orders, products, materials, customers, suppliers, inventory | [katana](./docs/vendors/katana.md) |
 | `@harryy/ai-tools/amazon-sp-api` | orders + items, FBA inventory, reports + documents, catalog search | [amazon-sp-api](./docs/vendors/amazon-sp-api.md) |

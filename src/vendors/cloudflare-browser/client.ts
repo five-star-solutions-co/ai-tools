@@ -6,28 +6,36 @@
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
+import { isNumber, isPlainObject, isString } from 'es-toolkit'
 import { artifactRefSchema } from '../../shared/artifact'
 import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import { S3Client } from '../s3'
 import type {
-	CloudflareBrowserAuth,
+	CloudflareBrowserClientAuth,
 	CloudflareBrowserRenderOutput,
 	CloudflareBrowserRenderPdfInput,
-	CloudflareBrowserRenderScreenshotInput
+	CloudflareBrowserRenderScreenshotInput,
+	CloudflareBrowserSessionIdInput,
+	CloudflareBrowserSessionOutput,
+	CloudflareBrowserStartSessionInput
 } from './contracts'
-import { cloudflareBrowserAuthSchema, cloudflareBrowserRenderOutputSchema } from './contracts'
+import {
+	cloudflareBrowserClientAuthSchema,
+	cloudflareBrowserRenderOutputSchema,
+	cloudflareBrowserSessionOutputSchema
+} from './contracts'
 import { assertBinaryPrefix, blockedBrowserResourceTypes, defaultRenderKey, sourceBody } from './domain'
 
 export type CloudflareBrowserClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
 export class CloudflareBrowserClient {
-	readonly #auth: CloudflareBrowserAuth
+	readonly #auth: CloudflareBrowserClientAuth
 	readonly #http: HttpService
-	readonly #storage: S3Client
+	readonly #storage?: S3Client
 
-	constructor(auth: CloudflareBrowserAuth, options: CloudflareBrowserClientOptions = {}) {
-		const parsed = cloudflareBrowserAuthSchema.safeParse(auth)
+	constructor(auth: CloudflareBrowserClientAuth, options: CloudflareBrowserClientOptions = {}) {
+		const parsed = cloudflareBrowserClientAuthSchema.safeParse(auth)
 		if (!parsed.success) {
 			throw new ToolError('Invalid Cloudflare Browser auth credentials', {
 				code: 'bad_auth',
@@ -44,15 +52,33 @@ export class CloudflareBrowserClient {
 			timeout: 60_000,
 			label: 'Cloudflare Browser'
 		})
-		this.#storage = new S3Client(this.#auth.storage, options)
+		if (this.#auth.storage) this.#storage = new S3Client(this.#auth.storage, options)
 	}
 
 	static fromContext(ctx: ToolContext): CloudflareBrowserClient {
-		const auth = requireAuth(ctx, cloudflareBrowserAuthSchema)
+		const auth = requireAuth(ctx, cloudflareBrowserClientAuthSchema)
 		return new CloudflareBrowserClient(auth, {
 			...(ctx.fetch && { fetch: ctx.fetch }),
 			...(ctx.signal && { signal: ctx.signal })
 		})
+	}
+
+	async startSession(input: CloudflareBrowserStartSessionInput = {}): Promise<CloudflareBrowserSessionOutput> {
+		const query = input.keep_alive_seconds ? `?keep_alive=${input.keep_alive_seconds * 1_000}` : ''
+		const { data } = await this.#http.post(`/browser-rendering/devtools/browser${query}`)
+		return this.#mapSession(data, undefined, 'active')
+	}
+
+	async getSession(input: CloudflareBrowserSessionIdInput): Promise<CloudflareBrowserSessionOutput> {
+		const { data } = await this.#http.get(`/browser-rendering/devtools/session/${encodeURIComponent(input.session_id)}`)
+		return this.#mapSession(data, input.session_id, 'active')
+	}
+
+	async stopSession(input: CloudflareBrowserSessionIdInput): Promise<CloudflareBrowserSessionOutput> {
+		const { data } = await this.#http.delete(
+			`/browser-rendering/devtools/browser/${encodeURIComponent(input.session_id)}`
+		)
+		return this.#mapSession(data, input.session_id, 'closing')
 	}
 
 	/** Browser Rendering PDF; store result in object storage. */
@@ -112,7 +138,11 @@ export class CloudflareBrowserClient {
 		const mediaType = kind === 'pdf' ? 'application/pdf' : 'image/png'
 		const key = defaultRenderKey(kind, input.output_key)
 		const filename = input.filename ?? (kind === 'pdf' ? 'render.pdf' : 'render.png')
-		await this.#storage.putBytes(key, bytes, mediaType)
+		const storage = this.#storage
+		if (!storage) {
+			throw new ToolError('Cloudflare Browser rendering requires object storage', { code: 'bad_auth' })
+		}
+		await storage.putBytes(key, bytes, mediaType)
 
 		const result = artifactRefSchema.parse({
 			store: 'object',
@@ -122,5 +152,31 @@ export class CloudflareBrowserClient {
 			byte_length: bytes.byteLength
 		})
 		return cloudflareBrowserRenderOutputSchema.parse({ result, kind })
+	}
+
+	#mapSession(data: unknown, fallbackSessionId?: string, fallbackStatus?: string): CloudflareBrowserSessionOutput {
+		const payload = isPlainObject(data) && isPlainObject(data['result']) ? data['result'] : data
+		if (!isPlainObject(payload)) {
+			throw new ToolError('Unexpected Cloudflare Browser session response', { code: 'upstream' })
+		}
+		const sessionId = isString(payload['sessionId']) ? payload['sessionId'] : fallbackSessionId
+		if (!sessionId) {
+			throw new ToolError('Cloudflare Browser session response missing sessionId', { code: 'upstream' })
+		}
+		const output: CloudflareBrowserSessionOutput = { session_id: sessionId }
+		if (isString(payload['status'])) {
+			output.status = payload['status']
+		} else if (isString(payload['closeReason']) || isNumber(payload['endTime'])) {
+			output.status = 'closed'
+		} else if (fallbackStatus) {
+			output.status = fallbackStatus
+		}
+		if (isString(payload['webSocketDebuggerUrl'])) {
+			output.websocket_debugger_url = payload['webSocketDebuggerUrl']
+		}
+		if (isString(payload['devtoolsFrontendUrl'])) {
+			output.devtools_frontend_url = payload['devtoolsFrontendUrl']
+		}
+		return cloudflareBrowserSessionOutputSchema.parse(output)
 	}
 }

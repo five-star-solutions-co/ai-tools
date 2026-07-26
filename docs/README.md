@@ -51,6 +51,12 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/email-message` | [email-message](./modules/email-message.md) — pure MIME |
 | `@harryy/ai-tools/content-type` | [content-type](./modules/content-type.md) — pure type ↔ extension |
 | `@harryy/ai-tools/skills` | [skills](./modules/skills.md) — portable skill catalog (list/get/search) |
+| `@harryy/ai-tools/pdf` | [pdf](./modules/pdf.md) |
+| `@harryy/ai-tools/image` | [image](./modules/image.md) |
+| `@harryy/ai-tools/crypto` | [crypto](./modules/crypto.md) |
+| `@harryy/ai-tools/calendar` | [calendar](./modules/calendar.md) |
+| `@harryy/ai-tools/queue` | [queue](./modules/queue.md) — provider: `sqs` |
+| `@harryy/ai-tools/browser` | [browser](./modules/browser.md) — providers: `bedrock-agentcore`, `cloudflare` |
 
 ## Vendors (`src/vendors/`)
 
@@ -65,6 +71,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/teams` | [teams](./vendors/teams.md) |
 | `@harryy/ai-tools/imessage` | [imessage](./vendors/imessage.md) — via photon-rest-proxy |
 | `@harryy/ai-tools/s3` | [s3](./vendors/s3.md) |
+| `@harryy/ai-tools/sqs` | [sqs](./vendors/sqs.md) |
 
 | `@harryy/ai-tools/qdrant` | [qdrant](./vendors/qdrant.md) |
 | `@harryy/ai-tools/pinecone` | [pinecone](./vendors/pinecone.md) |

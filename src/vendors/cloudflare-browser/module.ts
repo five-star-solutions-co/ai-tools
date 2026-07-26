@@ -1,10 +1,13 @@
 import { defineModule, defineTool } from '../../core/define'
 import { CloudflareBrowserClient } from './client'
 import {
-	cloudflareBrowserAuthSchema,
+	cloudflareBrowserClientAuthSchema,
 	cloudflareBrowserRenderOutputSchema,
 	cloudflareBrowserRenderPdfInputSchema,
-	cloudflareBrowserRenderScreenshotInputSchema
+	cloudflareBrowserRenderScreenshotInputSchema,
+	cloudflareBrowserSessionIdInputSchema,
+	cloudflareBrowserSessionOutputSchema,
+	cloudflareBrowserStartSessionInputSchema
 } from './contracts'
 
 export const cloudflareBrowserRenderPdfTool = defineTool({
@@ -31,12 +34,54 @@ export const cloudflareBrowserRenderScreenshotTool = defineTool({
 	execute: async (input, ctx) => CloudflareBrowserClient.fromContext(ctx).renderScreenshot(input)
 })
 
+export const cloudflareBrowserStartSessionTool = defineTool({
+	id: 'cloudflare-browser-start-session',
+	name: 'cloudflareBrowserStartSession',
+	description: 'Start a Cloudflare Browser Run session and return its Chrome DevTools WebSocket endpoint.',
+	inputSchema: cloudflareBrowserStartSessionInputSchema,
+	outputSchema: cloudflareBrowserSessionOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	network: true,
+	execute: async (input, ctx) => CloudflareBrowserClient.fromContext(ctx).startSession(input)
+})
+
+export const cloudflareBrowserGetSessionTool = defineTool({
+	id: 'cloudflare-browser-get-session',
+	name: 'cloudflareBrowserGetSession',
+	description: 'Get Cloudflare Browser Run session status and current DevTools endpoints.',
+	inputSchema: cloudflareBrowserSessionIdInputSchema,
+	outputSchema: cloudflareBrowserSessionOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	network: true,
+	execute: async (input, ctx) => CloudflareBrowserClient.fromContext(ctx).getSession(input)
+})
+
+export const cloudflareBrowserStopSessionTool = defineTool({
+	id: 'cloudflare-browser-stop-session',
+	name: 'cloudflareBrowserStopSession',
+	description: 'Close a Cloudflare Browser Run session by session id.',
+	inputSchema: cloudflareBrowserSessionIdInputSchema,
+	outputSchema: cloudflareBrowserSessionOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	network: true,
+	execute: async (input, ctx) => CloudflareBrowserClient.fromContext(ctx).stopSession(input)
+})
+
 export const cloudflareBrowserModule = defineModule({
 	id: 'cloudflare-browser',
-	title: 'Cloudflare Browser Rendering',
+	title: 'Cloudflare Browser Run',
 	description:
-		'Cloudflare Browser Rendering vendor pack: HTML/URL to PDF or screenshot. Output lands in bound object storage as ArtifactRefs.',
+		'Cloudflare Browser Run vendor pack for browser sessions plus HTML/URL PDF and screenshot quick actions.',
 	runtime: 'both',
-	auth: { type: 'custom', schema: cloudflareBrowserAuthSchema },
-	tools: [cloudflareBrowserRenderPdfTool, cloudflareBrowserRenderScreenshotTool]
+	auth: { type: 'custom', schema: cloudflareBrowserClientAuthSchema },
+	tools: [
+		cloudflareBrowserStartSessionTool,
+		cloudflareBrowserGetSessionTool,
+		cloudflareBrowserStopSessionTool,
+		cloudflareBrowserRenderPdfTool,
+		cloudflareBrowserRenderScreenshotTool
+	]
 })

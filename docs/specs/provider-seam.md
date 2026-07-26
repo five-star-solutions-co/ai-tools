@@ -68,6 +68,8 @@ src/modules/<capability>/
 | `files` | nested S3 `storage` + `root_prefix` (not a multi-provider seam) |
 | `tasks` | `host` task-definition backend |
 | `scheduler` | `eventbridge` |
+| `queue` | `sqs` |
+| `browser` | `bedrock-agentcore`, `cloudflare` |
 | `vector-store` | `qdrant`, `pinecone`, `supabase`, `mastra` (wrap vendor packs) |
 | `rag` | nested `vector_store` + OpenAI-compatible `embed` auth |
 

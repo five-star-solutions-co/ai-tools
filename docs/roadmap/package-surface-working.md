@@ -51,7 +51,13 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `eventbridge-scheduler` | Done | vendor pack |
 | `bedrock-agentcore-code-interpreter` | Done | sessions + execute + files |
 | `bedrock-agentcore-browser` | Done | session lifecycle + stream endpoints (no faked click tools) |
-| `speech` / `pdf` / `image` / `browser` / `queue` / `webhook` / `crypto` / `calendar` | Not started | |
+| `pdf` | Done | pdf-lib inspect, merge, extract, split, rotate over ArtifactRef |
+| `image` | Done | sharp metadata, resize, crop, thumbnail, convert over ArtifactRef |
+| `crypto` | Done | Web Crypto digest, host-bound HMAC, secure random bytes |
+| `calendar` | Done | ical.js ICS build and parse |
+| `queue` | Done | SQS vendor plus provider-neutral enqueue/receive/acknowledge/visibility seam |
+| `browser` | Done | provider-neutral start/get/stop seam over AgentCore and Cloudflare Browser Run |
+| `speech` / `webhook` | Not started | |
 | Codegen multi-lane | Done | discovers modules + vendors |
 | `vendors/telegram` | Done | full pack + live message + webhook helpers |
 | `vendors/slack` | Done | Web API + webhook helpers + messaging seam provider |

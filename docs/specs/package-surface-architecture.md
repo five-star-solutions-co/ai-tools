@@ -139,6 +139,12 @@ src/modules/<capability>/
 | `content-type` | none | MIME type ↔ extension |
 | `tasks` | host | Portable task-definition CRUD; host owns persistence and execution |
 | `scheduler` | eventbridge | Shared schedule verbs over EventBridge Scheduler vendor |
+| `queue` | sqs | Enqueue, receive, acknowledge, and extend message visibility |
+| `browser` | bedrock-agentcore, cloudflare | Browser session lifecycle and stream metadata |
+| `pdf` | none | Artifact-backed inspect, merge, extract, split, and rotate |
+| `image` | none | Artifact-backed metadata and transforms |
+| `crypto` | none | Digest, bound-key HMAC, and secure random bytes |
+| `calendar` | none | iCalendar build and parse |
 | `vector-store` | qdrant, pinecone, supabase, mastra | Upsert / query / delete vectors |
 | `rag` | nested vector_store + embed | Chunk + OpenAI-compatible embed + store/retrieve |
 
@@ -149,13 +155,7 @@ src/modules/<capability>/
 | `speech` | STT / TTS | whisper-selfhost, elevenlabs, deepgram |
 | `vector-store` (more providers) | Upsert / query / delete vectors | weaviate, chroma, … |
 | `rag` (extensions) | Ingest + retrieve | additional embed adapters |
-| `pdf` | Merge, split, page count | gotenberg, stirling-pdf, pdf-lib |
-| `image` | Resize, thumb, light transforms | imgproxy, sharp (node), cloudinary |
-| `browser` | Scrape / structured page ops | browserless, playwright-server |
-| `queue` | Enqueue durable work | sqs (AwsService), redis, nats |
 | `webhook` | Signed outbound HTTP dispatch | pure + HttpService |
-| `crypto` | HMAC, JWT verify | pure helpers (`auth: none` or host secrets) |
-| `calendar` | ICS build / thin CalDAV | ical pure; CalDAV HttpService |
 
 #### `files` (path-scoped; replaces “org files are only product”)
 

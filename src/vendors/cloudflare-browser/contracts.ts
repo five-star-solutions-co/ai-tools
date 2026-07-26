@@ -5,13 +5,46 @@ import { s3AuthSchema } from '../s3'
 
 export const MAX_HTML_CHARS = 2_000_000
 
-export const cloudflareBrowserAuthSchema = z.object({
+export const cloudflareBrowserSessionAuthSchema = z.object({
 	account_id: z.string().min(1).describe('Cloudflare account id'),
-	api_token: z.string().min(1).describe('Cloudflare API token with Browser Rendering permission'),
+	api_token: z.string().min(1).describe('Cloudflare API token with Browser Rendering permission')
+})
+
+export const cloudflareBrowserClientAuthSchema = cloudflareBrowserSessionAuthSchema.extend({
+	storage: s3AuthSchema.optional().describe('Object storage required for rendered ArtifactRef output')
+})
+
+export const cloudflareBrowserAuthSchema = cloudflareBrowserSessionAuthSchema.extend({
 	storage: s3AuthSchema.describe('Object storage for rendered ArtifactRef output')
 })
 
 export type CloudflareBrowserAuth = z.infer<typeof cloudflareBrowserAuthSchema>
+export type CloudflareBrowserClientAuth = z.infer<typeof cloudflareBrowserClientAuthSchema>
+export type CloudflareBrowserSessionAuth = z.infer<typeof cloudflareBrowserSessionAuthSchema>
+
+export const cloudflareBrowserStartSessionInputSchema = z.object({
+	keep_alive_seconds: z
+		.int()
+		.min(60)
+		.max(600)
+		.optional()
+		.describe('How long the browser session remains available, from 60 to 600 seconds')
+})
+
+export const cloudflareBrowserSessionIdInputSchema = z.object({
+	session_id: z.string().uuid().describe('Cloudflare browser session id')
+})
+
+export const cloudflareBrowserSessionOutputSchema = z.object({
+	session_id: z.string().describe('Cloudflare browser session id'),
+	status: z.string().optional().describe('Current session status'),
+	websocket_debugger_url: z.string().optional().describe('WebSocket endpoint for Chrome DevTools Protocol'),
+	devtools_frontend_url: z.string().optional().describe('Hosted DevTools and live-view URL')
+})
+
+export type CloudflareBrowserStartSessionInput = z.infer<typeof cloudflareBrowserStartSessionInputSchema>
+export type CloudflareBrowserSessionIdInput = z.infer<typeof cloudflareBrowserSessionIdInputSchema>
+export type CloudflareBrowserSessionOutput = z.infer<typeof cloudflareBrowserSessionOutputSchema>
 
 export const cloudflareBrowserViewportSchema = z.object({
 	width: z.int().min(1).max(8_000).describe('Viewport width in CSS pixels'),

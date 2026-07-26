@@ -146,7 +146,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** | send/edit/typing/react/media/unsend; inbound read |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/getBytesRange/signed URL/multipart |
 | gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot |
-| cloudflare-browser | CF browser token + S3 | renderPdf + renderScreenshot |
+| cloudflare-browser | CF browser token; S3 for render tests | start/get/stop + renderPdf + renderScreenshot |
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
 | **katana** | `KATANA_API_KEY` | **read-only** list/get entity surfaces + inventory |
@@ -156,6 +156,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | supabase-vector | Supabase URL + service role | upsert/query/delete |
 | mastra-vector | `MASTRA_DB_URL` | upsert/query/delete |
 | eventbridge-scheduler | shared `AWS_*` + `EVENTBRIDGE_SCHEDULER_TARGET_ARN` + `ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
+| sqs | shared `AWS_*` + `SQS_QUEUE_URL` | send/receive/change visibility/delete |
 | bedrock-agentcore-browser | shared `AWS_*` (+ optional browser id) | start/get/stop; optional CDP navigate via automation stream (`AI_TOOLS_BEDROCK_BROWSER_NAVIGATE_URL`, default `https://example.com`; set `AI_TOOLS_BEDROCK_BROWSER_SKIP_NAVIGATE=1` to skip) |
 | bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional interpreter id) | getSession, executeCode, executeCommand, write/list/read/remove files, startCommand/getTask/stopTask, stopSession |
 
@@ -176,6 +177,12 @@ Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and 
 | artifacts | host callbacks (always) + S3 object provider | create/readRange/readLines |
 | tasks | host callbacks (always) | create/get/list/update/delete |
 | scheduler | shared `AWS_*` + EventBridge target/role ARNs | create/get/list/update/delete (DISABLED schedule) |
+| queue | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
+| browser | shared `AWS_*` and/or CF browser token | start/get/stop per configured provider |
+| pdf | S3 | inspect/merge/extract/split/rotate artifacts |
+| image | S3 | metadata/resize/crop/thumbnail/convert artifacts |
+| crypto | none | Web Crypto digest and HMAC round trip |
+| calendar | none | iCalendar build and parse round trip |
 | document | S3 | buildText/read/editText + buildSpreadsheet/read |
 | messaging | TG / Slack / iMessage / Teams when env set | send/edit/chatAction/stopTyping/reactions/media; Telegram downloadFile; iMessage unsend is **vendor-only** |
 | document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot |
