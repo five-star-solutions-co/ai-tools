@@ -35,17 +35,45 @@ function need(cmd: string): void {
 	if (!Bun.which(cmd)) die(`missing required command: ${cmd}`)
 }
 
+/** Wait until `supabase status -o env` succeeds (API_URL present). */
+async function waitSupabaseReady(timeoutMs = 180_000): Promise<void> {
+	const deadline = Date.now() + timeoutMs
+	let lastErr = ''
+	while (Date.now() < deadline) {
+		const status = await $`bunx supabase status -o env`.nothrow().quiet()
+		const out = status.stdout.toString()
+		const err = status.stderr.toString()
+		if (status.exitCode === 0 && /API_URL=|SUPABASE_URL=/.test(out)) {
+			log('supabase ready')
+			return
+		}
+		lastErr = (err || out).trim() || `exit ${status.exitCode}`
+		await Bun.sleep(2_000)
+	}
+	die(`supabase not ready within ${timeoutMs / 1000}s: ${lastErr}`)
+}
+
+/**
+ * Start Supabase (or accept "already running"), then poll until the DB/API are up.
+ * `supabase start` often exits non-zero when already running or while db is still starting.
+ */
+async function ensureSupabase(): Promise<void> {
+	log('supabase start')
+	const started = await $`bunx supabase start`.nothrow()
+	if (started.exitCode === 0) {
+		log('supabase start ok')
+	} else {
+		const msg = (started.stderr.toString() || started.stdout.toString()).trim()
+		log(`supabase start exit ${started.exitCode} (will wait for ready): ${msg.slice(0, 200)}`)
+	}
+	await waitSupabaseReady()
+}
+
 async function stackUp(): Promise<void> {
 	log('up: compose (--wait) + supabase (parallel)')
-	const [compose, supabase] = await Promise.all([
-		$`docker compose -f ${composeFile} up -d --wait`.nothrow(),
-		$`bunx supabase start`.nothrow()
-	])
+	const [compose] = await Promise.all([$`docker compose -f ${composeFile} up -d --wait`.nothrow(), ensureSupabase()])
 	if (compose.exitCode !== 0) {
 		die(`docker compose up failed (exit ${compose.exitCode})`)
-	}
-	if (supabase.exitCode !== 0) {
-		die(`bunx supabase start failed (exit ${supabase.exitCode})`)
 	}
 }
 
