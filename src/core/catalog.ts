@@ -11,6 +11,13 @@ export type ToolCatalogEntry = {
 	runtime: ToolDefinition['meta']['runtime']
 	sideEffect: ToolDefinition['meta']['sideEffect']
 	tags: readonly string[]
+	idempotent?: boolean | undefined
+	longRunning?: boolean | undefined
+	requiresConfirmation?: boolean | undefined
+	supportsCancel?: boolean | undefined
+	supportsProgress?: boolean | undefined
+	network?: boolean | undefined
+	artifacts?: boolean | undefined
 }
 
 export type ModuleCatalogEntry = {
@@ -30,6 +37,13 @@ export function toToolCatalogEntry(tool: ToolDefinition): ToolCatalogEntry {
 		runtime: tool.meta.runtime,
 		sideEffect: tool.meta.sideEffect,
 		tags: tool.meta.tags ?? [],
+		idempotent: tool.meta.idempotent,
+		longRunning: tool.meta.longRunning,
+		requiresConfirmation: tool.meta.requiresConfirmation,
+		supportsCancel: tool.meta.supportsCancel,
+		supportsProgress: tool.meta.supportsProgress,
+		network: tool.meta.network,
+		artifacts: tool.meta.artifacts,
 		inputJsonSchema: toJSONSchema(tool.inputSchema),
 		outputJsonSchema: toJSONSchema(tool.outputSchema)
 	}

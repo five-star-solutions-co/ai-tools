@@ -37,6 +37,7 @@ import {
 | `sideEffect` | optional | defaults via meta; set explicitly in modules |
 | `runtime` | optional | `both` \| `edge` \| `node` |
 | `tags` | optional | free-form tags |
+| `idempotent`, `longRunning`, `requiresConfirmation`, `supportsCancel`, `supportsProgress`, `network`, `artifacts` | optional | host-facing **hints** only (not enforced) |
 
 `defineTool` wraps execute so **input** is validated before your function runs. **Output** is validated by `runTool` (and adapters that use `runTool`), not by calling `.execute` directly — intentional so adapters and tests can share one path.
 
@@ -53,8 +54,11 @@ import {
 
 ## Auth helpers
 
-- `withAuth(module, credentials)` → bound module
-- `withAuthTool(tool, credentials)` → bound tool
+- `withAuth(module, credentials)` → static bound module
+- `withAuthTool(tool, credentials)` → static bound tool
+- `bindModule(module, { resolveAuth, resolveContext?, hooks? })` → per-invocation auth/context
+- `bindTool(tool, moduleAuth, options)` → single-tool dynamic bind
+- `withHooks(module, hooks)` / `withHooksTool(tool, hooks)` → before/after/onError pipes
 - `listTools(moduleOrTools)` → flat tool list
 
 ## Execution

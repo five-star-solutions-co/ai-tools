@@ -16,6 +16,13 @@ export type CloudflareAiToolDefinition = {
 	parameters: Record<string, unknown>
 }
 
+export type CloudflareAiToolsOptions = {
+	/** Static base context merged into every execute (after call-site ctx). */
+	context?: ToolContext
+	/** Build ToolContext per call (host ids, signal, …). Receives optional call-site ctx. */
+	createContext?: (ctx: ToolContext | undefined) => ToolContext | Promise<ToolContext>
+}
+
 export type CloudflareAiToolset = {
 	/** Pass to `env.AI.run(..., { tools })`. */
 	definitions: CloudflareAiToolDefinition[]
@@ -40,7 +47,10 @@ export function createCloudflareAiToolDefinition(tool: ToolDefinition): Cloudfla
  * Project kernel tools into Cloudflare Workers AI traditional function-calling shape
  * plus host-side executors. No Cloudflare package dependency required.
  */
-export function createCloudflareAiTools(source: ToolSource): CloudflareAiToolset {
+export function createCloudflareAiTools(
+	source: ToolSource,
+	options: CloudflareAiToolsOptions = {}
+): CloudflareAiToolset {
 	const tools = resolveTools(source)
 	assertUniqueBy(
 		tools,
@@ -48,11 +58,22 @@ export function createCloudflareAiTools(source: ToolSource): CloudflareAiToolset
 		(id) => `Duplicate tool id when building Cloudflare tools: ${id}`
 	)
 
+	const resolveCtx = async (ctx: ToolContext | undefined): Promise<ToolContext> => {
+		const base: ToolContext = { ...options.context, ...ctx }
+		if (options.createContext) {
+			const fromFactory = await options.createContext(ctx)
+			return { ...base, ...fromFactory }
+		}
+		return base
+	}
+
 	const executors = mapValues(
 		keyBy(tools, (t) => t.id),
 		(tool) =>
-			(args: unknown, ctx: ToolContext = {}) =>
-				runTool(tool, args, ctx)
+			async (args: unknown, ctx: ToolContext = {}) => {
+				const next = await resolveCtx(ctx)
+				return runTool(tool, args, next)
+			}
 	)
 
 	return {

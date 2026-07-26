@@ -28,7 +28,21 @@ createMcpTools(bound)
 // registerMcpTools(mcpServer, bound) // host-owned McpServer
 ```
 
-Pass either a **module**, a **tool array**, or a **single tool** (each adapter documents accepted inputs). Auth modules must be bound first.
+Pass either a **module**, a **tool array**, or a **single tool** (each adapter documents accepted inputs). Auth modules must be bound first (`withAuth` or `bindModule`).
+
+Optional second argument on projectors (H-02):
+
+```ts
+createMastraTools(bound, {
+  context: { /* static */ },
+  createContext: (mastraCtx) => ({
+    signal: mastraCtx?.abortSignal,
+    extras: { org_id: '…' },
+  }),
+})
+```
+
+Same shape on AI SDK, TanStack, Cloudflare; MCP `registerMcpTools` uses `context` + `createContext`.
 
 ## Framework pages
 

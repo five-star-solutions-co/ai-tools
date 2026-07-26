@@ -9,16 +9,16 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 
 /**
  * Per-invocation host context.
- * Auth is host-bound (`withAuth` / client constructor), never tool inputs.
+ * Auth is host-bound (`withAuth` / `bindModule` / client constructor), never tool inputs.
  * `fetch` / `signal` feed product clients → transport.
  */
 export type ToolContext<TAuth = unknown> = {
-	auth?: TAuth
-	/** Host bag for non-auth injectables (rare). */
-	extras?: Record<string, unknown>
-	fetch?: FetchLike
-	now?: () => Date
-	signal?: AbortSignal
+	auth?: TAuth | undefined
+	/** Host bag for non-auth injectables (org ids, progress, sinks, …). */
+	extras?: Record<string, unknown> | undefined
+	fetch?: FetchLike | undefined
+	now?: (() => Date) | undefined
+	signal?: AbortSignal | undefined
 }
 
 /**
@@ -27,10 +27,28 @@ export type ToolContext<TAuth = unknown> = {
  */
 export type ToolExecute = (input: unknown, ctx: ToolContext) => Promise<unknown>
 
+/**
+ * Tool metadata: runtime/sideEffect for contracts; optional host-facing **hints**
+ * (package does not enforce confirmation, cancel, or audit — host does).
+ */
 export type ToolMeta = {
 	runtime: ToolRuntime
 	sideEffect: ToolSideEffect
-	tags?: readonly string[]
+	tags?: readonly string[] | undefined
+	/** Hint: safe to retry with same args (host policy). */
+	idempotent?: boolean | undefined
+	/** Hint: may run longer than a typical tool call. */
+	longRunning?: boolean | undefined
+	/** Hint: host may want user confirmation before execute. */
+	requiresConfirmation?: boolean | undefined
+	/** Hint: cancel via AbortSignal is meaningful. */
+	supportsCancel?: boolean | undefined
+	/** Hint: host may surface progress callbacks. */
+	supportsProgress?: boolean | undefined
+	/** Hint: touches network / upstream APIs. */
+	network?: boolean | undefined
+	/** Hint: I/O uses ArtifactRef or large object storage. */
+	artifacts?: boolean | undefined
 }
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {

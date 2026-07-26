@@ -644,10 +644,10 @@ Full lock: [`docs/specs/host-integration-kernel.md`](../specs/host-integration-k
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| H-01 | Dynamic bind | `bindModule({ resolveAuth, resolveContext })` beside static `withAuth` |
-| H-02 | Adapter context factory | Mastra (and peers) pass more than `AbortSignal` — extras, progress, host ids |
-| H-03 | Generic hooks | `beforeExecute` / `afterExecute` / `onError` pipes only; host injects policy |
-| H-04 | Richer `ToolMeta` | Additive host facts: idempotent, longRunning, cancel/progress, network, artifacts, confirmation **hint** |
+| H-01 | Dynamic bind | **Done** — `bindModule` / `bindTool` |
+| H-02 | Adapter context factory | **Done** — `context` + `createContext` on adapters |
+| H-03 | Generic hooks | **Done** — `withHooks` / hooks on bind |
+| H-04 | Richer `ToolMeta` | **Done** — additive host hints + catalog |
 | H-05 | Registry + catalog discovery | **Tabled.** Search/read over registered tools; prefer names `catalog-search-tools` / `catalog-read-tool` (not “meta tools”) |
 | H-06 | Public artifacts surface | `@harryy/ai-tools/artifacts` + bounded files reads (range/lines/create artifact) — related to G-04 |
 | H-07 | Task contracts | Package Zod + tools only; host supplies backend (no host DB/deploy code in package) |

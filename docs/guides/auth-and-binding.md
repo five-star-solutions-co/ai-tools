@@ -5,7 +5,7 @@
 1. **Hosts own secrets.** This package never stores, vaults, or encrypts credentials.
 2. **Auth schemas are host-facing** (forms, env loaders, validation). Field `.describe()` text may name the credential purpose for humans configuring the host.
 3. **Model-facing tool inputs never include auth.** Agents must not see API keys, tokens, or “pass your X-Api-Key” language in tool `description` / input field descriptions.
-4. **Bind once, project many times.** Call `withAuth(module, credentials)` then pass the bound module into any adapter.
+4. **Bind then project.** Call `withAuth` (static creds) or `bindModule` (per-invocation resolve) then pass into any adapter.
 5. **snake_case** for host auth fields that mirror APIs (`api_key`, `bot_token`, `access_key_id`, `account_id`).
 
 ## Vendor pack
@@ -17,9 +17,48 @@ import { telegramModule, TelegramClient } from '@harryy/ai-tools/telegram'
 // Host client
 const client = new TelegramClient({ bot_token: '…' })
 
-// Agent tools
+// Agent tools (static credentials for this process)
 const bound = withAuth(telegramModule, { bot_token: '…' })
 ```
+
+## Dynamic bind (multi-tenant)
+
+When credentials depend on org/session per tool call:
+
+```ts
+import { bindModule, withHooks } from '@harryy/ai-tools/core'
+import { emailModule } from '@harryy/ai-tools/email'
+import { createMastraTools } from '@harryy/ai-tools/mastra'
+
+const bound = bindModule(emailModule, {
+  resolveAuth: async (ctx) => {
+    const orgId = ctx.extras?.['org_id']
+    // host vault / DB — never on tool inputs
+    return { provider: 'resend', api_key: await loadKey(orgId) }
+  },
+  resolveContext: async (ctx) => ({
+    ...ctx,
+    // e.g. inject AbortSignal already on ctx from adapter createContext
+  }),
+  hooks: {
+    beforeExecute: async ({ tool, ctx }) => {
+      // host audit / allowlist (throw ToolError to deny)
+    },
+    afterExecute: async ({ tool, output }) => {},
+    onError: async ({ tool, error }) => {},
+  },
+})
+
+// Adapter maps framework context → ToolContext (H-02)
+const tools = createMastraTools(bound, {
+  createContext: (mastraCtx) => ({
+    signal: mastraCtx?.abortSignal,
+    extras: { org_id: currentOrgId() },
+  }),
+})
+```
+
+`withAuth` stays the simple path. `bindModule` + `withHooks` + adapter `createContext` are the host-integration kernel (see [host-integration-kernel.md](../specs/host-integration-kernel.md)).
 
 ## Multi-provider seam
 
@@ -74,7 +113,15 @@ type ToolContext = {
 }
 ```
 
-Hosts/tests inject `fetch` and `signal` without changing tool schemas.
+Hosts/tests inject `fetch` and `signal` without changing tool schemas. Adapters accept `context` + `createContext` so framework `abortSignal` (and host extras) become `ToolContext`.
+
+## ToolMeta hints (optional)
+
+`defineTool` accepts additive host-facing hints on `meta` (not enforced by the kernel):
+
+`idempotent`, `longRunning`, `requiresConfirmation`, `supportsCancel`, `supportsProgress`, `network`, `artifacts`.
+
+Catalog entries (`toToolCatalogEntry`) surface the same fields for discovery UIs.
 
 ## Security checklist for pack authors
 

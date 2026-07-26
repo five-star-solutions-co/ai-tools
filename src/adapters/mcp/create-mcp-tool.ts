@@ -60,14 +60,15 @@ export type McpToolset = {
 	executors: Record<string, (args: unknown, ctx?: ToolContext) => Promise<unknown>>
 }
 
-function annotationsForSideEffect(sideEffect: ToolSideEffect): McpToolAnnotations {
+function annotationsForTool(tool: ToolDefinition): McpToolAnnotations {
+	const sideEffect: ToolSideEffect = tool.meta.sideEffect
 	const readOnly = sideEffect === 'read' || sideEffect === 'none'
 	return {
 		readOnlyHint: readOnly,
 		destructiveHint: sideEffect === 'delete',
-		idempotentHint: readOnly,
+		idempotentHint: tool.meta.idempotent ?? readOnly,
 		// Most integrations touch external systems; hosts can override via register options later.
-		openWorldHint: true
+		openWorldHint: tool.meta.network ?? true
 	}
 }
 
@@ -76,7 +77,7 @@ export function createMcpToolListItem(tool: ToolDefinition): McpToolListItem {
 		name: tool.id,
 		description: tool.description,
 		inputSchema: toJSONSchema(tool.inputSchema),
-		annotations: annotationsForSideEffect(tool.meta.sideEffect)
+		annotations: annotationsForTool(tool)
 	}
 }
 
@@ -136,10 +137,17 @@ export function createMcpTools(source: ToolSource): McpToolset {
 
 export type RegisterMcpToolsOptions = {
 	/**
-	 * Static context or factory per call (e.g. inject bound auth extras).
-	 * Prefer `withAuth` before projection when credentials are fixed for the server.
+	 * Static base context merged on every call.
+	 * Prefer `withAuth` / `bindModule` before projection when credentials are fixed or dynamic.
 	 */
-	context?: ToolContext | (() => ToolContext | Promise<ToolContext>)
+	context?: ToolContext
+	/**
+	 * Map MCP request extras (e.g. AbortSignal) into ToolContext.
+	 * Default merges `extra.signal` when present.
+	 */
+	createContext?: (extra: { signal?: AbortSignal }) => ToolContext | Promise<ToolContext>
+	/** @deprecated Prefer `context` + `createContext`. Still supported as static or factory. */
+	contextFactory?: ToolContext | (() => ToolContext | Promise<ToolContext>)
 }
 
 /**
@@ -166,14 +174,18 @@ export function registerMcpTools(
 				description: tool.description,
 				inputSchema: tool.inputSchema,
 				outputSchema: tool.outputSchema,
-				annotations: annotationsForSideEffect(tool.meta.sideEffect)
+				annotations: annotationsForTool(tool)
 			},
 			async (args, extra) => {
-				const base = isFunction(options.context) ? await options.context() : (options.context ?? {})
-				const ctx: ToolContext = {
-					...base,
-					...(extra.signal && { signal: extra.signal })
-				}
+				const legacy = options.contextFactory
+				const legacyBase: ToolContext = isFunction(legacy) ? await legacy() : (legacy ?? {})
+				const base: ToolContext = { ...legacyBase, ...options.context }
+				const fromFactory = options.createContext
+					? await options.createContext(extra)
+					: extra.signal
+						? { signal: extra.signal }
+						: {}
+				const ctx: ToolContext = { ...base, ...fromFactory }
 				const value = await runTool(tool, args, ctx)
 				return toCallResult(value)
 			}

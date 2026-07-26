@@ -107,17 +107,17 @@ Host may instead implement “load on demand” by expanding the Mastra/AI SDK t
 
 ---
 
-## Kernel direction (implementation backlog, not yet all shipped)
+## Kernel direction
 
-| Capability | Today | Direction |
+| Capability | Status | API |
 | --- | --- | --- |
-| Static auth bind | `withAuth(module, creds)` | Keep |
-| Dynamic auth / context | — | `bindModule(module, { resolveAuth, resolveContext })` (name TBD) |
-| Adapter context | Mastra passes only `abortSignal` | Per-adapter context factory / options |
-| Hooks | Host wraps manually | Generic `beforeExecute` / `afterExecute` / `onError` wrappers |
-| Metadata | `runtime`, `sideEffect`, `tags` | Additive host-facing facts (idempotency, long-running, artifacts, …) |
-| Catalog | `toToolCatalogEntry` / `toModuleCatalogEntry` | Registry + filter/search + optional discovery tools |
-| Execute path | `runTool` | Unchanged contract: validate I/O, host auth, no secrets on model inputs |
+| Static auth bind | **Shipped** | `withAuth(module, creds)` |
+| Dynamic auth / context | **Shipped (H-01)** | `bindModule(module, { resolveAuth, resolveContext?, hooks? })` |
+| Adapter context | **Shipped (H-02)** | Adapter options: `context` + `createContext` (Mastra, AI SDK, TanStack, MCP, Cloudflare) |
+| Hooks | **Shipped (H-03)** | `withHooks` / `withHooksTool` / hooks on `bindModule` |
+| Metadata | **Shipped (H-04)** | Additive `ToolMeta` hints + catalog fields |
+| Catalog discovery tools | **Not shipped** | Registry search / `catalog-*` tools (H-05) — tabled |
+| Execute path | **Shipped** | `runTool` — validate I/O, host auth, no secrets on model inputs |
 
 ---
 

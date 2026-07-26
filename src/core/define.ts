@@ -17,6 +17,14 @@ export type DefineToolOptions<TInput, TOutput> = {
 	runtime?: ToolRuntime
 	sideEffect?: ToolSideEffect
 	tags?: readonly string[]
+	/** Host-facing hints (not enforced by the kernel). */
+	idempotent?: boolean
+	longRunning?: boolean
+	requiresConfirmation?: boolean
+	supportsCancel?: boolean
+	supportsProgress?: boolean
+	network?: boolean
+	artifacts?: boolean
 	execute: (input: TInput, ctx: ToolContext) => Promise<TOutput>
 }
 
@@ -43,7 +51,14 @@ export function defineTool<TInput, TOutput>(
 		meta: {
 			runtime: options.runtime ?? 'both',
 			sideEffect: options.sideEffect ?? 'read',
-			...(options.tags && { tags: options.tags })
+			tags: options.tags,
+			idempotent: options.idempotent,
+			longRunning: options.longRunning,
+			requiresConfirmation: options.requiresConfirmation,
+			supportsCancel: options.supportsCancel,
+			supportsProgress: options.supportsProgress,
+			network: options.network,
+			artifacts: options.artifacts
 		},
 		execute: async (input, ctx) => {
 			const parsed = options.inputSchema.parse(input)
