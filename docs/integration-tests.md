@@ -169,6 +169,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | sqs | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
 | bedrock-agentcore-browser | shared `AWS_*` (+ optional `AWS_BROWSER_ID`); `BROWSER_NAVIGATE_URL` | start/get/stop; optional CDP navigate |
 | bedrock-agentcore-code-interpreter | shared `AWS_*` (+ optional `AWS_CODE_INTERPRETER_ID`) | full session surface |
+| cloudflare-sandbox | `CF_SANDBOX_BASE_URL` + `CF_SANDBOX_API_KEY` (bridge) | create/exec/executeCode/write/read/destroy |
 
 Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and have no live files.
 
@@ -189,6 +190,7 @@ Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and 
 | scheduler | shared `AWS_*` + `SCHEDULER_TARGET_ARN` / `ROLE_ARN` | create/get/list/update/delete (DISABLED schedule) |
 | queue | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
 | browser | shared `AWS_*` and/or shared `CF_*` | start/get/stop per provider; optional CDP navigate (`BROWSER_NAVIGATE_URL`) |
+| code-sandbox | CF sandbox bridge and/or shared `AWS_*` | start/execute/stop per provider |
 | pdf | S3 | inspect/merge/extract/split/rotate artifacts |
 | image | S3 | metadata/resize/crop/thumbnail/convert artifacts |
 | crypto | none | tools: hash, hmac sign/verify, random bytes |

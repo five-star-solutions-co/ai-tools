@@ -2,8 +2,7 @@ node_modules/
 dist/
 .codegen-check-tmp/
 *.tsbuildinfo
-.env
-.env.*
+.env*
 !.env.example
 .DS_Store
 .idea/

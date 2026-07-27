@@ -70,6 +70,7 @@ src/modules/<capability>/
 | `scheduler` | `eventbridge` |
 | `queue` | `sqs` |
 | `browser` | `bedrock-agentcore`, `cloudflare` |
+| `code-sandbox` | `cloudflare`, `bedrock-agentcore` |
 | `vector-store` | `qdrant`, `pinecone`, `supabase`, `mastra` (wrap vendor packs) |
 | `rag` | nested `vector_store` + OpenAI-compatible `embed` auth |
 

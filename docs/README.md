@@ -43,6 +43,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@harryy/ai-tools/files` | [files](./modules/files.md) — path root over storage |
 | `@harryy/ai-tools/document-extract` | [document-extract](./modules/document-extract.md) — `textract` |
 | `@harryy/ai-tools/document-render` | [document-render](./modules/document-render.md) — `gotenberg`, `cloudflare-browser` |
+| `@harryy/ai-tools/code-sandbox` | [code-sandbox](./modules/code-sandbox.md) — `cloudflare`, `bedrock-agentcore` |
 | `@harryy/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — Gotenberg `office-to-pdf` |
 | `@harryy/ai-tools/document` | [document](./modules/document.md) — read / build / edit text, documents, presentations, and spreadsheets |
 | `@harryy/ai-tools/web-fetch` | [web-fetch](./modules/web-fetch.md) |
@@ -84,6 +85,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 
 | `@harryy/ai-tools/gotenberg` | [gotenberg](./vendors/gotenberg.md) |
 | `@harryy/ai-tools/cloudflare-browser` | [cloudflare-browser](./vendors/cloudflare-browser.md) |
+| `@harryy/ai-tools/cloudflare-sandbox` | [cloudflare-sandbox](./vendors/cloudflare-sandbox.md) |
 | `@harryy/ai-tools/woocommerce` | [woocommerce](./vendors/woocommerce.md) |
 | `@harryy/ai-tools/katana` | [katana](./vendors/katana.md) |
 | `@harryy/ai-tools/amazon-sp-api` | [amazon-sp-api](./vendors/amazon-sp-api.md) |

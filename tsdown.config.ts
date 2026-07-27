@@ -18,6 +18,8 @@ export default defineConfig({
 		'modules/calendar/index': 'src/modules/calendar/index.ts',
 		'vendors/cloudflare-browser/index': 'src/vendors/cloudflare-browser/index.ts',
 		'vendors/cloudflare-email/index': 'src/vendors/cloudflare-email/index.ts',
+		'vendors/cloudflare-sandbox/index': 'src/vendors/cloudflare-sandbox/index.ts',
+		'modules/code-sandbox/index': 'src/modules/code-sandbox/index.ts',
 		'modules/content-type/index': 'src/modules/content-type/index.ts',
 		'modules/crypto/index': 'src/modules/crypto/index.ts',
 		'modules/document/index': 'src/modules/document/index.ts',

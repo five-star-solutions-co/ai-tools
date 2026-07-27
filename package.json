@@ -77,6 +77,14 @@
 			"types": "./dist/vendors/cloudflare-email/index.d.ts",
 			"default": "./dist/vendors/cloudflare-email/index.js"
 		},
+		"./cloudflare-sandbox": {
+			"types": "./dist/vendors/cloudflare-sandbox/index.d.ts",
+			"default": "./dist/vendors/cloudflare-sandbox/index.js"
+		},
+		"./code-sandbox": {
+			"types": "./dist/modules/code-sandbox/index.d.ts",
+			"default": "./dist/modules/code-sandbox/index.js"
+		},
 		"./content-type": {
 			"types": "./dist/modules/content-type/index.d.ts",
 			"default": "./dist/modules/content-type/index.js"
