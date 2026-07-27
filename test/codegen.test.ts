@@ -32,6 +32,7 @@ export const demoEchoModule = defineModule({
   id: 'demo-echo',
   title: 'Demo',
   description: 'Demo module for codegen.',
+  runtime: 'both',
   tools: [tool],
 })
 `
@@ -44,6 +45,7 @@ export const demoEchoModule = defineModule({
 			expect(mod.key).toBe('demo-echo')
 			expect(mod.exportNames).toContain('demoEchoModule')
 			expect(mod.moduleId).toBe('demo-echo')
+			expect(mod.runtime).toBe('both')
 			expect(mod.entryKey).toBe('modules/demo-echo/index')
 		} finally {
 			await rm(root, { recursive: true, force: true })
@@ -70,7 +72,8 @@ export const demoEchoModule = defineModule({
 				entryPath: '/x',
 				entryRelative: 'src/modules/demo-echo/index.ts',
 				entryKey: 'modules/demo-echo/index',
-				exportNames: ['demoEchoModule']
+				exportNames: ['demoEchoModule'],
+				runtime: 'both'
 			}
 		])
 		expect(exports['./core']).toBeDefined()
@@ -87,7 +90,8 @@ export const demoEchoModule = defineModule({
 				entryPath: '/x',
 				entryRelative: 'src/modules/demo-echo/index.ts',
 				entryKey: 'modules/demo-echo/index',
-				exportNames: ['demoEchoModule']
+				exportNames: ['demoEchoModule'],
+				runtime: 'both'
 			}
 		])
 		expect(tsdown).toContain("'modules/demo-echo/index': 'src/modules/demo-echo/index.ts'")
@@ -100,11 +104,14 @@ describe('repo codegen artifacts', () => {
 		const manifestPath = path.join(import.meta.dir, '../generated/module-manifest.json')
 		const raw = await readFile(manifestPath, 'utf8')
 		const manifest = JSON.parse(raw) as {
-			brain: Array<{ exportKey: string }>
-			modules: unknown[]
+			brain: Array<{ exportKey: string; runtime: string; nodeFormats: string[] }>
+			modules: Array<{ key: string; runtime: string; nodeFormats: string[] }>
 		}
 		expect(manifest.brain.map((b) => b.exportKey)).toContain('core')
 		expect(manifest.brain.map((b) => b.exportKey)).toContain('mcp')
-		expect(Array.isArray(manifest.modules)).toBe(true)
+		expect(manifest.brain.every((surface) => ['node', 'edge', 'both'].includes(surface.runtime))).toBe(true)
+		expect(manifest.modules.every((surface) => ['node', 'edge', 'both'].includes(surface.runtime))).toBe(true)
+		expect(manifest.modules.find((surface) => surface.key === 'document')?.nodeFormats).toEqual(['esm', 'cjs'])
+		expect(manifest.modules.find((surface) => surface.key === 'presentation')?.nodeFormats).toEqual(['esm'])
 	})
 })

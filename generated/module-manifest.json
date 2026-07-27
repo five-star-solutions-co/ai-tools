@@ -1,41 +1,55 @@
 {
-	"generatedAt": "2026-07-27T01:59:33.058Z",
+	"generatedAt": "2026-07-27T15:23:38.384Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
 			"exportKey": "core",
 			"entryKey": "core/index",
-			"source": "src/core/index.ts"
+			"source": "src/core/index.ts",
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"exportKey": "http",
 			"entryKey": "http/index",
-			"source": "src/transport/index.ts"
+			"source": "src/transport/index.ts",
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"exportKey": "mastra",
 			"entryKey": "mastra/index",
-			"source": "src/adapters/mastra/index.ts"
+			"source": "src/adapters/mastra/index.ts",
+			"runtime": "node",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"exportKey": "ai-sdk",
 			"entryKey": "ai-sdk/index",
-			"source": "src/adapters/ai-sdk/index.ts"
+			"source": "src/adapters/ai-sdk/index.ts",
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"exportKey": "tanstack",
 			"entryKey": "tanstack/index",
-			"source": "src/adapters/tanstack/index.ts"
+			"source": "src/adapters/tanstack/index.ts",
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"exportKey": "cloudflare",
 			"entryKey": "cloudflare/index",
-			"source": "src/adapters/cloudflare/index.ts"
+			"source": "src/adapters/cloudflare/index.ts",
+			"runtime": "edge",
+			"nodeFormats": []
 		},
 		{
 			"exportKey": "mcp",
 			"entryKey": "mcp/index",
-			"source": "src/adapters/mcp/index.ts"
+			"source": "src/adapters/mcp/index.ts",
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		}
 	],
 	"modules": [
@@ -107,6 +121,8 @@
 				"amazonSpApiSearchCatalogItemsOutputSchema",
 				"amazonSpApiSearchCatalogItemsTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "amazon-sp-api",
 			"moduleIdSource": "src/vendors/amazon-sp-api/module.ts"
 		},
@@ -148,6 +164,8 @@
 				"hostArtifactsAuthSchema",
 				"objectArtifactsAuthSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "artifacts",
 			"moduleIdSource": "src/modules/artifacts/module.ts"
 		},
@@ -173,7 +191,9 @@
 				"browserSessionOutputSchema",
 				"browserStartSessionInputSchema",
 				"browserStreamSchema"
-			]
+			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"key": "bedrock-agentcore-code-interpreter",
@@ -228,7 +248,9 @@
 				"startSessionInputSchema",
 				"taskIdInputSchema",
 				"writeFilesInputSchema"
-			]
+			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"key": "browser",
@@ -260,6 +282,8 @@
 				"browserStreamSchema",
 				"cloudflareBrowserSeamAuthSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "browser",
 			"moduleIdSource": "src/modules/browser/module.ts"
 		},
@@ -285,6 +309,8 @@
 				"calendarParseTool",
 				"parseCalendar"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "calendar",
 			"moduleIdSource": "src/modules/calendar/module.ts"
 		},
@@ -326,6 +352,8 @@
 				"cloudflareBrowserStopSessionTool",
 				"cloudflareBrowserViewportSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "cloudflare-browser",
 			"moduleIdSource": "src/vendors/cloudflare-browser/module.ts"
 		},
@@ -356,6 +384,8 @@
 				"cloudflareEmailSendTool",
 				"namedAddressSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "cloudflare-email",
 			"moduleIdSource": "src/vendors/cloudflare-email/module.ts"
 		},
@@ -432,7 +462,9 @@
 				"writeFileOutputSchema",
 				"writeFilesInputSchema",
 				"writeFilesOutputSchema"
-			]
+			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"]
 		},
 		{
 			"key": "code-sandbox",
@@ -489,6 +521,8 @@
 				"codeSandboxWriteFilesOutputSchema",
 				"codeSandboxWriteFilesTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "code-sandbox",
 			"moduleIdSource": "src/modules/code-sandbox/module.ts"
 		},
@@ -503,6 +537,8 @@
 				"contentTypeGetTool",
 				"contentTypeModule"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "content-type",
 			"moduleIdSource": "src/modules/content-type/module.ts"
 		},
@@ -538,6 +574,8 @@
 				"signHmac",
 				"verifyHmac"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "crypto",
 			"moduleIdSource": "src/modules/crypto/module.ts"
 		},
@@ -549,22 +587,18 @@
 			"exportNames": [
 				"DocumentAuth",
 				"DocumentBuildDocumentInput",
-				"DocumentBuildPresentationInput",
 				"DocumentBuildSpreadsheetInput",
 				"DocumentBuildTextInput",
 				"DocumentClient",
 				"DocumentClientOptions",
 				"DocumentEditDocumentInput",
-				"DocumentEditPresentationInput",
 				"DocumentEditSpreadsheetInput",
 				"DocumentEditTextInput",
 				"DocumentFormat",
 				"DocumentPage",
-				"DocumentPresentationReplacement",
 				"DocumentReadInput",
 				"DocumentReadOutput",
 				"DocumentSection",
-				"DocumentSlide",
 				"DocumentTable",
 				"DocumentTextReplacement",
 				"MAX_INLINE_CHARS",
@@ -573,21 +607,16 @@
 				"MAX_SECTIONS",
 				"MAX_SHEETS",
 				"MAX_SHEET_ROWS",
-				"MAX_SLIDES",
 				"documentAuthSchema",
 				"documentBuildDocumentInputSchema",
 				"documentBuildDocumentTool",
 				"documentBuildOutputSchema",
-				"documentBuildPresentationInputSchema",
-				"documentBuildPresentationTool",
 				"documentBuildSpreadsheetInputSchema",
 				"documentBuildSpreadsheetTool",
 				"documentBuildTextInputSchema",
 				"documentBuildTextTool",
 				"documentEditDocumentInputSchema",
 				"documentEditDocumentTool",
-				"documentEditPresentationInputSchema",
-				"documentEditPresentationTool",
 				"documentEditSpreadsheetInputSchema",
 				"documentEditSpreadsheetTool",
 				"documentEditTextInputSchema",
@@ -597,16 +626,16 @@
 				"documentModule",
 				"documentPageSchema",
 				"documentPdfPageImagesSchema",
-				"documentPresentationReplacementSchema",
 				"documentReadInputSchema",
 				"documentReadOutputSchema",
 				"documentReadTool",
 				"documentSectionSchema",
-				"documentSlideSchema",
 				"documentSourceSchema",
 				"documentTableSchema",
 				"documentTextReplacementSchema"
 			],
+			"runtime": "node",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "document",
 			"moduleIdSource": "src/modules/document/module.ts"
 		},
@@ -635,6 +664,8 @@
 				"extractTextInputSchema",
 				"statusInputSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "document-extract",
 			"moduleIdSource": "src/modules/document-extract/module.ts"
 		},
@@ -664,6 +695,8 @@
 				"renderScreenshotBatchOutputSchema",
 				"renderScreenshotInputSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "document-render",
 			"moduleIdSource": "src/modules/document-render/module.ts"
 		},
@@ -693,6 +726,8 @@
 				"emailSendTool",
 				"namedAddressSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "email",
 			"moduleIdSource": "src/modules/email/module.ts"
 		},
@@ -702,6 +737,8 @@
 			"entry": "src/modules/email-message/index.ts",
 			"entryKey": "modules/email-message/index",
 			"exportNames": ["buildEmailMessageTool", "emailMessageModule", "parseEmailMessageTool"],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "email-message",
 			"moduleIdSource": "src/modules/email-message/module.ts"
 		},
@@ -748,6 +785,8 @@
 				"scheduleUpdateInputSchema",
 				"scheduleWriteOutputSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "eventbridge-scheduler",
 			"moduleIdSource": "src/vendors/eventbridge-scheduler/module.ts"
 		},
@@ -771,6 +810,8 @@
 				"fileConvertModule",
 				"fileConvertTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "file-convert",
 			"moduleIdSource": "src/modules/file-convert/module.ts"
 		},
@@ -805,6 +846,8 @@
 				"resolveUnderRoot",
 				"toRelativeKey"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "files",
 			"moduleIdSource": "src/modules/files/module.ts"
 		},
@@ -844,6 +887,8 @@
 				"gotenbergRenderSourceSchema",
 				"gotenbergViewportSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "gotenberg",
 			"moduleIdSource": "src/vendors/gotenberg/module.ts"
 		},
@@ -881,6 +926,8 @@
 				"imageThumbnailTool",
 				"imageTransformOutputSchema"
 			],
+			"runtime": "node",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "image",
 			"moduleIdSource": "src/modules/image/module.ts"
 		},
@@ -938,6 +985,8 @@
 				"isImessageDefiniteRejection",
 				"isImessageOutcomeUnknown"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "imessage",
 			"moduleIdSource": "src/vendors/imessage/module.ts"
 		},
@@ -1110,6 +1159,8 @@
 				"katanaUpdateSalesOrderOutputSchema",
 				"katanaUpdateSalesOrderTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "katana",
 			"moduleIdSource": "src/vendors/katana/module.ts"
 		},
@@ -1149,6 +1200,8 @@
 				"vectorMetadataSchema",
 				"vectorPointSchema"
 			],
+			"runtime": "node",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "mastra-vector",
 			"moduleIdSource": "src/vendors/mastra-vector/module.ts"
 		},
@@ -1220,6 +1273,8 @@
 				"messagingStopTypingInputSchema",
 				"messagingStopTypingTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "messaging",
 			"moduleIdSource": "src/modules/messaging/module.ts"
 		},
@@ -1260,6 +1315,8 @@
 				"pdfSplitTool",
 				"pdfWriteOutputSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "pdf",
 			"moduleIdSource": "src/modules/pdf/module.ts"
 		},
@@ -1299,8 +1356,45 @@
 				"vectorMetadataSchema",
 				"vectorPointSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "pinecone",
 			"moduleIdSource": "src/vendors/pinecone/module.ts"
+		},
+		{
+			"key": "presentation",
+			"lane": "modules",
+			"entry": "src/modules/presentation/index.ts",
+			"entryKey": "modules/presentation/index",
+			"exportNames": [
+				"MAX_SLIDES",
+				"PresentationAuth",
+				"PresentationBuildInput",
+				"PresentationClient",
+				"PresentationClientOptions",
+				"PresentationEditInput",
+				"PresentationReadInput",
+				"PresentationReadOutput",
+				"PresentationReplacement",
+				"PresentationSlide",
+				"presentationAuthSchema",
+				"presentationBuildInputSchema",
+				"presentationBuildOutputSchema",
+				"presentationBuildTool",
+				"presentationEditInputSchema",
+				"presentationEditTool",
+				"presentationModule",
+				"presentationReadInputSchema",
+				"presentationReadOutputSchema",
+				"presentationReadTool",
+				"presentationReplacementSchema",
+				"presentationSlideSchema",
+				"presentationSourceSchema"
+			],
+			"runtime": "node",
+			"nodeFormats": ["esm"],
+			"moduleId": "presentation",
+			"moduleIdSource": "src/modules/presentation/module.ts"
 		},
 		{
 			"key": "qdrant",
@@ -1338,6 +1432,8 @@
 				"vectorMetadataSchema",
 				"vectorPointSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "qdrant",
 			"moduleIdSource": "src/vendors/qdrant/module.ts"
 		},
@@ -1379,6 +1475,8 @@
 				"queueReceiveTool",
 				"sqsQueueAuthSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "queue",
 			"moduleIdSource": "src/modules/queue/module.ts"
 		},
@@ -1420,6 +1518,8 @@
 				"ragRetrieveTool",
 				"ragRetrievedChunkSchema"
 			],
+			"runtime": "node",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "rag",
 			"moduleIdSource": "src/modules/rag/module.ts"
 		},
@@ -1450,6 +1550,8 @@
 				"resendSendOutputSchema",
 				"resendSendTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "resend",
 			"moduleIdSource": "src/vendors/resend/module.ts"
 		},
@@ -1526,6 +1628,8 @@
 				"uploadPartInputSchema",
 				"uploadPartOutputSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "s3",
 			"moduleIdSource": "src/vendors/s3/module.ts"
 		},
@@ -1572,6 +1676,8 @@
 				"schedulerModule",
 				"schedulerUpdateTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "scheduler",
 			"moduleIdSource": "src/modules/scheduler/module.ts"
 		},
@@ -1616,6 +1722,8 @@
 				"skillsSearchTool",
 				"toSummary"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "skills",
 			"moduleIdSource": "src/modules/skills/module.ts"
 		},
@@ -1686,6 +1794,8 @@
 				"slackStopTypingInputSchema",
 				"verifySlackRequestSignature"
 			],
+			"runtime": "node",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "slack",
 			"moduleIdSource": "src/vendors/slack/module.ts"
 		},
@@ -1725,6 +1835,8 @@
 				"sqsReceiveTool",
 				"sqsSendTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "sqs",
 			"moduleIdSource": "src/vendors/sqs/module.ts"
 		},
@@ -1764,6 +1876,8 @@
 				"vectorMetadataSchema",
 				"vectorPointSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "supabase-vector",
 			"moduleIdSource": "src/vendors/supabase-vector/module.ts"
 		},
@@ -1813,6 +1927,8 @@
 				"tasksUpdateOutputSchema",
 				"tasksUpdateTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "tasks",
 			"moduleIdSource": "src/modules/tasks/module.ts"
 		},
@@ -1876,6 +1992,8 @@
 				"teamsSetReactionTool",
 				"verifyTeamsAuthHeader"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "teams",
 			"moduleIdSource": "src/vendors/teams/module.ts"
 		},
@@ -1943,6 +2061,8 @@
 				"telegramSetReactionTool",
 				"verifyTelegramWebhookSecret"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "telegram",
 			"moduleIdSource": "src/vendors/telegram/module.ts"
 		},
@@ -1976,6 +2096,8 @@
 				"textractModule",
 				"textractStatusInputSchema"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "textract",
 			"moduleIdSource": "src/vendors/textract/module.ts"
 		},
@@ -2023,6 +2145,8 @@
 				"vectorStoreQueryTool",
 				"vectorStoreUpsertTool"
 			],
+			"runtime": "node",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "vector-store",
 			"moduleIdSource": "src/modules/vector-store/module.ts"
 		},
@@ -2042,6 +2166,8 @@
 				"webFetchModule",
 				"webFetchRequestTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "web-fetch",
 			"moduleIdSource": "src/modules/web-fetch/module.ts"
 		},
@@ -2209,6 +2335,8 @@
 				"woocommerceUpdateProductOutputSchema",
 				"woocommerceUpdateProductTool"
 			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "woocommerce",
 			"moduleIdSource": "src/vendors/woocommerce/module.ts"
 		}

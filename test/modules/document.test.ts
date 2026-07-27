@@ -2,16 +2,14 @@ import { describe, expect, test } from 'bun:test'
 import { isPlainObject } from 'es-toolkit'
 
 import { runTool, validateModule, withAuth } from '../../src/core'
-import { documentModule } from '../../src/modules/document'
+import { DocumentClient, documentModule } from '../../src/modules/document'
 import { base64ToBytes, bytesToBase64, bytesToUtf8, utf8ToBytes } from '../../src/shared/bytes'
 import {
 	buildDocument,
-	buildPresentation,
 	buildSpreadsheet,
 	detectFormat,
 	detectFormatFromBytes,
 	patchDocx,
-	patchPptx,
 	patchSpreadsheet,
 	patchTextDocument,
 	renderPdfPages,
@@ -61,11 +59,9 @@ describe('document', () => {
 		expect(validateModule(documentModule).ok).toBe(true)
 		expect(documentModule.tools.map((t) => t.id).sort()).toEqual([
 			'document-build-document',
-			'document-build-presentation',
 			'document-build-spreadsheet',
 			'document-build-text',
 			'document-edit-document',
-			'document-edit-presentation',
 			'document-edit-spreadsheet',
 			'document-edit-text',
 			'document-read'
@@ -116,7 +112,7 @@ describe('document', () => {
 		expect(roundTrip.tables?.[0]?.rows[1]).toEqual(['Alice', 'updated, safely'])
 	})
 
-	test('build spreadsheet/document/presentation round-trip bytes', async () => {
+	test('build spreadsheet and document round-trip bytes', async () => {
 		const xlsx = await buildSpreadsheet([
 			{
 				name: 'S1',
@@ -137,14 +133,29 @@ describe('document', () => {
 		const readD = await readBytes('docx', docx, { filename: 'd.docx' })
 		expect(readD.text).toContain('T')
 		expect(readD.text).toContain('p1')
+	})
 
-		const pptx = await buildPresentation({
-			title: 'Deck',
-			slides: [{ title: 'One', bullets: ['a', 'b'], notes: 'Speaker context' }]
+	test('public DocumentClient reads TXT, PDF, DOCX, and XLSX without presentation dependencies', async () => {
+		const client = DocumentClient.fromAuth(storageAuth)
+		const docx = await buildDocument({
+			title: 'Client document',
+			sections: [{ paragraphs: ['DOCX body'] }]
 		})
-		const readP = await readBytes('pptx', pptx, { filename: 'd.pptx' })
-		expect(readP.slides?.[0]?.title).toBe('One')
-		expect(readP.slides?.[0]?.notes).toContain('Speaker context')
+		const xlsx = await buildSpreadsheet([{ name: 'Data', rows: [['XLSX value']] }])
+		const cases = [
+			{ filename: 'note.txt', bytes: utf8ToBytes('TXT body'), text: 'TXT body' },
+			{ filename: 'blank.pdf', bytes: buildMinimalPdf(), format: 'pdf' },
+			{ filename: 'document.docx', bytes: docx, text: 'DOCX body' },
+			{ filename: 'workbook.xlsx', bytes: xlsx, format: 'xlsx' }
+		] as const
+
+		for (const source of cases) {
+			const read = await client.read({
+				source: { body_base64: bytesToBase64(source.bytes), filename: source.filename }
+			})
+			if ('text' in source) expect(read.text).toContain(source.text)
+			if ('format' in source) expect(read.format).toBe(source.format)
+		}
 	})
 
 	test('reads PDF page text shape and renders selected pages as PNG', async () => {
@@ -159,7 +170,7 @@ describe('document', () => {
 		expect(rendered[0]?.height).toBe(120)
 	})
 
-	test('edits text, docx, and pptx through their format libraries', async () => {
+	test('edits text and docx through their format libraries', async () => {
 		const markdown = patchTextDocument(utf8ToBytes('# Old\nOld'), 'md', [{ find: 'Old', replace: 'New', match: 'all' }])
 		expect(new TextDecoder().decode(markdown)).toBe('# New\nNew')
 
@@ -172,23 +183,6 @@ describe('document', () => {
 		expect(readDocx.text).toContain('New title')
 		expect(readDocx.text).toContain('New heading')
 		expect(readDocx.text).toContain('Keep this paragraph')
-
-		const pptx = await buildPresentation({
-			title: 'Deck',
-			slides: [
-				{ title: 'Old one', bullets: ['Keep one'], notes: 'Old note one' },
-				{ title: 'Old two', bullets: ['Keep two'], notes: 'Old note two' }
-			]
-		})
-		const patchedPptxBytes = await patchPptx(pptx, [
-			{ find: 'Old one', replace: 'New one' },
-			{ find: 'Old two', replace: 'New two' }
-		])
-		const readPptx = await readBytes('pptx', patchedPptxBytes, {})
-		expect(readPptx.slides?.[0]?.title).toBe('New one')
-		expect(readPptx.slides?.[1]?.title).toBe('New two')
-		expect(readPptx.slides?.[0]?.notes).toContain('Old note one')
-		expect(readPptx.slides?.[1]?.notes).toContain('Old note two')
 	})
 
 	test('rejects edits when required replacement text is missing', async () => {

@@ -1,11 +1,13 @@
+/** PPTX read, build, and edit implementation. */
 import type { ParagraphOptions, SlideChild, TableCellOptions, TextBodyOptions } from '@office-open/pptx'
 import { parsePresentation } from '@office-open/pptx/parse'
 import Automizer, { modify } from 'pptx-automizer'
 import PptxGenJS from 'pptxgenjs'
 
 import { ToolError } from '../../../core/errors'
-import type { DocumentPresentationReplacement, DocumentReadOutput, DocumentSlide, DocumentTable } from '../contracts'
-import { assertReplacementApplied } from './text'
+import type { DocumentTable } from '../../document/contracts'
+import { assertReplacementApplied } from '../../document/formats/text'
+import type { PresentationReadOutput, PresentationReplacement, PresentationSlide } from '../contracts'
 
 function paragraphText(paragraph: ParagraphOptions | string): string {
 	if (typeof paragraph === 'string') return paragraph
@@ -56,9 +58,9 @@ function slideTables(children: SlideChild[], slideNumber: number): DocumentTable
 
 export async function readPresentation(
 	bytes: Uint8Array
-): Promise<Pick<DocumentReadOutput, 'text' | 'slides' | 'tables'>> {
+): Promise<Pick<PresentationReadOutput, 'text' | 'slides' | 'tables'>> {
 	const presentation = parsePresentation(bytes)
-	const slides: DocumentSlide[] = []
+	const slides: PresentationSlide[] = []
 	const tables: DocumentTable[] = []
 	const text: string[] = []
 	for (const [index, source] of (presentation.slides ?? []).entries()) {
@@ -68,7 +70,7 @@ export async function readPresentation(
 		const title = titleShape?.lines.join(' ').trim()
 		const bullets = shapes.filter((shape) => shape !== titleShape).flatMap((shape) => shape.lines)
 		const notes = notesText(source.notes)
-		const slide: DocumentSlide = {
+		const slide: PresentationSlide = {
 			...(title && { title }),
 			...(bullets.length > 0 && { bullets }),
 			...(notes && { notes })
@@ -86,7 +88,7 @@ export async function readPresentation(
 
 export async function buildPresentation(input: {
 	title?: string | undefined
-	slides: DocumentSlide[]
+	slides: PresentationSlide[]
 }): Promise<Uint8Array> {
 	const presentation = new PptxGenJS()
 	if (input.title) presentation.title = input.title
@@ -110,10 +112,7 @@ export async function buildPresentation(input: {
 	throw new ToolError('Presentation builder returned unexpected type', { code: 'internal' })
 }
 
-export async function patchPptx(
-	bytes: Uint8Array,
-	replacements: DocumentPresentationReplacement[]
-): Promise<Uint8Array> {
+export async function patchPptx(bytes: Uint8Array, replacements: PresentationReplacement[]): Promise<Uint8Array> {
 	const content = await readPresentation(bytes)
 	const editableText = [
 		...(content.slides ?? []).flatMap((slide) => [slide.title, ...(slide.bullets ?? [])]),

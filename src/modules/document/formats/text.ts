@@ -1,3 +1,4 @@
+/** Text, Markdown, JSON, CSV, and HTML helpers for the document capability. */
 import { compile } from 'html-to-text'
 
 import { ToolError } from '../../../core/errors'

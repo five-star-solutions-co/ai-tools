@@ -133,7 +133,8 @@ src/modules/<capability>/
 | `document-extract` | textract | ArtifactRef text extract |
 | `document-render` | gotenberg, cloudflare-browser | HTML/URL → PDF / screenshot |
 | `file-convert` | gotenberg (LibreOffice) | Office → PDF only (not HTML print) |
-| `document` | none | Node reader, native builders, and format-specific edit tools |
+| `document` | none | Node CommonJS-safe reader, native text/DOCX/XLSX builders, and core format edit tools |
+| `presentation` | none | Isolated PPTX reader, builder, and editor; Node ESM only while the parser graph uses top-level await |
 | `web-fetch` | host allowlist | Free-form allowlisted HTTP |
 | `email-message` | none | Email message parse/build |
 | `content-type` | none | MIME type ↔ extension |

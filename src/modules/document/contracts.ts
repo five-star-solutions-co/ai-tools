@@ -1,5 +1,5 @@
 /**
- * Document plane contracts — read / build office and text artifacts.
+ * Document contracts for reading, building, and editing core native artifacts.
  * Auth: nested object storage for ArtifactRef IO.
  */
 
@@ -9,7 +9,6 @@ import { artifactRefSchema } from '../../shared/artifact'
 import { s3AuthSchema } from '../../vendors/s3'
 
 export const MAX_INLINE_CHARS = 2_000_000
-export const MAX_SLIDES = 50
 export const MAX_SECTIONS = 100
 export const MAX_SHEET_ROWS = 5_000
 export const MAX_SHEETS = 20
@@ -22,7 +21,7 @@ export const documentAuthSchema = z.object({
 
 export type DocumentAuth = z.infer<typeof documentAuthSchema>
 
-export const documentFormatSchema = z.enum(['txt', 'md', 'json', 'csv', 'html', 'pdf', 'docx', 'pptx', 'xlsx', 'image'])
+export const documentFormatSchema = z.enum(['txt', 'md', 'json', 'csv', 'html', 'pdf', 'docx', 'xlsx', 'image'])
 
 export type DocumentFormat = z.infer<typeof documentFormatSchema>
 
@@ -50,12 +49,6 @@ export const documentTableSchema = z.object({
 		.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])))
 		.max(MAX_SHEET_ROWS)
 		.describe('Row-major cell values')
-})
-
-export const documentSlideSchema = z.object({
-	title: z.string().max(500).optional().describe('Slide title'),
-	bullets: z.array(z.string().max(2_000)).max(40).optional().describe('Bullet lines'),
-	notes: z.string().max(5_000).optional().describe('Speaker notes')
 })
 
 export const documentPageSchema = z.object({
@@ -97,7 +90,6 @@ export const documentReadOutputSchema = z.object({
 	text: z.string().optional().describe('Extracted plain text when available'),
 	html: z.string().optional().describe('HTML when available (e.g. from docx)'),
 	tables: z.array(documentTableSchema).optional().describe('Spreadsheet / tabular data'),
-	slides: z.array(documentSlideSchema).optional().describe('Presentation slides when structured'),
 	page_count: z.int().nonnegative().optional().describe('Page count when available'),
 	pages: z.array(documentPageSchema).optional().describe('Per-page text and requested page images'),
 	image: documentImageMetadataSchema.optional().describe('Image dimensions when available'),
@@ -130,20 +122,11 @@ export const documentBuildDocumentInputSchema = z.object({
 	filename: z.string().min(1).optional().describe('Display filename (defaults to document.docx)')
 })
 
-export const documentBuildPresentationInputSchema = z.object({
-	title: z.string().max(500).optional().describe('Presentation title metadata'),
-	slides: z.array(documentSlideSchema).min(1).max(MAX_SLIDES).describe('Slides to create'),
-	output_key: z.string().min(1).describe('Object key for the .pptx artifact'),
-	filename: z.string().min(1).optional().describe('Display filename (defaults to deck.pptx)')
-})
-
 export const documentTextReplacementSchema = z.object({
 	find: z.string().min(1).max(20_000).describe('Exact existing text to find'),
 	replace: z.string().max(20_000).describe('Replacement text'),
 	match: z.enum(['first', 'all']).describe('Replace the first match or every match')
 })
-
-export const documentPresentationReplacementSchema = documentTextReplacementSchema.omit({ match: true })
 
 export const documentEditTextInputSchema = z.object({
 	source: documentSourceSchema.describe('Existing txt, md, json, or html document'),
@@ -165,17 +148,6 @@ export const documentEditDocumentInputSchema = z.object({
 		.max(MAX_REPLACEMENTS)
 		.describe('Ordered layout-preserving text replacements'),
 	output_key: z.string().min(1).describe('Object key for the written docx document'),
-	filename: z.string().min(1).optional().describe('Display filename')
-})
-
-export const documentEditPresentationInputSchema = z.object({
-	source: documentSourceSchema.describe('Existing pptx presentation'),
-	replacements: z
-		.array(documentPresentationReplacementSchema)
-		.min(1)
-		.max(MAX_REPLACEMENTS)
-		.describe('Layout-preserving global text replacements'),
-	output_key: z.string().min(1).describe('Object key for the written pptx presentation'),
 	filename: z.string().min(1).optional().describe('Display filename')
 })
 
@@ -202,14 +174,10 @@ export type DocumentReadOutput = z.infer<typeof documentReadOutputSchema>
 export type DocumentBuildTextInput = z.infer<typeof documentBuildTextInputSchema>
 export type DocumentBuildSpreadsheetInput = z.infer<typeof documentBuildSpreadsheetInputSchema>
 export type DocumentBuildDocumentInput = z.infer<typeof documentBuildDocumentInputSchema>
-export type DocumentBuildPresentationInput = z.infer<typeof documentBuildPresentationInputSchema>
 export type DocumentEditTextInput = z.infer<typeof documentEditTextInputSchema>
 export type DocumentEditDocumentInput = z.infer<typeof documentEditDocumentInputSchema>
-export type DocumentEditPresentationInput = z.infer<typeof documentEditPresentationInputSchema>
 export type DocumentEditSpreadsheetInput = z.infer<typeof documentEditSpreadsheetInputSchema>
 export type DocumentTable = z.infer<typeof documentTableSchema>
-export type DocumentSlide = z.infer<typeof documentSlideSchema>
 export type DocumentSection = z.infer<typeof documentSectionSchema>
 export type DocumentPage = z.infer<typeof documentPageSchema>
 export type DocumentTextReplacement = z.infer<typeof documentTextReplacementSchema>
-export type DocumentPresentationReplacement = z.infer<typeof documentPresentationReplacementSchema>

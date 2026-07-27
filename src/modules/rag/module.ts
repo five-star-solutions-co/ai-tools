@@ -21,7 +21,7 @@ export const ragIngestTool = defineTool({
 	inputSchema: ragIngestInputSchema,
 	outputSchema: ragIngestOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => RagClient.fromContext(ctx).ingest(input)
 })
 
@@ -33,7 +33,7 @@ export const ragRetrieveTool = defineTool({
 	inputSchema: ragRetrieveInputSchema,
 	outputSchema: ragRetrieveOutputSchema,
 	sideEffect: 'read',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => RagClient.fromContext(ctx).retrieve(input)
 })
 
@@ -44,7 +44,7 @@ export const ragDeleteTool = defineTool({
 	inputSchema: ragDeleteInputSchema,
 	outputSchema: ragDeleteOutputSchema,
 	sideEffect: 'delete',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => RagClient.fromContext(ctx).delete(input)
 })
 
@@ -53,7 +53,7 @@ export const ragModule = defineModule({
 	title: 'RAG',
 	description:
 		'Retrieve-augmented generation helpers: chunk, embed (host route), store, retrieve, delete. Host binds embed credentials and vector-store credentials. Does not own classification or access policy.',
-	runtime: 'both',
+	runtime: 'node',
 	auth: { type: 'custom', schema: ragAuthSchema },
 	tools: [ragIngestTool, ragRetrieveTool, ragDeleteTool]
 })

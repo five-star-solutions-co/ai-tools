@@ -134,44 +134,6 @@ run('live seam document', () => {
 		}
 	})
 
-	test('buildPresentation editPresentation read slides', async () => {
-		const client = DocumentClient.fromAuth({ storage })
-		const key = objectKey('document-pptx')
-		const editKey = objectKey('document-pptx-edit')
-		const keys = [key, editKey]
-
-		try {
-			const built = await client.buildPresentation({
-				title: 'Deck',
-				slides: [{ title: 'Hello slide', bullets: ['one', 'two'], notes: 'Speaker notes' }],
-				output_key: key,
-				filename: 'it.pptx'
-			})
-			expect(built.result.key).toBe(key)
-
-			const read = await client.read({
-				source: { artifact: { store: 'object', key, filename: 'it.pptx' } }
-			})
-			expect(read.slides?.[0]?.title).toContain('Hello')
-			expect(read.slides?.[0]?.notes).toContain('Speaker')
-
-			const edited = await client.editPresentation({
-				source: { artifact: { store: 'object', key, filename: 'it.pptx' } },
-				replacements: [{ find: 'Hello', replace: 'Updated' }],
-				output_key: editKey,
-				filename: 'it-edited.pptx'
-			})
-			expect(edited.result.key).toBe(editKey)
-
-			const readEdited = await client.read({
-				source: { artifact: { store: 'object', key: editKey, filename: 'it-edited.pptx' } }
-			})
-			expect(readEdited.slides?.[0]?.title).toContain('Updated')
-		} finally {
-			await cleanup(keys)
-		}
-	})
-
 	test('read PDF page text from object storage', async () => {
 		const client = DocumentClient.fromAuth({ storage })
 		const key = objectKey('document-pdf')

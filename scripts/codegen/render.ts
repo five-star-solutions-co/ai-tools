@@ -1,19 +1,39 @@
-import type { DiscoveredModule } from './discover'
+import type { DiscoveredModule, SurfaceRuntime } from './discover'
 import { BRAIN_PACKAGES, NEVER_BUNDLE } from './brain'
 
 export type ModuleManifest = {
 	generatedAt: string
 	generator: 'scripts/codegen'
-	brain: Array<{ exportKey: string; entryKey: string; source: string }>
+	brain: Array<{
+		exportKey: string
+		entryKey: string
+		source: string
+		runtime: SurfaceRuntime
+		nodeFormats: NodeFormat[]
+	}>
 	modules: Array<{
 		key: string
 		lane: string
 		entry: string
 		entryKey: string
 		exportNames: string[]
+		runtime: SurfaceRuntime
+		nodeFormats: NodeFormat[]
 		moduleId?: string
 		moduleIdSource?: string
 	}>
+}
+
+export type NodeFormat = 'esm' | 'cjs'
+
+const NODE_FORMAT_OVERRIDES: Readonly<Partial<Record<string, readonly NodeFormat[]>>> = {
+	// @office-open/core currently contains top-level await and cannot be bundled as Node CommonJS.
+	presentation: ['esm']
+}
+
+function nodeFormatsFor(exportKey: string, runtime: SurfaceRuntime): NodeFormat[] {
+	if (runtime === 'edge') return []
+	return [...(NODE_FORMAT_OVERRIDES[exportKey] ?? ['esm', 'cjs'])]
 }
 
 function exportEntry(typesPath: string, defaultPath: string): string {
@@ -84,7 +104,9 @@ export function renderModuleManifest(modules: readonly DiscoveredModule[]): Modu
 		brain: BRAIN_PACKAGES.map((b) => ({
 			exportKey: b.exportKey,
 			entryKey: b.entryKey,
-			source: b.source
+			source: b.source,
+			runtime: b.runtime,
+			nodeFormats: nodeFormatsFor(b.exportKey, b.runtime)
 		})),
 		modules: modules.map((m) => ({
 			key: m.key,
@@ -92,6 +114,8 @@ export function renderModuleManifest(modules: readonly DiscoveredModule[]): Modu
 			entry: m.entryRelative,
 			entryKey: m.entryKey,
 			exportNames: m.exportNames,
+			runtime: m.runtime,
+			nodeFormats: nodeFormatsFor(m.key, m.runtime),
 			...(m.moduleId === undefined ? {} : { moduleId: m.moduleId }),
 			...(m.moduleIdSource === undefined ? {} : { moduleIdSource: m.moduleIdSource })
 		}))

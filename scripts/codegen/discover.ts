@@ -6,6 +6,7 @@ import { isArray } from 'es-toolkit/compat'
 import { parseSync } from 'oxc-parser'
 
 export type SurfaceLane = 'modules' | 'vendors'
+export type SurfaceRuntime = 'node' | 'edge' | 'both'
 
 export type DiscoveredModule = {
 	/** Package export key (folder name); unique across all lanes */
@@ -20,6 +21,8 @@ export type DiscoveredModule = {
 	entryKey: string
 	/** Named export bindings found on index.ts */
 	exportNames: string[]
+	/** Runtime compatibility declared by the public module */
+	runtime: SurfaceRuntime
 	/**
 	 * Kernel module id extracted via AST from defineModule if present
 	 * in index.ts or module.ts.
@@ -111,7 +114,16 @@ function extractStringProp(objectExpr: UnknownRecord, propName: string): string 
 	return undefined
 }
 
-function findDefineModuleId(programBody: unknown[]): string | undefined {
+type DefineModuleMetadata = {
+	id?: string
+	runtime: SurfaceRuntime
+}
+
+function isSurfaceRuntime(value: string | undefined): value is SurfaceRuntime {
+	return value === 'node' || value === 'edge' || value === 'both'
+}
+
+function findDefineModuleMetadata(programBody: unknown[]): DefineModuleMetadata | undefined {
 	for (const stmt of programBody) {
 		if (!isRecord(stmt)) continue
 		const t = nodeType(stmt)
@@ -123,8 +135,8 @@ function findDefineModuleId(programBody: unknown[]): string | undefined {
 			if (!isArray(decls)) continue
 			for (const d of decls) {
 				if (!isRecord(d)) continue
-				const id = extractIdFromDefineCall(d['init'])
-				if (!isNil(id)) return id
+				const metadata = extractMetadataFromDefineCall(d['init'])
+				if (!isNil(metadata)) return metadata
 			}
 		}
 
@@ -133,15 +145,15 @@ function findDefineModuleId(programBody: unknown[]): string | undefined {
 			if (!isArray(decls)) continue
 			for (const d of decls) {
 				if (!isRecord(d)) continue
-				const id = extractIdFromDefineCall(d['init'])
-				if (!isNil(id)) return id
+				const metadata = extractMetadataFromDefineCall(d['init'])
+				if (!isNil(metadata)) return metadata
 			}
 		}
 	}
 	return undefined
 }
 
-function extractIdFromDefineCall(init: unknown): string | undefined {
+function extractMetadataFromDefineCall(init: unknown): DefineModuleMetadata | undefined {
 	if (!isRecord(init) || nodeType(init) !== 'CallExpression') return undefined
 	const calleeName = identifierName(init['callee'])
 	if (isNil(calleeName) || !DEFINE_CALLEES.has(calleeName)) return undefined
@@ -149,7 +161,12 @@ function extractIdFromDefineCall(init: unknown): string | undefined {
 	if (!isArray(args) || args.length === 0) return undefined
 	const first = args[0]
 	if (!isRecord(first) || nodeType(first) !== 'ObjectExpression') return undefined
-	return extractStringProp(first, 'id')
+	const id = extractStringProp(first, 'id')
+	const runtime = extractStringProp(first, 'runtime')
+	if (!isSurfaceRuntime(runtime)) {
+		throw new Error(`defineModule${id ? ` "${id}"` : ''} must declare runtime as node, edge, or both`)
+	}
+	return { ...(id && { id }), runtime }
 }
 
 function parseTs(filePath: string, source: string): { body: unknown[]; errors: unknown[] } {
@@ -212,21 +229,24 @@ async function discoverLane(repoRoot: string, lane: SurfaceLane): Promise<Discov
 			throw new Error(`src/${lane}/${key}/index.ts must export at least one binding`)
 		}
 
-		let moduleId = findDefineModuleId(parsed.body)
-		let moduleIdSource: string | undefined = moduleId ? entryPath : undefined
+		let metadata = findDefineModuleMetadata(parsed.body)
+		let moduleIdSource: string | undefined = metadata?.id ? entryPath : undefined
 
-		if (!moduleId) {
+		if (!metadata) {
 			const modulePath = path.join(dir, 'module.ts')
 			try {
 				const moduleSource = await readFile(modulePath, 'utf8')
 				const moduleParsed = parseTs(modulePath, moduleSource)
 				if (moduleParsed.errors.length === 0) {
-					moduleId = findDefineModuleId(moduleParsed.body)
-					if (moduleId) moduleIdSource = modulePath
+					metadata = findDefineModuleMetadata(moduleParsed.body)
+					if (metadata?.id) moduleIdSource = modulePath
 				}
 			} catch {
 				// module.ts optional
 			}
+		}
+		if (!metadata) {
+			throw new Error(`Surface src/${lane}/${key} must export a defineModule with an explicit runtime`)
 		}
 
 		discovered.push({
@@ -236,7 +256,8 @@ async function discoverLane(repoRoot: string, lane: SurfaceLane): Promise<Discov
 			entryRelative: path.relative(repoRoot, entryPath).split(path.sep).join('/'),
 			entryKey: `${lane}/${key}/index`,
 			exportNames,
-			...(isNil(moduleId) ? {} : { moduleId }),
+			runtime: metadata.runtime,
+			...(metadata.id && { moduleId: metadata.id }),
 			...(isNil(moduleIdSource)
 				? {}
 				: { moduleIdSource: path.relative(repoRoot, moduleIdSource).split(path.sep).join('/') })

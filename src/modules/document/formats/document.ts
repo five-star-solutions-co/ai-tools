@@ -1,3 +1,4 @@
+/** DOCX read, build, and edit implementation for the document capability. */
 import {
 	appendHeading,
 	appendParagraph,

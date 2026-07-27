@@ -1,3 +1,4 @@
+/** PDF text and page rendering implementation for the document capability. */
 import { definePDFJSModule, extractText, renderPageAsImage } from 'unpdf'
 
 import { ToolError } from '../../../core/errors'

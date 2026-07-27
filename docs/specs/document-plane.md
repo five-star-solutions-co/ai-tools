@@ -7,6 +7,7 @@ Date: 2026-07-26
 Related:
 
 - [document](../modules/document.md): in-process read, build, and edit tools
+- [presentation](../modules/presentation.md): isolated PPTX read, build, and edit tools
 - [document-render](../modules/document-render.md): browser print and screenshots
 - [file-convert](../modules/file-convert.md): explicit office-to-PDF conversion
 - [document-extract](../modules/document-extract.md): OCR and asynchronous extraction
@@ -27,7 +28,7 @@ The product has three tool families and four first-class verbs:
 
 ## Reader
 
-Core inputs are txt, Markdown, JSON, CSV, HTML, PDF, DOCX, PPTX, XLSX, and common images.
+Core document inputs are txt, Markdown, JSON, CSV, HTML, PDF, DOCX, XLSX, and common images. PPTX input belongs to the separate presentation capability.
 
 - Text formats return content directly.
 - HTML returns source HTML plus visible text.
@@ -67,11 +68,22 @@ The shipped base contract is:
 | txt, Markdown, JSON, HTML | Ordered exact-text replacements; JSON remains valid |
 | CSV, XLSX | Cell patches by sheet, row, and column |
 | DOCX | Ordered text replacements across body, headers, footers, notes, and comments while retaining the OOXML package |
-| PPTX | Ordered text replacements across slides and notes, with optional slide scoping, while retaining layout and media |
+| PPTX | Ordered global text replacements across slide content while retaining layout, media, and speaker notes |
 
 Every requested replacement must match. The edit fails before writing an output when any requested text is absent.
 
 The product goal remains richer structural editing over time, including slide, section, table, style, and media operations. PDF and image editing require specialist later surfaces. The package must not claim unsupported edit depth or substitute a rebuild without telling the host.
+
+## Runtime packaging boundary
+
+The product remains one package with flat subpath exports, but document and presentation code are separate runtime graphs:
+
+| Import | Capability | Packaging |
+| --- | --- | --- |
+| `@harryy/ai-tools/document` | Text, PDF, DOCX, XLSX/CSV, images | Node ESM and CommonJS consumer bundles |
+| `@harryy/ai-tools/presentation` | PPTX | Node ESM only until the PPTX dependency graph is CommonJS-compatible |
+
+The document entry must never transitively import the PPTX parser or its core package. Filtering presentation tools after importing a shared client is not sufficient.
 
 ## Converter
 

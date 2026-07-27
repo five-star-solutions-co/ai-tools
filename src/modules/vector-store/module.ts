@@ -21,7 +21,7 @@ export const vectorStoreUpsertTool = defineTool({
 	inputSchema: upsertVectorsInputSchema,
 	outputSchema: upsertVectorsOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => VectorStoreClient.fromContext(ctx).upsert(input)
 })
 
@@ -33,7 +33,7 @@ export const vectorStoreQueryTool = defineTool({
 	inputSchema: queryVectorsInputSchema,
 	outputSchema: queryVectorsOutputSchema,
 	sideEffect: 'read',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => VectorStoreClient.fromContext(ctx).query(input)
 })
 
@@ -44,7 +44,7 @@ export const vectorStoreDeleteTool = defineTool({
 	inputSchema: deleteVectorsInputSchema,
 	outputSchema: deleteVectorsOutputSchema,
 	sideEffect: 'delete',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => VectorStoreClient.fromContext(ctx).delete(input)
 })
 
@@ -52,7 +52,7 @@ export const vectorStoreModule = defineModule({
 	id: 'vector-store',
 	title: 'Vector Store',
 	description: 'Upsert, query, and delete embedding vectors in the host-bound vector store.',
-	runtime: 'both',
+	runtime: 'node',
 	auth: { type: 'custom', schema: vectorStoreAuthSchema },
 	tools: [vectorStoreUpsertTool, vectorStoreQueryTool, vectorStoreDeleteTool]
 })

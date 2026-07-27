@@ -1,3 +1,4 @@
+/** XLSX and CSV read, build, and edit implementation for the document capability. */
 import { Readable } from 'node:stream'
 
 import ExcelJS from 'exceljs'

@@ -1,3 +1,4 @@
+/** Document format detection. */
 import { fileTypeFromBuffer } from 'file-type'
 
 import { ToolError } from '../../../core/errors'

@@ -124,7 +124,8 @@ defineTool / defineModule
 | `@harryy/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
 | `@harryy/ai-tools/document-render` | multi-provider | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
 | `@harryy/ai-tools/file-convert` | gotenberg LO | `file-convert` (`office-to-pdf`), batch | [file-convert](./docs/modules/file-convert.md) |
-| `@harryy/ai-tools/document` | reader/builder/editor | read common files with PDF page views; build text/docx/pptx/xlsx; edit text/docx/pptx/xlsx/csv | [document](./docs/modules/document.md) |
+| `@harryy/ai-tools/document` | core reader/builder/editor | read text/PDF/DOCX/XLSX/images; build text/DOCX/XLSX; edit text/DOCX/XLSX/CSV | [document](./docs/modules/document.md) |
+| `@harryy/ai-tools/presentation` | PPTX reader/builder/editor | read, build, and edit PPTX presentations; Node ESM only | [presentation](./docs/modules/presentation.md) |
 | `@harryy/ai-tools/web-fetch` | host policy | `web-fetch-get`, `web-fetch-request` | [web-fetch](./docs/modules/web-fetch.md) |
 | `@harryy/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
 | `@harryy/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
@@ -197,7 +198,7 @@ Codegen owns `package.json` exports for packs under `src/modules|vendors/<key>/`
 ## Artifacts (extract · convert · render)
 
 - Objects are **S3 keys** (`ArtifactRef`), not base64 in the model. Spec: [artifacts-extract-convert](./docs/specs/artifacts-extract-convert.md).
-- **Read / build / edit:** native document, presentation, spreadsheet, text, PDF-page, and image-metadata work lives in [`document`](./docs/modules/document.md). Product lock: [document plane](./docs/specs/document-plane.md).
+- **Read / build / edit:** text, PDF, DOCX, spreadsheet, and image-metadata work lives in [`document`](./docs/modules/document.md); PPTX work lives in [`presentation`](./docs/modules/presentation.md). Product lock: [document plane](./docs/specs/document-plane.md).
 - **Extract:** Amazon Textract (object must live in AWS S3 Textract can read).
 - **Convert (office→PDF):** self-host [Gotenberg](https://gotenberg.dev/) LibreOffice (`file-convert` path `office-to-pdf`).
 - **Render (HTML/URL):** Gotenberg Chromium or Cloudflare Browser Rendering → storage `ArtifactRef`.

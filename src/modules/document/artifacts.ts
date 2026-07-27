@@ -1,3 +1,4 @@
+/** Document source loading and ArtifactRef output helpers. */
 import { ToolError } from '../../core/errors'
 import type { ArtifactRef } from '../../shared/artifact'
 import { base64ToBytes, utf8ToBytes } from '../../shared/bytes'

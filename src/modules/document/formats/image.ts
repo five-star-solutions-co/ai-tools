@@ -1,3 +1,4 @@
+/** Image metadata reader used by the document capability. */
 import { imageSize } from 'image-size'
 
 export function readImageMetadata(bytes: Uint8Array): { width?: number; height?: number } | undefined {

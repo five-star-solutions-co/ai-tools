@@ -28,7 +28,7 @@ export const slackSendTextTool = defineTool({
 	inputSchema: slackSendTextInputSchema,
 	outputSchema: slackMessageOutputSchema,
 	sideEffect: 'send',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => SlackClient.fromContext(ctx).sendText(input)
 })
 
@@ -39,7 +39,7 @@ export const slackEditTextTool = defineTool({
 	inputSchema: slackEditTextInputSchema,
 	outputSchema: slackMessageOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => SlackClient.fromContext(ctx).editText(input)
 })
 
@@ -51,7 +51,7 @@ export const slackSendChatActionTool = defineTool({
 	inputSchema: slackSendChatActionInputSchema,
 	outputSchema: slackOkOutputSchema,
 	sideEffect: 'none',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => {
 		await SlackClient.fromContext(ctx).sendChatAction(input)
 		return { ok: true }
@@ -66,7 +66,7 @@ export const slackSetReactionTool = defineTool({
 	inputSchema: slackSetReactionInputSchema,
 	outputSchema: slackOkOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => {
 		await SlackClient.fromContext(ctx).setReaction(input)
 		return { ok: true }
@@ -81,7 +81,7 @@ export const slackClearReactionTool = defineTool({
 	inputSchema: slackClearReactionInputSchema,
 	outputSchema: slackOkOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => {
 		await SlackClient.fromContext(ctx).clearReaction(input)
 		return { ok: true }
@@ -96,7 +96,7 @@ export const slackSendMediaTool = defineTool({
 	inputSchema: slackSendMediaInputSchema,
 	outputSchema: slackMessageOutputSchema,
 	sideEffect: 'send',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => SlackClient.fromContext(ctx).sendMedia(input)
 })
 
@@ -107,7 +107,7 @@ export const slackDownloadFileTool = defineTool({
 	inputSchema: slackDownloadFileInputSchema,
 	outputSchema: slackDownloadFileOutputSchema,
 	sideEffect: 'read',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => SlackClient.fromContext(ctx).downloadFile(input)
 })
 
@@ -119,7 +119,7 @@ export const slackAnswerCallbackTool = defineTool({
 	inputSchema: slackAnswerCallbackInputSchema,
 	outputSchema: slackOkOutputSchema,
 	sideEffect: 'write',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (input, ctx) => {
 		await SlackClient.fromContext(ctx).answerCallback(input)
 		return { ok: true }
@@ -133,7 +133,7 @@ export const slackGetBotTool = defineTool({
 	inputSchema: emptyInputSchema,
 	outputSchema: slackGetBotOutputSchema,
 	sideEffect: 'read',
-	runtime: 'both',
+	runtime: 'node',
 	execute: async (_input, ctx) => SlackClient.fromContext(ctx).getBot()
 })
 
@@ -142,7 +142,7 @@ export const slackModule = defineModule({
 	title: 'Slack',
 	description:
 		'Slack Web API vendor pack: text, media upload, chat-action parity, reactions, file download, interactive callbacks, bot identity. Expand with more Web API methods over time. Not a multi-provider messaging seam.',
-	runtime: 'both',
+	runtime: 'node',
 	auth: { type: 'custom', schema: slackAuthSchema },
 	tools: [
 		slackSendTextTool,

@@ -157,6 +157,10 @@
 			"types": "./dist/vendors/pinecone/index.d.ts",
 			"default": "./dist/vendors/pinecone/index.js"
 		},
+		"./presentation": {
+			"types": "./dist/modules/presentation/index.d.ts",
+			"default": "./dist/modules/presentation/index.js"
+		},
 		"./qdrant": {
 			"types": "./dist/vendors/qdrant/index.d.ts",
 			"default": "./dist/vendors/qdrant/index.js"

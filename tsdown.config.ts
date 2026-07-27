@@ -38,6 +38,7 @@ export default defineConfig({
 		'modules/messaging/index': 'src/modules/messaging/index.ts',
 		'modules/pdf/index': 'src/modules/pdf/index.ts',
 		'vendors/pinecone/index': 'src/vendors/pinecone/index.ts',
+		'modules/presentation/index': 'src/modules/presentation/index.ts',
 		'vendors/qdrant/index': 'src/vendors/qdrant/index.ts',
 		'modules/queue/index': 'src/modules/queue/index.ts',
 		'modules/rag/index': 'src/modules/rag/index.ts',

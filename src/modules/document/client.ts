@@ -1,3 +1,4 @@
+/** Core document client. Presentation operations live in the presentation module. */
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
@@ -12,11 +13,9 @@ import { documentAuthSchema, documentBuildOutputSchema, documentReadOutputSchema
 import type {
 	DocumentAuth,
 	DocumentBuildDocumentInput,
-	DocumentBuildPresentationInput,
 	DocumentBuildSpreadsheetInput,
 	DocumentBuildTextInput,
 	DocumentEditDocumentInput,
-	DocumentEditPresentationInput,
 	DocumentEditSpreadsheetInput,
 	DocumentEditTextInput,
 	DocumentFormat,
@@ -25,12 +24,10 @@ import type {
 } from './contracts'
 import {
 	buildDocument,
-	buildPresentation,
 	buildSpreadsheet,
 	detectFormatFromBytes,
 	mediaTypeForTextFormat,
 	patchDocx,
-	patchPptx,
 	patchSpreadsheet,
 	patchTextDocument,
 	readBytes
@@ -78,8 +75,8 @@ export class DocumentClient {
 		const loaded = await this.#load(input.source)
 		const format = await this.#format(loaded, input.format)
 		const output = await readBytes(format, loaded.bytes, {
-			filename: loaded.filename,
-			media_type: loaded.media_type
+			...(loaded.filename && { filename: loaded.filename }),
+			...(loaded.media_type && { media_type: loaded.media_type })
 		})
 		if (input.pdf_page_images) {
 			await attachPdfPageArtifacts(output, loaded, format, input.pdf_page_images, (key, bytes, mediaType, filename) =>
@@ -116,15 +113,6 @@ export class DocumentClient {
 		)
 	}
 
-	async buildPresentation(input: DocumentBuildPresentationInput) {
-		return this.#write(
-			input.output_key,
-			await buildPresentation({ title: input.title, slides: input.slides }),
-			mediaTypeFor('deck.pptx'),
-			input.filename ?? 'deck.pptx'
-		)
-	}
-
 	async editText(input: DocumentEditTextInput) {
 		const loaded = await this.#load(input.source)
 		const format = await this.#format(loaded, input.format)
@@ -146,16 +134,6 @@ export class DocumentClient {
 			await patchDocx(loaded.bytes, input.replacements),
 			mediaTypeFor('document.docx'),
 			input.filename ?? sourceName(loaded, 'document.docx')
-		)
-	}
-
-	async editPresentation(input: DocumentEditPresentationInput) {
-		const loaded = await this.#requireFormat(input.source, 'pptx', 'editPresentation')
-		return this.#write(
-			input.output_key,
-			await patchPptx(loaded.bytes, input.replacements),
-			mediaTypeFor('deck.pptx'),
-			input.filename ?? sourceName(loaded, 'deck.pptx')
 		)
 	}
 
@@ -186,7 +164,7 @@ export class DocumentClient {
 
 	async #requireFormat(
 		source: DocumentReadInput['source'],
-		required: 'docx' | 'pptx',
+		required: 'docx',
 		operation: string
 	): Promise<LoadedDocument> {
 		const loaded = await this.#load(source)
