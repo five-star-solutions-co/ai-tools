@@ -4,6 +4,8 @@ All notable changes to `@harryy/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).
 
+## [2.0.1](https://github.com/harryy2510/ai-tools/compare/v2.0.0...v2.0.1) (2026-07-27)
+
 ## [2.0.0](https://github.com/harryy2510/ai-tools/compare/v1.6.1...v2.0.0) (2026-07-27)
 
 ## [1.6.1](https://github.com/harryy2510/ai-tools/compare/v1.6.0...v1.6.1) (2026-07-24)
