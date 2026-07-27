@@ -50,6 +50,8 @@ describe('eventbridge-scheduler', () => {
 			expect(req.method.toUpperCase()).toBe('POST')
 			const body = asRecord(JSON.parse(await req.text()))
 			expect(body['ScheduleExpression']).toBe('rate(1 day)')
+			expect(typeof body['ClientToken']).toBe('string')
+			expect(String(body['ClientToken']).length).toBeGreaterThan(0)
 			const target = asRecord(body['Target'])
 			expect(target['Arn']).toBe(auth.target_arn)
 			expect(target['RoleArn']).toBe(auth.role_arn)
@@ -132,6 +134,8 @@ describe('eventbridge-scheduler', () => {
 			expect(req.url).toContain('/schedules/nightly-report')
 			const body = asRecord(JSON.parse(await req.text()))
 			expect(body['ScheduleExpression']).toBe('rate(2 days)')
+			expect(typeof body['ClientToken']).toBe('string')
+			expect(String(body['ClientToken']).length).toBeGreaterThan(0)
 			return new Response(
 				JSON.stringify({ ScheduleArn: 'arn:aws:scheduler:us-east-1:123:schedule/default/nightly-report' }),
 				{ status: 200, headers: { 'content-type': 'application/json' } }
@@ -150,13 +154,14 @@ describe('eventbridge-scheduler', () => {
 		}
 	})
 
-	test('delete hits schedule path with group', async () => {
+	test('delete hits schedule path with group and clientToken', async () => {
 		const restore = mockFetch(async (input, init) => {
 			const req = asRequest(input, init)
 			expect(req.method.toUpperCase()).toBe('DELETE')
 			const url = new URL(req.url)
 			expect(url.pathname).toContain('/schedules/nightly-report')
 			expect(url.searchParams.get('groupName')).toBe('default')
+			expect(url.searchParams.get('clientToken')).toBeTruthy()
 			return new Response(null, { status: 200 })
 		})
 		try {

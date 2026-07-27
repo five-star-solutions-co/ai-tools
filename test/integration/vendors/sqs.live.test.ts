@@ -16,9 +16,14 @@ run('live vendor sqs', () => {
 			const sent = await client.enqueue({ body: marker })
 			expect(sent.message_id.length).toBeGreaterThan(0)
 
+			// Short visibility while polling so parallel IT on the same queue cannot hide our marker for long.
 			let receipt: string | undefined
-			for (let attempt = 0; attempt < 4 && !receipt; attempt += 1) {
-				const received = await client.receive({ max_messages: 10, wait_seconds: 5, visibility_timeout_seconds: 30 })
+			for (let attempt = 0; attempt < 12 && !receipt; attempt += 1) {
+				const received = await client.receive({
+					max_messages: 10,
+					wait_seconds: 2,
+					visibility_timeout_seconds: 5
+				})
 				receipt = received.messages.find((message) => message.body === marker)?.receipt_handle
 			}
 			expect(receipt).toBeDefined()
@@ -30,6 +35,6 @@ run('live vendor sqs', () => {
 			})
 			expect(await client.acknowledge({ receipt_handle: receipt })).toEqual({ acknowledged: true })
 		},
-		{ timeout: 60_000 }
+		{ timeout: 90_000 }
 	)
 })

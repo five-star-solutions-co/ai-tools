@@ -24,7 +24,7 @@ import type {
 	ScheduleWriteOutput
 } from './contracts'
 import { eventBridgeSchedulerAuthSchema } from './contracts'
-import { buildCreateBody, mapScheduleDetail, mapScheduleSummary } from './domain'
+import { buildCreateBody, mapScheduleDetail, mapScheduleSummary, newClientToken } from './domain'
 
 export type EventBridgeSchedulerClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -76,8 +76,7 @@ export class EventBridgeSchedulerClient {
 	}
 
 	async get(input: ScheduleNameInput): Promise<ScheduleGetOutput> {
-		const query = this.#groupQuery()
-		const path = `/schedules/${encodeURIComponent(input.name)}${query}`
+		const path = `/schedules/${encodeURIComponent(input.name)}${this.#scheduleQuery()}`
 		const { data } = await this.#aws.get(path)
 		if (!isPlainObject(data)) {
 			throw new ToolError('Unexpected GetSchedule response', { code: 'upstream' })
@@ -105,14 +104,17 @@ export class EventBridgeSchedulerClient {
 	}
 
 	async delete(input: ScheduleNameInput): Promise<ScheduleDeleteOutput> {
-		const query = this.#groupQuery()
-		await this.#aws.delete(`/schedules/${encodeURIComponent(input.name)}${query}`)
+		// DeleteSchedule takes clientToken as a query param; empty/missing fails live API.
+		const path = `/schedules/${encodeURIComponent(input.name)}${this.#scheduleQuery({ clientToken: newClientToken() })}`
+		await this.#aws.delete(path)
 		return { name: input.name, deleted: true }
 	}
 
-	#groupQuery(): string {
-		if (!this.#auth.group_name) return ''
-		return `?groupName=${encodeURIComponent(this.#auth.group_name)}`
+	#scheduleQuery(extra: Record<string, string> = {}): string {
+		const params = new URLSearchParams(extra)
+		if (this.#auth.group_name) params.set('groupName', this.#auth.group_name)
+		const qs = params.toString()
+		return qs ? `?${qs}` : ''
 	}
 
 	#writeResult(name: string, raw: unknown): ScheduleWriteOutput {

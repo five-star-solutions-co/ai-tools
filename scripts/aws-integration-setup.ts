@@ -5,7 +5,7 @@
  * Hardcoded defaults (this package):
  *   IAM user:   integration-test-ai-tools
  *   IAM policy: integration-test-ai-tools-policy  (customer managed)
- *   S3 bucket:  integration-test-ai-tools
+ *   S3 bucket:  integration-test-ai-tools-{region}  (e.g. …-us-east-1)
  *   Prefix:     integration-test-ai-tools  (queue / scheduler role names)
  *
  * Prerequisites:
@@ -39,9 +39,13 @@ const envFile = join(root, '.env')
 /** Fixed names for this package’s live AWS IT identity. */
 const DEFAULT_IAM_USER = 'integration-test-ai-tools'
 const DEFAULT_IAM_POLICY = 'integration-test-ai-tools-policy'
-const DEFAULT_BUCKET = 'integration-test-ai-tools'
 const DEFAULT_PREFIX = 'integration-test-ai-tools'
 const DEFAULT_REGION = 'us-east-1'
+
+/** Region-scoped bucket so renames / region moves avoid global name recycle lock. */
+function defaultBucketForRegion(region: string): string {
+	return `integration-test-ai-tools-${region}`
+}
 
 type Args = {
 	bucket: string
@@ -81,15 +85,15 @@ function parseArgs(argv: string[]): Args {
 	const has = (name: string) => argv.includes(`--${name}`)
 	const fromEnv = (name: string) => nonEmpty(process.env[name])
 
-	const bucket = get('bucket') ?? fromEnv('AI_TOOLS_TEXTRACT_BUCKET') ?? DEFAULT_BUCKET
-	const user = get('user') ?? fromEnv('AI_TOOLS_AWS_IAM_USER') ?? DEFAULT_IAM_USER
-	const policy = get('policy') ?? fromEnv('AI_TOOLS_AWS_IAM_POLICY') ?? DEFAULT_IAM_POLICY
 	const region =
 		get('region') ??
 		fromEnv('AI_TOOLS_AWS_REGION') ??
 		fromEnv('AWS_REGION') ??
 		fromEnv('AWS_DEFAULT_REGION') ??
 		DEFAULT_REGION
+	const bucket = get('bucket') ?? fromEnv('AI_TOOLS_TEXTRACT_BUCKET') ?? defaultBucketForRegion(region)
+	const user = get('user') ?? fromEnv('AI_TOOLS_AWS_IAM_USER') ?? DEFAULT_IAM_USER
+	const policy = get('policy') ?? fromEnv('AI_TOOLS_AWS_IAM_POLICY') ?? DEFAULT_IAM_POLICY
 	const prefix = get('prefix') ?? DEFAULT_PREFIX
 	const sourceKey = get('source-key') ?? `${prefix}/textract/sample.pdf`
 
@@ -150,6 +154,22 @@ async function callerIdentity(region: string): Promise<{ account: string; arn: s
 	return { account, arn }
 }
 
+async function createBucketOnce(args: Args): Promise<{ ok: boolean; stderr: string }> {
+	const createArgs =
+		args.region === 'us-east-1'
+			? ['s3api', 'create-bucket', '--bucket', args.bucket]
+			: [
+					's3api',
+					'create-bucket',
+					'--bucket',
+					args.bucket,
+					'--create-bucket-configuration',
+					`LocationConstraint=${args.region}`
+				]
+	const result = await $`aws ${createArgs} --region ${args.region} --output json`.nothrow().quiet()
+	return { ok: result.exitCode === 0, stderr: result.stderr.toString() }
+}
+
 async function ensureBucket(args: Args): Promise<void> {
 	const head = await awsTry(['s3api', 'head-bucket', '--bucket', args.bucket], args.region)
 	if (head.ok) {
@@ -159,21 +179,47 @@ async function ensureBucket(args: Args): Promise<void> {
 	if (!args.createBucket) die(`bucket ${args.bucket} not found (pass without --no-create-bucket to create)`)
 	log(`creating s3 bucket: ${args.bucket}`)
 	if (args.dryRun) return
-	if (args.region === 'us-east-1') {
-		await awsOk(['s3api', 'create-bucket', '--bucket', args.bucket], args.region)
-	} else {
-		await awsOk(
-			[
-				's3api',
-				'create-bucket',
-				'--bucket',
-				args.bucket,
-				'--create-bucket-configuration',
-				`LocationConstraint=${args.region}`
-			],
-			args.region
-		)
+
+	// After delete (esp. region move), S3 holds the name for a while: OperationAborted / BucketAlreadyExists.
+	const maxAttempts = 12
+	for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+		const again = await awsTry(['s3api', 'head-bucket', '--bucket', args.bucket], args.region)
+		if (again.ok) {
+			log(`s3 bucket now available: ${args.bucket}`)
+			break
+		}
+
+		const created = await createBucketOnce(args)
+		if (created.ok) {
+			log(`s3 bucket created: ${args.bucket}`)
+			break
+		}
+
+		const err = created.stderr
+		const retryable =
+			err.includes('OperationAborted') ||
+			err.includes('BucketAlreadyExists') ||
+			err.includes('SlowDown') ||
+			err.includes('Please try again')
+
+		// Same account already owns it (create raced or exists in this region).
+		if (err.includes('BucketAlreadyOwnedByYou')) {
+			log(`s3 bucket already owned: ${args.bucket}`)
+			break
+		}
+
+		if (!retryable || attempt === maxAttempts) {
+			die(
+				`create-bucket failed for ${args.bucket}:\n${err.trim()}\n` +
+					`If you just deleted this name (or moved regions), wait a few minutes and re-run — S3 name release is not instant.`
+			)
+		}
+
+		const waitSec = Math.min(10 + attempt * 5, 60)
+		log(`create-bucket conflict (attempt ${attempt}/${maxAttempts}); waiting ${waitSec}s…`)
+		await Bun.sleep(waitSec * 1000)
 	}
+
 	// Block public access (safe default for IT sample objects)
 	await awsOk(
 		[
@@ -349,29 +395,27 @@ async function ensureSchedulerRole(
 }
 
 function itUserPolicyDocument(args: Args, account: string, queueArn: string, roleArn: string): Record<string, unknown> {
+	// Tight IT surface: only the package live-test actions + resources.
+	// Textract async APIs require Resource "*"; everything else is ARNed where AWS allows.
+	const schedulerGroup = 'default'
+	const agentcoreBase = `arn:aws:bedrock-agentcore:${args.region}:${account}`
 	return {
 		Version: '2012-10-17',
 		Statement: [
 			{
-				Sid: 'Textract',
+				Sid: 'TextractAsync',
 				Effect: 'Allow',
 				Action: ['textract:StartDocumentTextDetection', 'textract:GetDocumentTextDetection'],
 				Resource: '*'
 			},
 			{
-				Sid: 'TextractSourceRead',
+				Sid: 'TextractSourceObjectRead',
 				Effect: 'Allow',
 				Action: ['s3:GetObject'],
-				Resource: `arn:aws:s3:::${args.bucket}/*`
+				Resource: `arn:aws:s3:::${args.bucket}/${args.sourceKey}`
 			},
 			{
-				Sid: 'TextractBucketListOptional',
-				Effect: 'Allow',
-				Action: ['s3:ListBucket'],
-				Resource: `arn:aws:s3:::${args.bucket}`
-			},
-			{
-				Sid: 'SqsItQueue',
+				Sid: 'SqsItQueueOnly',
 				Effect: 'Allow',
 				Action: [
 					'sqs:SendMessage',
@@ -384,19 +428,30 @@ function itUserPolicyDocument(args: Args, account: string, queueArn: string, rol
 				Resource: queueArn
 			},
 			{
-				Sid: 'EventBridgeSchedulerCrud',
+				Sid: 'EventBridgeSchedulerDefaultGroup',
 				Effect: 'Allow',
 				Action: [
 					'scheduler:CreateSchedule',
 					'scheduler:GetSchedule',
-					'scheduler:ListSchedules',
 					'scheduler:UpdateSchedule',
 					'scheduler:DeleteSchedule'
 				],
-				Resource: `arn:aws:scheduler:${args.region}:${account}:schedule/*/*`
+				Resource: `arn:aws:scheduler:${args.region}:${account}:schedule/${schedulerGroup}/*`
 			},
 			{
-				Sid: 'PassSchedulerRole',
+				// ListSchedules is account/group scoped; Resource must be *
+				Sid: 'EventBridgeSchedulerList',
+				Effect: 'Allow',
+				Action: ['scheduler:ListSchedules'],
+				Resource: '*',
+				Condition: {
+					StringEquals: {
+						'aws:RequestedRegion': args.region
+					}
+				}
+			},
+			{
+				Sid: 'PassSchedulerRoleOnly',
 				Effect: 'Allow',
 				Action: 'iam:PassRole',
 				Resource: roleArn,
@@ -417,7 +472,12 @@ function itUserPolicyDocument(args: Args, account: string, queueArn: string, rol
 					'bedrock-agentcore:ListBrowsers',
 					'bedrock-agentcore:GetBrowser'
 				],
-				Resource: '*'
+				Resource: [
+					`${agentcoreBase}:browser/*`,
+					`${agentcoreBase}:browser-session/*`,
+					// AWS-managed built-in browser identifiers (no account segment)
+					`arn:aws:bedrock-agentcore:${args.region}::browser/*`
+				]
 			},
 			{
 				Sid: 'AgentCoreCodeInterpreter',
@@ -431,7 +491,11 @@ function itUserPolicyDocument(args: Args, account: string, queueArn: string, rol
 					'bedrock-agentcore:GetCodeInterpreter',
 					'bedrock-agentcore:ListCodeInterpreterSessions'
 				],
-				Resource: '*'
+				Resource: [
+					`${agentcoreBase}:code-interpreter/*`,
+					`${agentcoreBase}:code-interpreter-session/*`,
+					`arn:aws:bedrock-agentcore:${args.region}::code-interpreter/*`
+				]
 			}
 		]
 	}

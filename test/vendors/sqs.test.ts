@@ -89,4 +89,14 @@ describe('sqs', () => {
 			'AmazonSQS.ChangeMessageVisibility'
 		])
 	})
+
+	test('parses application/x-amz-json-1.0 SendMessage bodies (ofetch does not auto-parse)', async () => {
+		const fetch = async () =>
+			new Response(JSON.stringify({ MessageId: 'm-amz', MD5OfMessageBody: 'deadbeef' }), {
+				status: 200,
+				headers: { 'content-type': 'application/x-amz-json-1.0' }
+			})
+		const client = new SqsClient(auth, { fetch })
+		expect(await client.enqueue({ body: 'work' })).toEqual({ message_id: 'm-amz', body_md5: 'deadbeef' })
+	})
 })

@@ -72,7 +72,7 @@ Env is only for **secrets** and **dynamic host values**.
 | **Mastra DB** | `MASTRA_DB_URL` | Schema hardcoded `public` |
 | **Resend / chat / pinecone / embed / …** | product secrets as before | unchanged |
 
-**Hardcoded (no env needed):** MinIO (`aitools` / `ai-tools-it` / `:9000`), Qdrant (`:6333` / `ai_tools_it`), Gotenberg (`:3000`), browser navigate `https://example.com`, Textract sample path, queue/role names under `integration-test-ai-tools*`.
+**Hardcoded (no env needed):** MinIO (`aitools` / `ai-tools-it` / `:9000`), Qdrant (`:6333` / `ai_tools_it`), Gotenberg (`:3000`), browser navigate `https://example.com`, Textract bucket `integration-test-ai-tools-{region}` + sample key, queue/role names under `integration-test-ai-tools*`.
 
 ---
 

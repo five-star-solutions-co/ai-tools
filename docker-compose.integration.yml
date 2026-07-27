@@ -43,10 +43,14 @@ services:
       retries: 12
       start_period: 10s
 
+  # One-shot bucket bootstrap — do NOT include in `compose up --wait`
+  # (exited containers make --wait fail even with exit 0).
   minio-init:
     image: minio/mc:RELEASE.2025-01-17T23-25-50Z
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
+    restart: 'no'
     entrypoint: >
       /bin/sh -c "
       for i in 1 2 3 4 5 6 7 8 9 10; do

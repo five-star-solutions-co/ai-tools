@@ -30,13 +30,15 @@ export {
 	supabaseAuthFromEnv,
 	qdrantUrlFromEnv,
 	qdrantCollectionFromEnv,
+	qdrantRagCollectionFromEnv,
 	qdrantApiKeyFromEnv,
 	gotenbergBaseUrlFromEnv,
 	gotenbergAuthHeadersFromEnv,
 	browserNavigateUrlFromEnv,
 	browserSkipNavigateFromEnv,
 	pineconeDimensionFromEnv,
-	embedDimensionFromEnv
+	embedDimensionFromEnv,
+	supabaseDimensionFromEnv
 } from './env'
 export { assertLocalUrl as assertLocalDbUrl } from './env'
 export type { AwsCredentials, S3AuthFromEnv, CloudflareAuthFromEnv, SupabaseAuthFromEnv } from './env'
@@ -97,6 +99,11 @@ export function expectMatchContains(matches: VectorMatch[], id: string): void {
 	expect(matches.find((m) => m.id === id)).toBeDefined()
 }
 
+/**
+ * Ensure a Qdrant collection exists at the given dimension.
+ * Retries under parallel IT (another suite may create/delete concurrently).
+ * Prefer separate collection names per dimension (smoke vs RAG) to avoid thrash.
+ */
 export async function ensureQdrantCollection(options: {
 	baseUrl: string
 	apiKey?: string | undefined
@@ -107,27 +114,46 @@ export async function ensureQdrantCollection(options: {
 	if (options.apiKey) headers['api-key'] = options.apiKey
 	const base = trimEnd(options.baseUrl, '/')
 	const name = encodeURIComponent(options.collection)
+	const url = `${base}/collections/${name}`
 
-	const get = await fetch(`${base}/collections/${name}`, { headers })
-	if (get.status === 200) {
-		const body: unknown = await get.json()
-		const size = readQdrantCollectionDim(body)
-		if (size === options.dimension) return
-		// Wrong dim (e.g. 1536 from RAG vs 3 for smoke) — drop and recreate
-		const del = await fetch(`${base}/collections/${name}`, { method: 'DELETE', headers })
-		if (!del.ok && del.status !== 404) {
-			throw new Error(`Qdrant delete collection failed HTTP ${del.status}: ${await del.text()}`)
+	const maxAttempts = 5
+	for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+		const get = await fetch(url, { headers })
+		if (get.status === 200) {
+			const body: unknown = await get.json()
+			const size = readQdrantCollectionDim(body)
+			if (size === options.dimension) return
+			// Wrong dim — drop and recreate (use separate collection names when possible)
+			const del = await fetch(url, { method: 'DELETE', headers })
+			if (!del.ok && del.status !== 404) {
+				throw new Error(`Qdrant delete collection failed HTTP ${del.status}: ${await del.text()}`)
+			}
+			await sleep(50 * attempt)
+		} else if (get.status !== 404) {
+			throw new Error(`Qdrant get collection failed HTTP ${get.status}: ${await get.text()}`)
 		}
-	}
 
-	const create = await fetch(`${base}/collections/${name}`, {
-		method: 'PUT',
-		headers,
-		body: JSON.stringify({ vectors: { size: options.dimension, distance: 'Cosine' } })
-	})
-	if (!create.ok) {
-		throw new Error(`Qdrant create collection failed HTTP ${create.status}: ${await create.text()}`)
+		const create = await fetch(url, {
+			method: 'PUT',
+			headers,
+			body: JSON.stringify({ vectors: { size: options.dimension, distance: 'Cosine' } })
+		})
+		if (create.ok || create.status === 409) {
+			// 409 = already exists (race winner) — re-check dim on next loop / final verify
+			const verify = await fetch(url, { headers })
+			if (verify.status === 200) {
+				const body: unknown = await verify.json()
+				if (readQdrantCollectionDim(body) === options.dimension) return
+			}
+			await sleep(50 * attempt)
+			continue
+		}
+		if (attempt === maxAttempts) {
+			throw new Error(`Qdrant create collection failed HTTP ${create.status}: ${await create.text()}`)
+		}
+		await sleep(50 * attempt)
 	}
+	throw new Error(`Qdrant collection ${options.collection} not ready at dim ${options.dimension}`)
 }
 
 function readQdrantCollectionDim(body: unknown): number | undefined {

@@ -230,7 +230,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "bun test --parallel --reporter=dots test/*.test.ts test/core test/modules test/vendors test/shared test/transport",
 		"test:integration": "bun test --parallel --max-concurrency=16 test/integration/vendors test/integration/seams",
-		"integration:up:compose": "docker compose -f docker-compose.integration.yml up -d --wait",
+		"integration:up:compose": "docker compose -f docker-compose.integration.yml up -d --wait qdrant minio gotenberg && docker compose -f docker-compose.integration.yml up --no-deps minio-init",
 		"integration:up:supabase": "bunx supabase start",
 		"integration:env": "bun scripts/integration-env.ts",
 		"integration:up": "bun run --parallel integration:up:compose integration:up:supabase && bun run integration:env",

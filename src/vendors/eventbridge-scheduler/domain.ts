@@ -56,6 +56,15 @@ export function isoToUnixSeconds(iso: string, field: string): number {
 	return Math.floor(ms / 1000)
 }
 
+/**
+ * EventBridge Scheduler rejects empty ClientToken on the raw HTTP API even when
+ * docs mark it optional (SDKs / CLI always send one).
+ * Pattern: [a-zA-Z0-9-_]+, max 64.
+ */
+export function newClientToken(): string {
+	return crypto.randomUUID().replaceAll('-', '')
+}
+
 export function buildCreateBody(auth: EventBridgeSchedulerAuth, input: ScheduleCreateInput): Record<string, unknown> {
 	const target: Record<string, unknown> = {
 		Arn: auth.target_arn,
@@ -73,6 +82,7 @@ export function buildCreateBody(auth: EventBridgeSchedulerAuth, input: ScheduleC
 	}
 
 	const body: Record<string, unknown> = {
+		ClientToken: newClientToken(),
 		ScheduleExpression: input.schedule_expression,
 		FlexibleTimeWindow: flexibleTimeWindow(auth),
 		Target: target,

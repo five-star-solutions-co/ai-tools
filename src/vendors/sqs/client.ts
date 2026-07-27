@@ -3,6 +3,7 @@ import { isPlainObject, isString } from 'es-toolkit'
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
+import { parseAwsJsonBody } from '../../transport/aws-json'
 import { AwsService } from '../../transport/aws-service'
 import type { AwsServiceOptions } from '../../transport/aws-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
@@ -91,7 +92,7 @@ export class SqsClient {
 		if (input.delay_seconds !== undefined) body['DelaySeconds'] = input.delay_seconds
 		if (input.message_group_id) body['MessageGroupId'] = input.message_group_id
 		if (input.deduplication_id) body['MessageDeduplicationId'] = input.deduplication_id
-		const { data } = await this.#aws.post('/', body, { headers: jsonHeaders('SendMessage') })
+		const data = await this.#postJson('SendMessage', body)
 		if (!isPlainObject(data) || !isString(data['MessageId'])) {
 			throw new ToolError('Unexpected SQS SendMessage response', { code: 'upstream' })
 		}
@@ -111,7 +112,7 @@ export class SqsClient {
 		if (input.visibility_timeout_seconds !== undefined) {
 			body['VisibilityTimeout'] = input.visibility_timeout_seconds
 		}
-		const { data } = await this.#aws.post('/', body, { headers: jsonHeaders('ReceiveMessage') })
+		const data = await this.#postJson('ReceiveMessage', body)
 		if (!isPlainObject(data)) {
 			throw new ToolError('Unexpected SQS ReceiveMessage response', { code: 'upstream' })
 		}
@@ -123,24 +124,25 @@ export class SqsClient {
 	}
 
 	async acknowledge(input: QueueReceiptInput): Promise<QueueAcknowledgeOutput> {
-		await this.#aws.post(
-			'/',
-			{ QueueUrl: this.#auth.queue_url, ReceiptHandle: input.receipt_handle },
-			{ headers: jsonHeaders('DeleteMessage') }
-		)
+		await this.#postJson('DeleteMessage', {
+			QueueUrl: this.#auth.queue_url,
+			ReceiptHandle: input.receipt_handle
+		})
 		return { acknowledged: true }
 	}
 
 	async extendVisibility(input: QueueExtendVisibilityInput): Promise<QueueExtendVisibilityOutput> {
-		await this.#aws.post(
-			'/',
-			{
-				QueueUrl: this.#auth.queue_url,
-				ReceiptHandle: input.receipt_handle,
-				VisibilityTimeout: input.visibility_timeout_seconds
-			},
-			{ headers: jsonHeaders('ChangeMessageVisibility') }
-		)
+		await this.#postJson('ChangeMessageVisibility', {
+			QueueUrl: this.#auth.queue_url,
+			ReceiptHandle: input.receipt_handle,
+			VisibilityTimeout: input.visibility_timeout_seconds
+		})
 		return { extended: true, visibility_timeout_seconds: input.visibility_timeout_seconds }
+	}
+
+	/** SQS uses application/x-amz-json-1.0 — ofetch does not auto-parse that content-type. */
+	async #postJson(action: string, body: Record<string, unknown>): Promise<unknown> {
+		const { data } = await this.#aws.post('/', body, { headers: jsonHeaders(action) })
+		return parseAwsJsonBody(data)
 	}
 }

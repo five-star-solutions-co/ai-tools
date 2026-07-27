@@ -10,6 +10,7 @@ import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
 import { runBatchItems } from '../../shared/batch'
+import { parseAwsJsonBody } from '../../transport/aws-json'
 import { AwsService } from '../../transport/aws-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import type {
@@ -236,7 +237,7 @@ export class TextractClient {
 			noThrow: true
 		})
 		// ofetch does not JSON-parse application/x-amz-json-1.1 (returns Blob/string)
-		const payload = await parseAmzJsonBody(res.data)
+		const payload = await parseAwsJsonBody(res.data)
 		if (!res.ok) {
 			throw new ToolError(formatTextractError(target, res.status, payload), {
 				code: res.status === 401 || res.status === 403 ? 'bad_auth' : 'upstream',
@@ -254,21 +255,6 @@ export class TextractClient {
 		}
 		return payload
 	}
-}
-
-async function parseAmzJsonBody(data: unknown): Promise<unknown> {
-	let payload: unknown = data
-	if (typeof Blob !== 'undefined' && payload instanceof Blob) {
-		payload = await payload.text()
-	}
-	if (isString(payload)) {
-		try {
-			return payload.length === 0 ? {} : JSON.parse(payload)
-		} catch {
-			return { Message: payload }
-		}
-	}
-	return payload
 }
 
 function formatTextractError(target: string, status: number, payload: unknown): string {

@@ -69,12 +69,28 @@ async function ensureSupabase(): Promise<void> {
 	await waitSupabaseReady()
 }
 
-async function stackUp(): Promise<void> {
-	log('up: compose (--wait) + supabase (parallel)')
-	const [compose] = await Promise.all([$`docker compose -f ${composeFile} up -d --wait`.nothrow(), ensureSupabase()])
-	if (compose.exitCode !== 0) {
-		die(`docker compose up failed (exit ${compose.exitCode})`)
+/**
+ * Long-running compose services only. minio-init is one-shot (exits 0) and breaks
+ * `docker compose up --wait` if included in the same wait set.
+ */
+async function ensureCompose(): Promise<void> {
+	log('compose: qdrant minio gotenberg (--wait)')
+	const wait = await $`docker compose -f ${composeFile} up -d --wait qdrant minio gotenberg`.nothrow()
+	if (wait.exitCode !== 0) {
+		const err = (wait.stderr.toString() || wait.stdout.toString()).trim()
+		die(`docker compose up --wait failed (exit ${wait.exitCode}): ${err.slice(0, 400)}`)
 	}
+	log('compose: minio-init (bucket bootstrap)')
+	const init = await $`docker compose -f ${composeFile} up --no-deps minio-init`.nothrow()
+	if (init.exitCode !== 0) {
+		const err = (init.stderr.toString() || init.stdout.toString()).trim()
+		die(`minio-init failed (exit ${init.exitCode}): ${err.slice(0, 400)}`)
+	}
+}
+
+async function stackUp(): Promise<void> {
+	log('up: compose + supabase (parallel)')
+	await Promise.all([ensureCompose(), ensureSupabase()])
 }
 
 async function stackDown(): Promise<void> {

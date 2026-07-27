@@ -12,7 +12,10 @@
 export const IT = {
 	aws: {
 		defaultRegion: 'us-east-1',
-		bucket: 'integration-test-ai-tools',
+		/** Region-scoped so recreate after delete is not blocked by global name recycle. */
+		bucketForRegion(region: string): string {
+			return `integration-test-ai-tools-${region}`
+		},
 		textractSourceKey: 'integration-test-ai-tools/textract/sample.pdf',
 		queueName: 'integration-test-ai-tools-queue',
 		schedulerRoleName: 'integration-test-ai-tools-scheduler-role'
@@ -27,7 +30,10 @@ export const IT = {
 	},
 	qdrant: {
 		url: 'http://127.0.0.1:6333',
-		collection: 'ai_tools_it'
+		/** Dim-3 smoke collection for vector-store vendor/seam tests. */
+		collection: 'ai_tools_it',
+		/** Separate collection for RAG (embed dim) so parallel suites cannot race-recreate. */
+		ragCollection: 'ai_tools_it_rag'
 	},
 	gotenberg: {
 		baseUrl: 'http://127.0.0.1:3000'
@@ -35,7 +41,9 @@ export const IT = {
 	supabase: {
 		table: 'ai_tools_vectors',
 		schema: 'public',
-		matchRpc: 'match_vectors'
+		matchRpc: 'match_vectors',
+		/** Matches docker/supabase migration vector(3) used by smoke + RAG IT. */
+		dimension: 3
 	},
 	browser: {
 		navigateUrl: 'https://example.com'
@@ -44,9 +52,11 @@ export const IT = {
 		webhookSecret: 'ai-tools-it-webhook-secret'
 	},
 	pinecone: {
+		/** Live index dimension (must match AI_TOOLS_PINECONE_BASE_URL index). */
 		dimension: 512
 	},
 	embed: {
+		/** Default OpenAI-compatible dim; RAG overrides per store when needed. */
 		dimension: 1536
 	}
 } as const
@@ -116,9 +126,10 @@ export function awsAccountIdFromEnv(): string | undefined {
 	return match?.[1]
 }
 
-/** Hardcoded Textract sample object (created by aws-integration-setup). */
-export function textractBucket(): string {
-	return IT.aws.bucket
+/** Textract sample bucket (region-scoped; created by aws-integration-setup). */
+export function textractBucket(region?: string): string {
+	const r = region ?? env('AI_TOOLS_AWS_REGION') ?? IT.aws.defaultRegion
+	return IT.aws.bucketForRegion(r)
 }
 
 export function textractSourceKey(): string {
@@ -214,8 +225,18 @@ export function qdrantCollectionFromEnv(): string {
 	return IT.qdrant.collection
 }
 
+/** Dedicated Qdrant collection for RAG (embed dim), isolated from dim-3 smoke. */
+export function qdrantRagCollectionFromEnv(): string {
+	return IT.qdrant.ragCollection
+}
+
 export function qdrantApiKeyFromEnv(): string | undefined {
 	return undefined
+}
+
+/** Supabase pgvector column dimension for IT table. */
+export function supabaseDimensionFromEnv(): number {
+	return IT.supabase.dimension
 }
 
 /** Local Gotenberg — always compose defaults (never env). */
