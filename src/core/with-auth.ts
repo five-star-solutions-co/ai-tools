@@ -1,3 +1,5 @@
+import type { ToolSelection } from './filter-tools'
+import { filterModuleTools } from './filter-tools'
 import { toolRef } from './hooks'
 import { ToolError } from './errors'
 import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition, ToolExecution, ToolMeta } from './types'
@@ -40,14 +42,27 @@ export function withAuthTool<TInput, TOutput>(
 	}
 }
 
-export function withAuth<TAuth>(module: ModuleDefinition<TAuth>, auth?: TAuth): ModuleDefinition<TAuth> {
+export type WithAuthOptions = {
+	/**
+	 * Restrict the tool surface after bind.
+	 * Prefer composable `onlyTools` / `exceptTools` when filtering outside withAuth.
+	 */
+	tools?: ToolSelection
+}
+
+export function withAuth<TAuth>(
+	module: ModuleDefinition<TAuth>,
+	auth?: TAuth,
+	options: WithAuthOptions = {}
+): ModuleDefinition<TAuth> {
 	if (module.auth.type !== 'none' && auth === undefined) {
 		throw new ToolError(`Module ${module.id} requires auth`, { code: 'bad_auth' })
 	}
 	const bound = assertAuth(module.auth, auth)
+	const scoped = options.tools !== undefined ? filterModuleTools(module, options.tools) : module
 	return {
-		...module,
-		tools: module.tools.map((tool) => withAuthTool(tool, bound))
+		...scoped,
+		tools: scoped.tools.map((tool) => withAuthTool(tool, bound))
 	}
 }
 

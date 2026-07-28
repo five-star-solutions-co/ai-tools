@@ -60,6 +60,56 @@ const tools = createMastraTools(bound, {
 
 `withAuth` stays the simple path. `bindModule` + `withHooks` + adapter `createContext` are the host-integration kernel (see [host-integration-kernel.md](../specs/host-integration-kernel.md)).
 
+## Tool surface filter (`onlyTools` / `exceptTools`)
+
+Hosts often enable a pack but not every tool. Filter by **stable kebab tool id** (order stays the module’s order). Unknown ids throw.
+
+```ts
+import { onlyTools, exceptTools, withAuth, bindModule } from '@harryy/ai-tools/core'
+import { telegramModule } from '@harryy/ai-tools/telegram'
+
+// Preferred: compose with withAuth / bind / hooks
+const sendOnly = onlyTools(telegramModule, [
+  'telegram-send-text',
+  'telegram-edit-text',
+])
+const bound = withAuth(sendOnly, { bot_token: '…' })
+
+// Or drop a few dangerous / unused tools
+const noDownload = exceptTools(telegramModule, ['telegram-download-file'])
+
+// Inline on bind helpers
+withAuth(telegramModule, { bot_token: '…' }, {
+  tools: { only: ['telegram-send-text'] },
+})
+bindModule(telegramModule, {
+  resolveAuth: async () => ({ bot_token: '…' }),
+  tools: { except: ['telegram-download-file'] },
+})
+```
+
+| Helper | Meaning |
+| --- | --- |
+| `onlyTools(module, ids)` | Keep only these tool ids (allowlist) |
+| `exceptTools(module, ids)` | Drop these tool ids (denylist) |
+| `filterModuleTools(module, selection)` | Same, object form |
+| `ToolSelection` | `{ only: string[] }` **or** `{ except: string[] }` — shared contract for host wrappers |
+
+```ts
+import type { ToolSelection, BindModuleOptions } from '@harryy/ai-tools/core'
+
+function bindCustomModule<TAuth>(
+  module: ModuleDefinition<TAuth>,
+  options: BindModuleOptions<TAuth> // options.tools?: ToolSelection
+) {
+  return bindModule(module, options)
+}
+```
+
+Unknown tool ids are a **hard error** with structured details (`module_id`, `unknown_tool_ids`, `available_tool_ids`). No silent ignore.
+
+Names intentionally avoid security-policy jargon (`allow`/`deny`); hosts still own agent allowlists. This only shrinks the **module tool list** before projection.
+
 ## Multi-provider seam
 
 Capability modules use a **provider** discriminator on auth. Nested vendor fields stay snake_case.

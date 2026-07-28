@@ -1,5 +1,7 @@
 export { bindModule, bindTool } from './bind'
 export type { BindModuleOptions } from './bind'
+export { exceptTools, filterModuleTools, onlyTools } from './filter-tools'
+export type { ExceptToolsFilter, ModuleToolId, OnlyToolsFilter, ToolIdFilter, ToolSelection } from './filter-tools'
 export { mergeToolContext } from './context'
 export { assertContracts, validateModule, validateTool } from './contracts'
 export type { ContractIssue, ContractResult } from './contracts'
@@ -29,3 +31,4 @@ export type {
 } from './types'
 export { assertUniqueBy, duplicatesBy, firstDuplicateBy } from './unique'
 export { listTools, runTool, withAuth, withAuthTool } from './with-auth'
+export type { WithAuthOptions } from './with-auth'

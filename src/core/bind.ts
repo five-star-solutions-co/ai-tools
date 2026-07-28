@@ -3,6 +3,8 @@
  */
 
 import { mergeToolContext } from './context'
+import type { ToolSelection } from './filter-tools'
+import { filterModuleTools } from './filter-tools'
 import type { ToolHooks } from './hooks'
 import { ToolError } from './errors'
 import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition, ToolExecution } from './types'
@@ -26,6 +28,11 @@ export type BindModuleOptions<TAuth = unknown> = {
 	resolveAuth?: (ctx: ToolContext) => TAuth | Promise<TAuth>
 	resolveContext?: (ctx: ToolContext) => ToolContext | Promise<ToolContext>
 	hooks?: ToolHooks
+	/**
+	 * Restrict the tool surface after bind.
+	 * Prefer composable `onlyTools` / `exceptTools` when filtering outside bind.
+	 */
+	tools?: ToolSelection
 }
 
 async function resolveBoundContext<TAuth>(
@@ -76,8 +83,9 @@ export function bindModule<TAuth>(
 	if (module.auth.type !== 'none' && !options.resolveAuth) {
 		throw new ToolError(`Module ${module.id} requires resolveAuth`, { code: 'bad_auth' })
 	}
+	const scoped = options.tools !== undefined ? filterModuleTools(module, options.tools) : module
 	return {
-		...module,
-		tools: module.tools.map((tool) => bindTool(tool, module.auth, options))
+		...scoped,
+		tools: scoped.tools.map((tool) => bindTool(tool, scoped.auth, options))
 	}
 }

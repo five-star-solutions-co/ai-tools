@@ -5,7 +5,9 @@ import {
 	bindModule,
 	defineModule,
 	defineTool,
+	exceptTools,
 	isToolError,
+	onlyTools,
 	runTool,
 	toToolCatalogEntry,
 	withAuth,
@@ -44,6 +46,82 @@ const echoModule = defineModule({
 	description: 'Test module for bind and hooks.',
 	auth: { type: 'custom', schema: authSchema },
 	tools: [echoTool]
+})
+
+const echoPongTool = defineTool({
+	id: 'echo-pong',
+	name: 'echoPong',
+	description: 'Second echo tool for filter tests.',
+	inputSchema: z.object({ message: z.string() }),
+	outputSchema: z.object({ message: z.string() }),
+	sideEffect: 'none',
+	execute: async (input) => ({ message: input.message })
+})
+
+const multiEchoModule = defineModule({
+	id: 'echo-multi',
+	title: 'Echo multi',
+	description: 'Two-tool module for onlyTools / exceptTools tests.',
+	auth: { type: 'custom', schema: authSchema },
+	tools: [echoTool, echoPongTool]
+})
+
+describe('onlyTools / exceptTools', () => {
+	test('onlyTools keeps listed ids in module order', () => {
+		const scoped = onlyTools(multiEchoModule, ['echo-pong', 'echo-ping'])
+		expect(scoped.tools.map((t) => t.id)).toEqual(['echo-ping', 'echo-pong'])
+		const one = onlyTools(multiEchoModule, ['echo-pong'])
+		expect(one.tools.map((t) => t.id)).toEqual(['echo-pong'])
+	})
+
+	test('exceptTools drops listed ids', () => {
+		const scoped = exceptTools(multiEchoModule, ['echo-ping'])
+		expect(scoped.tools.map((t) => t.id)).toEqual(['echo-pong'])
+	})
+
+	test('unknown id throws with structured details', () => {
+		try {
+			onlyTools(multiEchoModule, ['echo-ping', 'echo-pnog'])
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error)).toBe(true)
+			if (isToolError(error)) {
+				expect(error.code).toBe('bad_input')
+				expect(error.details).toEqual({
+					module_id: 'echo-multi',
+					unknown_tool_ids: ['echo-pnog'],
+					available_tool_ids: ['echo-ping', 'echo-pong']
+				})
+			}
+		}
+		expect(() => exceptTools(multiEchoModule, ['nope'])).toThrow()
+	})
+
+	test('onlyTools empty or zero remaining throws', () => {
+		expect(() => onlyTools(multiEchoModule, [])).toThrow()
+		expect(() => exceptTools(multiEchoModule, ['echo-ping', 'echo-pong'])).toThrow()
+	})
+
+	test('withAuth and bindModule accept tools filter', async () => {
+		const viaAuth = withAuth(multiEchoModule, { api_key: 'secret' }, { tools: { only: ['echo-ping'] } })
+		expect(viaAuth.tools.map((t) => t.id)).toEqual(['echo-ping'])
+
+		const viaBind = bindModule(multiEchoModule, {
+			resolveAuth: async () => ({ api_key: 'secret' }),
+			tools: { except: ['echo-pong'] }
+		})
+		expect(viaBind.tools.map((t) => t.id)).toEqual(['echo-ping'])
+		const out = (await runTool(viaBind.tools[0]!, { message: 'hi' })) as { message: string }
+		expect(out.message).toBe('hi')
+	})
+
+	test('composes with withAuth and withHooks', async () => {
+		const scoped = onlyTools(withAuth(multiEchoModule, { api_key: 'secret' }), ['echo-ping'])
+		const hooked = withHooks(scoped, {})
+		expect(hooked.tools).toHaveLength(1)
+		const out = (await runTool(hooked.tools[0]!, { message: 'z' })) as { message: string }
+		expect(out.message).toBe('z')
+	})
 })
 
 describe('ToolMeta (H-04)', () => {
