@@ -293,4 +293,217 @@ describe('s3', () => {
 		expect(client.getBytes('x', { maxBytes: Number.NaN })).rejects.toMatchObject({ code: 'bad_input' })
 		expect(fetched).toBe(false)
 	})
+
+	test('key_prefix: put/get/delete/head/list/signedUrl use wire keys and return logical keys', async () => {
+		const original = globalThis.fetch
+		const seen: string[] = []
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			seen.push(`${req.method} ${req.url}`)
+			if (req.method === 'GET' && req.url.includes('list-type=2')) {
+				const url = new URL(req.url)
+				expect(url.searchParams.get('prefix')).toBe('tenants/acme/')
+				return new Response(
+					`<?xml version="1.0"?><ListBucketResult>
+  <IsTruncated>false</IsTruncated>
+  <Contents><Key>tenants/acme/docs/a.txt</Key><Size>1</Size></Contents>
+  <CommonPrefixes><Prefix>tenants/acme/docs/sub/</Prefix></CommonPrefixes>
+</ListBucketResult>`,
+					{ status: 200, headers: { 'content-type': 'application/xml' } }
+				)
+			}
+			if (req.method === 'PUT' && req.url.includes('tenants/acme/docs/a.txt')) {
+				return new Response(null, { status: 200, headers: { etag: '"e1"' } })
+			}
+			if (req.method === 'HEAD' && req.url.includes('tenants/acme/docs/a.txt')) {
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-type': 'text/plain', 'content-length': '1', etag: '"e1"' }
+				})
+			}
+			if (req.method === 'GET' && req.url.includes('tenants/acme/docs/a.txt')) {
+				return new Response('x', {
+					status: 206,
+					headers: {
+						'content-type': 'text/plain',
+						'content-length': '1',
+						'content-range': 'bytes 0-0/1',
+						etag: '"e1"'
+					}
+				})
+			}
+			if (req.method === 'DELETE' && req.url.includes('tenants/acme/docs/a.txt')) {
+				return new Response(null, { status: 204 })
+			}
+			return new Response(`unexpected ${req.method} ${req.url}`, { status: 500 })
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client({ ...auth, key_prefix: 'tenants/acme' })
+			const listed = await client.list({})
+			expect(listed.keys).toEqual(['docs/a.txt'])
+			expect(listed.common_prefixes).toEqual(['docs/sub/'])
+
+			const put = await client.put({ key: 'docs/a.txt', body: 'x', body_encoding: 'utf8' })
+			expect(put.key).toBe('docs/a.txt')
+
+			const head = await client.head({ key: 'docs/a.txt' })
+			expect(head).toMatchObject({ key: 'docs/a.txt', exists: true, content_length: 1 })
+
+			const got = await client.get({ key: 'docs/a.txt', encoding: 'utf8' })
+			expect(got).toMatchObject({ key: 'docs/a.txt', body: 'x' })
+
+			// Already-prefixed logical key still works; no double-prefix on wire.
+			const gotPrefixed = await client.get({ key: 'tenants/acme/docs/a.txt', encoding: 'utf8' })
+			expect(gotPrefixed.key).toBe('docs/a.txt')
+
+			const del = await client.delete({ key: 'docs/a.txt' })
+			expect(del.key).toBe('docs/a.txt')
+
+			const signed = await client.createSignedUrl({ key: 'docs/a.txt', expires_in: 60 })
+			expect(signed.url).toContain('tenants/acme/docs/a.txt')
+			expect(seen.some((line) => line.includes('tenants/acme/docs/a.txt'))).toBe(true)
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('key_prefix: raw byte APIs and multipart resolve once (no double prefix via head)', async () => {
+		const original = globalThis.fetch
+		const urls: string[] = []
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			urls.push(req.url)
+			if (req.method === 'PUT' && !req.url.includes('partNumber') && !req.url.includes('uploadId')) {
+				// putBytes
+				expect(req.url).toContain('tenants/acme/raw.bin')
+				expect(req.url).not.toContain('tenants/acme/tenants/acme')
+				return new Response(null, { status: 200 })
+			}
+			if (req.method === 'HEAD') {
+				expect(req.url).toContain('tenants/acme/raw.bin')
+				expect(req.url).not.toContain('tenants/acme/tenants/acme')
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-length': '3', etag: '"r1"' }
+				})
+			}
+			if (req.method === 'GET' && req.headers.get('range')) {
+				return new Response(new Uint8Array([1, 2, 3]), {
+					status: 206,
+					headers: { 'content-length': '3', 'content-range': 'bytes 0-2/3', etag: '"r1"' }
+				})
+			}
+			if (req.method === 'POST' && req.url.includes('uploads')) {
+				expect(req.url).toContain('tenants/acme/big.bin')
+				return new Response(
+					'<InitiateMultipartUploadResult><UploadId>up-1</UploadId></InitiateMultipartUploadResult>',
+					{ status: 200 }
+				)
+			}
+			if (req.method === 'PUT' && req.url.includes('partNumber')) {
+				return new Response(null, { status: 200, headers: { etag: '"p1"' } })
+			}
+			if (req.method === 'POST' && req.url.includes('uploadId=')) {
+				return new Response('<CompleteMultipartUploadResult><ETag>"final"</ETag></CompleteMultipartUploadResult>', {
+					status: 200
+				})
+			}
+			if (req.method === 'DELETE' && req.url.includes('uploadId=')) {
+				return new Response(null, { status: 204 })
+			}
+			return new Response(`unexpected ${req.method} ${req.url}`, { status: 500 })
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client({ ...auth, key_prefix: 'tenants/acme/' })
+			await client.putBytes('raw.bin', new Uint8Array([1, 2, 3]), 'application/octet-stream')
+			const bytes = await client.getBytes('raw.bin', { maxBytes: 10 })
+			expect(bytes.byteLength).toBe(3)
+			const ranged = await client.getBytesRange('raw.bin', { start_byte: 0, end_byte: 2 })
+			expect(ranged.bytes.byteLength).toBe(3)
+
+			const started = await client.createMultipartUpload({ key: 'big.bin' })
+			expect(started.key).toBe('big.bin')
+			const part = await client.uploadPart({
+				key: 'big.bin',
+				upload_id: started.upload_id,
+				part_number: 1,
+				body: 'part-body-data!!',
+				body_encoding: 'utf8'
+			})
+			expect(part.key).toBe('big.bin')
+			const completed = await client.completeMultipartUpload({
+				key: 'big.bin',
+				upload_id: started.upload_id,
+				parts: [{ part_number: 1, etag: part.etag }]
+			})
+			expect(completed.key).toBe('big.bin')
+			const aborted = await client.abortMultipartUpload({ key: 'big.bin', upload_id: 'up-x' })
+			expect(aborted.key).toBe('big.bin')
+
+			for (const url of urls) {
+				expect(url).not.toContain('tenants/acme/tenants/acme')
+			}
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('key_prefix: copy scopes destination always; source only for same bucket', async () => {
+		const original = globalThis.fetch
+		const copySources: string[] = []
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			if (req.method === 'PUT') {
+				copySources.push(req.headers.get('x-amz-copy-source') ?? '')
+				expect(req.url).toContain('tenants/acme/dst.txt')
+				return new Response('<CopyObjectResult><ETag>"c1"</ETag></CopyObjectResult>', { status: 200 })
+			}
+			return new Response('unexpected', { status: 500 })
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client({ ...auth, key_prefix: 'tenants/acme/' })
+
+			const same = await client.copy({ source_key: 'src.txt', destination_key: 'dst.txt' })
+			expect(same.source_key).toBe('src.txt')
+			expect(same.destination_key).toBe('dst.txt')
+			expect(decodeURIComponent(copySources[0] ?? '')).toContain('/demo/tenants/acme/src.txt')
+
+			const foreign = await client.copy({
+				source_key: 'foreign/path.txt',
+				destination_key: 'dst.txt',
+				source_bucket: 'other-bucket'
+			})
+			expect(foreign.source_key).toBe('foreign/path.txt')
+			expect(foreign.destination_key).toBe('dst.txt')
+			expect(decodeURIComponent(copySources[1] ?? '')).toContain('/other-bucket/foreign/path.txt')
+			expect(decodeURIComponent(copySources[1] ?? '')).not.toContain('tenants/acme/foreign')
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('without key_prefix behavior is unchanged (absolute keys pass through)', async () => {
+		const original = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			if (req.method === 'PUT') {
+				// Virtual-hosted–style URL: https://demo.s3.region.amazonaws.com/top-level.txt
+				expect(req.url).toContain('demo.s3.')
+				expect(req.url).toContain('top-level.txt')
+				expect(req.url).not.toContain('tenants/')
+				return new Response(null, { status: 200, headers: { etag: '"t"' } })
+			}
+			return new Response('unexpected', { status: 500 })
+		}) as typeof globalThis.fetch
+		try {
+			const client = new S3Client(auth)
+			const put = await client.put({ key: 'top-level.txt', body: 'z' })
+			expect(put.key).toBe('top-level.txt')
+		} finally {
+			globalThis.fetch = original
+		}
+	})
 })

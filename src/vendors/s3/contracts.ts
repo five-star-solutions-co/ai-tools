@@ -68,7 +68,14 @@ export const s3AuthSchema = z.object({
 		.url()
 		.optional()
 		.describe('S3-compatible endpoint when not AWS (R2: https://<account_id>.r2.cloudflarestorage.com, MinIO, …)'),
-	session_token: z.string().min(1).optional().describe('Optional session token for temporary credentials')
+	session_token: z.string().min(1).optional().describe('Optional session token for temporary credentials'),
+	key_prefix: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Optional object-key root for this binding (no leading slash). Logical keys are relative to this prefix; wire keys include it. Host tenant scoping binds once here.'
+		)
 })
 
 export type S3Auth = z.infer<typeof s3AuthSchema>

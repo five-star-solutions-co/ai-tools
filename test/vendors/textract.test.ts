@@ -174,4 +174,84 @@ describe('textract', () => {
 	test('invalid auth rejected at construct', () => {
 		expect(() => new TextractClient({ ...auth, access_key_id: '' })).toThrow()
 	})
+
+	test('key_prefix: DocumentLocation.S3Object.Name uses wire key; source stays logical', async () => {
+		let startBody = ''
+		const restore = mockFetch(async (input, init) => {
+			const target = amzTarget(input, init)
+			if (target.includes('StartDocumentTextDetection')) {
+				if (input instanceof Request) {
+					startBody = await input.clone().text()
+				} else if (typeof init?.body === 'string') {
+					startBody = init.body
+				}
+				return new Response(JSON.stringify({ JobId: 'job-pref' }), {
+					status: 200,
+					headers: { 'content-type': 'application/x-amz-json-1.1' }
+				})
+			}
+			if (target.includes('GetDocumentTextDetection')) {
+				return new Response(
+					JSON.stringify({
+						JobStatus: 'SUCCEEDED',
+						Blocks: [{ BlockType: 'LINE', Text: 'Scoped' }],
+						DocumentMetadata: { Pages: 1 }
+					}),
+					{ status: 200, headers: { 'content-type': 'application/x-amz-json-1.1' } }
+				)
+			}
+			return new Response(`unexpected target=${target}`, { status: 500 })
+		})
+
+		try {
+			const client = new TextractClient({ ...auth, key_prefix: 'tenants/acme' })
+			const result = await client.extractText({
+				source: { store: 'object', key: 'inbox/a.pdf', filename: 'a.pdf' }
+			})
+			expect(result.status).toBe('succeeded')
+			expect(result.source).toEqual({ store: 'object', key: 'inbox/a.pdf', filename: 'a.pdf' })
+			const parsed = JSON.parse(startBody) as {
+				DocumentLocation?: { S3Object?: { Name?: string; Bucket?: string } }
+			}
+			expect(parsed.DocumentLocation?.S3Object?.Bucket).toBe('docs')
+			expect(parsed.DocumentLocation?.S3Object?.Name).toBe('tenants/acme/inbox/a.pdf')
+		} finally {
+			restore()
+		}
+	})
+
+	test('key_prefix: already-prefixed ArtifactRef.key is not double-prefixed on the wire', async () => {
+		let startBody = ''
+		const restore = mockFetch(async (input, init) => {
+			const target = amzTarget(input, init)
+			if (target.includes('StartDocumentTextDetection')) {
+				if (input instanceof Request) {
+					startBody = await input.clone().text()
+				} else if (typeof init?.body === 'string') {
+					startBody = init.body
+				}
+				return new Response(JSON.stringify({ JobId: 'job-mig' }), {
+					status: 200,
+					headers: { 'content-type': 'application/x-amz-json-1.1' }
+				})
+			}
+			if (target.includes('GetDocumentTextDetection')) {
+				return new Response(JSON.stringify({ JobStatus: 'SUCCEEDED', Blocks: [], DocumentMetadata: { Pages: 1 } }), {
+					status: 200,
+					headers: { 'content-type': 'application/x-amz-json-1.1' }
+				})
+			}
+			return new Response('nope', { status: 500 })
+		})
+		try {
+			const client = new TextractClient({ ...auth, key_prefix: 'tenants/acme/' })
+			await client.extractText({
+				source: { store: 'object', key: 'tenants/acme/inbox/a.pdf' }
+			})
+			const parsed = JSON.parse(startBody) as { DocumentLocation?: { S3Object?: { Name?: string } } }
+			expect(parsed.DocumentLocation?.S3Object?.Name).toBe('tenants/acme/inbox/a.pdf')
+		} finally {
+			restore()
+		}
+	})
 })

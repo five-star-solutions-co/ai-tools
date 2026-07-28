@@ -22,6 +22,67 @@ describe('files path helpers', () => {
 		expect(() => resolveUnderRoot('orgs/acme/files/', '../secret')).toThrow()
 		expect(() => normalizeRootPrefix('../nope')).toThrow()
 	})
+
+	test('allows double-dot in a file name segment', () => {
+		expect(resolveUnderRoot('workspace/', 'report..final.pdf')).toBe('workspace/report..final.pdf')
+	})
+})
+
+describe('files + storage key_prefix stacking', () => {
+	test('files.root_prefix sits under storage.key_prefix on the wire', async () => {
+		const bound = withAuth(filesModule, {
+			root_prefix: 'workspace/',
+			storage: {
+				access_key_id: 'AKIAtest',
+				secret_access_key: 'secret',
+				region: 'auto',
+				bucket: 'artifacts',
+				endpoint: 'https://example.r2.cloudflarestorage.com',
+				key_prefix: 'tenants/acme/'
+			}
+		})
+		const putTool = bound.tools.find((t) => t.id === 'files-put')
+		const listTool = bound.tools.find((t) => t.id === 'files-list')
+		if (!putTool || !listTool) throw new Error('missing tools')
+
+		const original = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+			const method = init?.method ?? (input instanceof Request ? input.method : 'GET')
+			if (method === 'PUT') {
+				expect(decodeURIComponent(url)).toContain('tenants/acme/workspace/notes/a.txt')
+				expect(decodeURIComponent(url)).not.toContain('tenants/acme/tenants/acme')
+				return new Response(null, { status: 200, headers: { etag: '"f1"' } })
+			}
+			if (method === 'GET' && (url.includes('list-type=2') || url.includes('prefix='))) {
+				const parsed = new URL(url)
+				expect(parsed.searchParams.get('prefix')).toBe('tenants/acme/workspace/')
+				return new Response(
+					`<?xml version="1.0"?>
+					<ListBucketResult>
+						<Contents><Key>tenants/acme/workspace/notes/a.txt</Key><Size>5</Size></Contents>
+						<IsTruncated>false</IsTruncated>
+					</ListBucketResult>`,
+					{ status: 200 }
+				)
+			}
+			return new Response(`unexpected ${method} ${url}`, { status: 500 })
+		}) as typeof globalThis.fetch
+
+		try {
+			const put = asRecord(await runTool(putTool, { path: 'notes/a.txt', body: 'hello' }))
+			expect(put['path']).toBe('notes/a.txt')
+			const list = asRecord(await runTool(listTool, {}))
+			const items = list['items']
+			expect(Array.isArray(items)).toBe(true)
+			if (Array.isArray(items)) {
+				const paths = items.map((i) => (isPlainObject(i) ? i['path'] : undefined))
+				expect(paths).toContain('notes/a.txt')
+			}
+		} finally {
+			globalThis.fetch = original
+		}
+	})
 })
 
 describe('files module', () => {

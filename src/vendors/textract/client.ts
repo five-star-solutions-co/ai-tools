@@ -13,6 +13,7 @@ import { runBatchItems } from '../../shared/batch'
 import { parseAwsJsonBody } from '../../transport/aws-json'
 import { AwsService } from '../../transport/aws-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
+import { normalizeKeyPrefix, resolveObjectKey } from '../_storage'
 import type {
 	TextractAuth,
 	TextractExtractResult,
@@ -35,6 +36,8 @@ export class TextractClient {
 	readonly #auth: TextractAuth
 	readonly #aws: AwsService
 	readonly #signal: AbortSignal | undefined
+	/** Normalized key_prefix with trailing `/`, or undefined when unbound. */
+	readonly #keyPrefix: string | undefined
 
 	constructor(auth: TextractAuth, options: TextractClientOptions = {}) {
 		const parsed = textractAuthSchema.safeParse(auth)
@@ -45,6 +48,7 @@ export class TextractClient {
 			})
 		}
 		this.#auth = parsed.data
+		this.#keyPrefix = parsed.data.key_prefix !== undefined ? normalizeKeyPrefix(parsed.data.key_prefix) : undefined
 		this.#signal = options.signal
 		this.#aws = new AwsService({
 			...options,
@@ -72,13 +76,16 @@ export class TextractClient {
 			throw new ToolError('Textract requires source.store "object"', { code: 'bad_input' })
 		}
 
+		// Logical ArtifactRef.key → wire S3 object name under optional key_prefix.
+		const wireName = resolveObjectKey(input.source.key, this.#keyPrefix)
+
 		let start: Record<string, unknown>
 		try {
 			start = await this.#call('Textract.StartDocumentTextDetection', {
 				DocumentLocation: {
 					S3Object: {
 						Bucket: this.#auth.bucket,
-						Name: input.source.key
+						Name: wireName
 					}
 				}
 			})
@@ -90,6 +97,7 @@ export class TextractClient {
 					cause: error.cause,
 					details: {
 						...(isPlainObject(error.details) ? error.details : {}),
+						// Surface logical key to callers (not wire path).
 						key: input.source.key
 					}
 				})

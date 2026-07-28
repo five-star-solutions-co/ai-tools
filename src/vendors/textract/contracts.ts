@@ -15,6 +15,13 @@ export const textractAuthSchema = z.object({
 	region: z.string().min(1).describe('AWS region for Textract and the source S3 bucket'),
 	bucket: z.string().min(1).describe('AWS S3 bucket containing source documents'),
 	session_token: z.string().min(1).optional().describe('Optional session token'),
+	key_prefix: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Optional object-key root matching the bound S3 storage (no leading slash). ArtifactRef.key is logical; DocumentLocation uses the wire key under this prefix.'
+		),
 	poll_timeout_ms: z
 		.int()
 		.min(1_000)

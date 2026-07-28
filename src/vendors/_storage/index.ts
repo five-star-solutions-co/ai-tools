@@ -3,6 +3,7 @@
  * Not published — directory name `_storage` is skipped by surface codegen.
  */
 
+export { MAX_OBJECT_KEY_BYTES, normalizeKeyPrefix, resolveListPrefix, resolveObjectKey, toPublicKey } from './keys'
 export {
 	abortMultipartUploadInputSchema,
 	abortMultipartUploadOutputSchema,

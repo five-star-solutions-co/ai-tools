@@ -1,6 +1,9 @@
 /**
  * S3 / S3-compatible object-store client (AwsService SigV4).
  * Host: `new S3Client(auth)`. Agent tools: `fromContext(ctx)`.
+ *
+ * When auth.key_prefix is set, public API keys are logical (prefix-relative);
+ * wire keys always include the prefix. Resolve once; private methods take wire keys.
  */
 
 import { isNil, isNumber, isString } from 'es-toolkit'
@@ -12,6 +15,7 @@ import { base64ToBytes, bytesToBase64, bytesToUtf8, toArrayBuffer, utf8ToBytes }
 import { AwsService } from '../../transport/aws-service'
 import type { AwsServiceOptions } from '../../transport/aws-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
+import { normalizeKeyPrefix, resolveListPrefix, resolveObjectKey, toPublicKey } from '../_storage'
 import type {
 	AbortMultipartUploadInput,
 	AbortMultipartUploadOutput,
@@ -89,6 +93,8 @@ function assertByteLimit(maxBytes: number): void {
 export class S3Client {
 	readonly #auth: S3Auth
 	readonly #aws: AwsService
+	/** Normalized key_prefix with trailing `/`, or undefined when unbound. */
+	readonly #keyPrefix: string | undefined
 
 	constructor(auth: S3Auth, options: S3ClientOptions = {}) {
 		const parsed = s3AuthSchema.safeParse(auth)
@@ -99,6 +105,7 @@ export class S3Client {
 			})
 		}
 		this.#auth = parsed.data
+		this.#keyPrefix = parsed.data.key_prefix !== undefined ? normalizeKeyPrefix(parsed.data.key_prefix) : undefined
 
 		const awsOptions: AwsServiceOptions = {
 			accessKeyId: this.#auth.access_key_id,
@@ -121,35 +128,76 @@ export class S3Client {
 		return new S3Client(auth, options)
 	}
 
+	#resolve(logicalKey: string): string {
+		return resolveObjectKey(logicalKey, this.#keyPrefix)
+	}
+
+	#publicKey(wireKey: string): string {
+		const publicKey = toPublicKey(wireKey, this.#keyPrefix)
+		if (publicKey === undefined) {
+			throw new ToolError('Object key is outside the bound key_prefix', { code: 'bad_input' })
+		}
+		return publicKey
+	}
+
+	/** Source key for copy: scoped only when same bucket as this client. */
+	#resolveCopySourceKey(sourceKey: string, sourceBucket: string | undefined): string {
+		const sameBucket = sourceBucket === undefined || sourceBucket === this.#auth.bucket
+		if (sameBucket) return this.#resolve(sourceKey)
+		// Foreign bucket: validate shape only; do not apply this binding's key_prefix.
+		return resolveObjectKey(sourceKey, undefined)
+	}
+
 	async list(input: ListObjectsInput): Promise<ListObjectsOutput> {
+		const prefix = resolveListPrefix(input.prefix, this.#keyPrefix)
 		const params = new URLSearchParams({ 'list-type': '2' })
-		if (input.prefix) params.set('prefix', input.prefix)
+		if (prefix !== undefined) params.set('prefix', prefix)
 		if (input.delimiter) params.set('delimiter', input.delimiter)
 		if (input.cursor) params.set('continuation-token', input.cursor)
 		if (input.limit !== undefined) params.set('max-keys', String(input.limit))
 
 		const { bytes } = await this.#aws.bytes('GET', listUrl(this.#auth, params), { label: 'S3 list' })
 		const listed = parseListResult(bytesToUtf8(bytes))
+
+		const items = []
+		const keys: string[] = []
+		for (const obj of listed.items) {
+			const publicKey = toPublicKey(obj.key, this.#keyPrefix)
+			if (publicKey === undefined) continue
+			keys.push(publicKey)
+			items.push({
+				key: publicKey,
+				...(obj.size !== undefined && { size: obj.size }),
+				...(obj.last_modified && { last_modified: obj.last_modified }),
+				...(obj.etag && { etag: obj.etag })
+			})
+		}
+
 		const out: ListObjectsOutput = {
-			keys: listed.items.map((o) => o.key),
-			items: listed.items,
+			keys,
+			items,
 			truncated: listed.truncated
 		}
 		if (listed.common_prefixes && listed.common_prefixes.length > 0) {
-			out.common_prefixes = listed.common_prefixes
+			const common: string[] = []
+			for (const folderAbs of listed.common_prefixes) {
+				const publicPrefix = toPublicKey(folderAbs, this.#keyPrefix)
+				if (publicPrefix !== undefined) common.push(publicPrefix)
+			}
+			if (common.length > 0) out.common_prefixes = common
 		}
 		if (listed.next_cursor) out.next_cursor = listed.next_cursor
 		return out
 	}
 
-	/** HEAD size gate plus a bounded Range GET, with If-Match when an etag is known. */
-	async #getBounded(
-		key: string,
+	/** HEAD size gate plus a bounded Range GET (wire key only). */
+	async #getBoundedWire(
+		wireKey: string,
 		maxBytes: number,
 		limitMessage: string
 	): Promise<{ bytes: Uint8Array; headers: Headers; head: HeadObjectOutput }> {
 		assertByteLimit(maxBytes)
-		const head = await this.head({ key })
+		const head = await this.#headWire(wireKey)
 		if (!head.exists) objectNotFound()
 		if (!isNil(head.content_length) && head.content_length > maxBytes) {
 			tooLarge(maxBytes, head.content_length, limitMessage)
@@ -166,7 +214,7 @@ export class S3Client {
 
 		let response
 		try {
-			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), {
+			response = await this.#aws.bytes('GET', objectUrl(this.#auth, wireKey), {
 				label: 'S3 get',
 				headers,
 				maxBytes
@@ -184,7 +232,7 @@ export class S3Client {
 			if (isToolError(error) && error.details?.['status'] === 412) {
 				throw new ToolError('Object changed during download', {
 					code: 'upstream',
-					details: { status: 412, key },
+					details: { status: 412, key: this.#publicKey(wireKey) },
 					cause: error
 				})
 			}
@@ -196,19 +244,43 @@ export class S3Client {
 		return { bytes: response.bytes, headers: response.headers, head }
 	}
 
+	async #headWire(wireKey: string): Promise<HeadObjectOutput> {
+		const response = await this.#aws.head(objectUrl(this.#auth, wireKey), {
+			label: 'S3 head',
+			allowStatuses: [404]
+		})
+		const publicKey = this.#publicKey(wireKey)
+		if (response.status === 404) {
+			return { key: publicKey, exists: false }
+		}
+		const contentType = response.headers.get('content-type')
+		const lengthHeader = response.headers.get('content-length')
+		const etag = response.headers.get('etag')
+		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : undefined
+		const out: HeadObjectOutput = {
+			key: publicKey,
+			exists: true
+		}
+		if (isString(contentType)) out.content_type = contentType
+		if (!isNil(contentLength) && Number.isFinite(contentLength)) out.content_length = contentLength
+		if (isString(etag)) out.etag = stripEtagQuotes(etag)
+		return out
+	}
+
 	async get(input: GetObjectInput): Promise<GetObjectOutput> {
+		const wireKey = this.#resolve(input.key)
 		const {
 			bytes: bodyBytes,
 			headers: responseHeaders,
 			head
-		} = await this.#getBounded(input.key, MAX_OBJECT_BYTES, 'Object exceeds 5 MiB download limit')
+		} = await this.#getBoundedWire(wireKey, MAX_OBJECT_BYTES, 'Object exceeds 5 MiB download limit')
 		const encoding = input.encoding ?? 'base64'
 		const body = encoding === 'utf8' ? bytesToUtf8(bodyBytes) : bytesToBase64(bodyBytes)
 		const contentType = responseHeaders.get('content-type') ?? head.content_type
 		const lengthHeader = responseHeaders.get('content-length')
 		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : head.content_length
 		const out: GetObjectOutput = {
-			key: input.key,
+			key: this.#publicKey(wireKey),
 			body,
 			encoding
 		}
@@ -224,6 +296,7 @@ export class S3Client {
 	}
 
 	async put(input: PutObjectInput): Promise<PutObjectOutput> {
+		const wireKey = this.#resolve(input.key)
 		const encoding = input.body_encoding ?? 'utf8'
 		const bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
 		if (bodyBytes.byteLength > MAX_OBJECT_BYTES) {
@@ -235,13 +308,13 @@ export class S3Client {
 		const headers: Record<string, string> = {}
 		if (input.content_type) headers['Content-Type'] = input.content_type
 
-		const response = await this.#aws.put(objectUrl(this.#auth, input.key), toArrayBuffer(bodyBytes), {
+		const response = await this.#aws.put(objectUrl(this.#auth, wireKey), toArrayBuffer(bodyBytes), {
 			label: 'S3 put',
 			headers
 		})
 		const etag = response.headers.get('etag')
 		const out: PutObjectOutput = {
-			key: input.key,
+			key: this.#publicKey(wireKey),
 			content_length: bodyBytes.byteLength
 		}
 		if (isString(etag)) out.etag = stripEtagQuotes(etag)
@@ -249,40 +322,25 @@ export class S3Client {
 	}
 
 	async delete(input: DeleteObjectInput): Promise<DeleteObjectOutput> {
-		await this.#aws.delete(objectUrl(this.#auth, input.key), {
+		const wireKey = this.#resolve(input.key)
+		await this.#aws.delete(objectUrl(this.#auth, wireKey), {
 			label: 'S3 delete',
 			allowStatuses: [404]
 		})
-		return { key: input.key, deleted: true }
+		return { key: this.#publicKey(wireKey), deleted: true }
 	}
 
 	async head(input: HeadObjectInput): Promise<HeadObjectOutput> {
-		const response = await this.#aws.head(objectUrl(this.#auth, input.key), {
-			label: 'S3 head',
-			allowStatuses: [404]
-		})
-		if (response.status === 404) {
-			return { key: input.key, exists: false }
-		}
-		const contentType = response.headers.get('content-type')
-		const lengthHeader = response.headers.get('content-length')
-		const etag = response.headers.get('etag')
-		const contentLength = isString(lengthHeader) ? Number.parseInt(lengthHeader, 10) : undefined
-		const out: HeadObjectOutput = {
-			key: input.key,
-			exists: true
-		}
-		if (isString(contentType)) out.content_type = contentType
-		if (!isNil(contentLength) && Number.isFinite(contentLength)) out.content_length = contentLength
-		if (isString(etag)) out.etag = stripEtagQuotes(etag)
-		return out
+		return this.#headWire(this.#resolve(input.key))
 	}
 
 	async copy(input: CopyObjectInput): Promise<CopyObjectOutput> {
-		const response = await this.#aws.bytes('PUT', objectUrl(this.#auth, input.destination_key), {
+		const destWire = this.#resolve(input.destination_key)
+		const sourceWire = this.#resolveCopySourceKey(input.source_key, input.source_bucket)
+		const response = await this.#aws.bytes('PUT', objectUrl(this.#auth, destWire), {
 			label: 'S3 copy',
 			headers: {
-				'x-amz-copy-source': copySourceHeader(this.#auth, input.source_key, input.source_bucket)
+				'x-amz-copy-source': copySourceHeader(this.#auth, sourceWire, input.source_bucket)
 			}
 		})
 		const xml = bytesToUtf8(response.bytes)
@@ -290,17 +348,21 @@ export class S3Client {
 		const headerEtag = response.headers.get('etag')
 		const etag = etagRaw ? stripEtagQuotes(etagRaw) : isString(headerEtag) ? stripEtagQuotes(headerEtag) : undefined
 		const out: CopyObjectOutput = {
-			source_key: input.source_key,
-			destination_key: input.destination_key
+			source_key:
+				input.source_bucket === undefined || input.source_bucket === this.#auth.bucket
+					? this.#publicKey(sourceWire)
+					: sourceWire,
+			destination_key: this.#publicKey(destWire)
 		}
 		if (etag) out.etag = etag
 		return out
 	}
 
 	async createSignedUrl(input: SignedUrlInput): Promise<SignedUrlOutput> {
+		const wireKey = this.#resolve(input.key)
 		const method = input.method ?? 'GET'
 		const expiresIn = input.expires_in ?? DEFAULT_SIGNED_URL_SECONDS
-		const url = objectUrl(this.#auth, input.key, `X-Amz-Expires=${expiresIn}`)
+		const url = objectUrl(this.#auth, wireKey, `X-Amz-Expires=${expiresIn}`)
 		const signed = await this.#aws.sign(url, {
 			method,
 			signQuery: true
@@ -313,9 +375,10 @@ export class S3Client {
 	}
 
 	async createMultipartUpload(input: CreateMultipartUploadInput): Promise<CreateMultipartUploadOutput> {
+		const wireKey = this.#resolve(input.key)
 		const headers: Record<string, string> = {}
 		if (input.content_type) headers['Content-Type'] = input.content_type
-		const { bytes } = await this.#aws.bytes('POST', objectUrl(this.#auth, input.key, 'uploads'), {
+		const { bytes } = await this.#aws.bytes('POST', objectUrl(this.#auth, wireKey, 'uploads'), {
 			label: 'S3 create multipart upload',
 			headers
 		})
@@ -324,12 +387,13 @@ export class S3Client {
 			throw new ToolError('S3 create multipart upload returned no UploadId', { code: 'upstream' })
 		}
 		return {
-			key: input.key,
+			key: this.#publicKey(wireKey),
 			upload_id: uploadIdRaw
 		}
 	}
 
 	async uploadPart(input: UploadPartInput): Promise<UploadPartOutput> {
+		const wireKey = this.#resolve(input.key)
 		const encoding = input.body_encoding ?? 'utf8'
 		const bodyBytes = encoding === 'base64' ? base64ToBytes(input.body) : utf8ToBytes(input.body)
 		if (bodyBytes.byteLength > MAX_MULTIPART_PART_BYTES) {
@@ -345,7 +409,7 @@ export class S3Client {
 			partNumber: String(input.part_number),
 			uploadId: input.upload_id
 		})
-		const response = await this.#aws.put(objectUrl(this.#auth, input.key, query.toString()), toArrayBuffer(bodyBytes), {
+		const response = await this.#aws.put(objectUrl(this.#auth, wireKey, query.toString()), toArrayBuffer(bodyBytes), {
 			label: 'S3 upload part'
 		})
 		const etagHeader = response.headers.get('etag')
@@ -353,7 +417,7 @@ export class S3Client {
 			throw new ToolError('S3 upload part returned no ETag', { code: 'upstream' })
 		}
 		return {
-			key: input.key,
+			key: this.#publicKey(wireKey),
 			upload_id: input.upload_id,
 			part_number: input.part_number,
 			etag: stripEtagQuotes(etagHeader),
@@ -362,6 +426,7 @@ export class S3Client {
 	}
 
 	async completeMultipartUpload(input: CompleteMultipartUploadInput): Promise<CompleteMultipartUploadOutput> {
+		const wireKey = this.#resolve(input.key)
 		const sorted = [...input.parts].sort((a, b) => a.part_number - b.part_number)
 		const partsXml = sorted
 			.map((part) => {
@@ -371,7 +436,7 @@ export class S3Client {
 			.join('')
 		const body = `<CompleteMultipartUpload>${partsXml}</CompleteMultipartUpload>`
 		const query = new URLSearchParams({ uploadId: input.upload_id })
-		const response = await this.#aws.bytes('POST', objectUrl(this.#auth, input.key, query.toString()), {
+		const response = await this.#aws.bytes('POST', objectUrl(this.#auth, wireKey, query.toString()), {
 			label: 'S3 complete multipart upload',
 			body,
 			headers: { 'Content-Type': 'application/xml' }
@@ -381,7 +446,7 @@ export class S3Client {
 		const headerEtag = response.headers.get('etag')
 		const etag = etagRaw ? stripEtagQuotes(etagRaw) : isString(headerEtag) ? stripEtagQuotes(headerEtag) : undefined
 		const out: CompleteMultipartUploadOutput = {
-			key: input.key,
+			key: this.#publicKey(wireKey),
 			upload_id: input.upload_id
 		}
 		if (etag) out.etag = etag
@@ -389,23 +454,25 @@ export class S3Client {
 	}
 
 	async abortMultipartUpload(input: AbortMultipartUploadInput): Promise<AbortMultipartUploadOutput> {
+		const wireKey = this.#resolve(input.key)
 		const query = new URLSearchParams({ uploadId: input.upload_id })
-		await this.#aws.delete(objectUrl(this.#auth, input.key, query.toString()), {
+		await this.#aws.delete(objectUrl(this.#auth, wireKey, query.toString()), {
 			label: 'S3 abort multipart upload',
 			allowStatuses: [404]
 		})
-		return { key: input.key, upload_id: input.upload_id, aborted: true }
+		return { key: this.#publicKey(wireKey), upload_id: input.upload_id, aborted: true }
 	}
 
-	/** Host-facing raw download. Pass `maxBytes` to enforce a hard download cap. */
+	/** Host-facing raw download. Pass `maxBytes` to enforce a hard download cap. Logical key when key_prefix is set. */
 	async getBytes(key: string, options: { maxBytes?: number } = {}): Promise<Uint8Array> {
+		const wireKey = this.#resolve(key)
 		const maxBytes = options.maxBytes
 		if (maxBytes !== undefined) {
-			const { bytes } = await this.#getBounded(key, maxBytes, 'Object exceeds download limit')
+			const { bytes } = await this.#getBoundedWire(wireKey, maxBytes, 'Object exceeds download limit')
 			return bytes
 		}
 		try {
-			const { bytes } = await this.#aws.bytes('GET', objectUrl(this.#auth, key), { label: 'S3 get' })
+			const { bytes } = await this.#aws.bytes('GET', objectUrl(this.#auth, wireKey), { label: 'S3 get' })
 			return bytes
 		} catch (error) {
 			remapNotFound(error)
@@ -413,6 +480,7 @@ export class S3Client {
 	}
 
 	async getBytesRange(key: string, range: S3ByteRange): Promise<S3ByteRangeResult> {
+		const wireKey = this.#resolve(key)
 		const requestedBytes = range.end_byte - range.start_byte + 1
 		if (
 			!Number.isSafeInteger(range.start_byte) ||
@@ -428,7 +496,7 @@ export class S3Client {
 			tooLarge(MAX_OBJECT_BYTES, requestedBytes, 'Byte range exceeds download limit')
 		}
 
-		const head = await this.head({ key })
+		const head = await this.#headWire(wireKey)
 		if (!head.exists) objectNotFound()
 		if (head.content_length !== undefined && range.start_byte >= head.content_length) {
 			throw new ToolError('Byte range starts beyond the end of the object', {
@@ -444,7 +512,7 @@ export class S3Client {
 
 		let response
 		try {
-			response = await this.#aws.bytes('GET', objectUrl(this.#auth, key), {
+			response = await this.#aws.bytes('GET', objectUrl(this.#auth, wireKey), {
 				label: 'S3 range get',
 				headers,
 				maxBytes: requestedBytes
@@ -453,7 +521,7 @@ export class S3Client {
 			if (isToolError(error) && error.details?.['status'] === 412) {
 				throw new ToolError('Object changed during download', {
 					code: 'upstream',
-					details: { status: 412, key },
+					details: { status: 412, key: this.#publicKey(wireKey) },
 					cause: error
 				})
 			}
@@ -472,11 +540,12 @@ export class S3Client {
 		return out
 	}
 
-	/** Host-facing raw upload. */
+	/** Host-facing raw upload. Logical key when key_prefix is set. */
 	async putBytes(key: string, bytes: Uint8Array, contentType?: string): Promise<void> {
+		const wireKey = this.#resolve(key)
 		const headers: Record<string, string> = {}
 		if (isString(contentType) && contentType.length > 0) headers['Content-Type'] = contentType
-		await this.#aws.put(objectUrl(this.#auth, key), toArrayBuffer(bytes), {
+		await this.#aws.put(objectUrl(this.#auth, wireKey), toArrayBuffer(bytes), {
 			label: 'S3 put',
 			headers
 		})
