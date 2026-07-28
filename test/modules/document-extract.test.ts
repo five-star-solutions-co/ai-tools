@@ -142,4 +142,75 @@ describe('document-extract', () => {
 			if (isToolError(error)) expect(error.code).toBe('bad_auth')
 		}
 	})
+
+	test('output chunks returns chunks without full text', async () => {
+		const restore = mockFetch((input, init) => {
+			const target = amzTarget(input, init)
+			if (target.includes('StartDocumentTextDetection')) {
+				return new Response(JSON.stringify({ JobId: 'job-ch' }), { status: 200 })
+			}
+			if (target.includes('GetDocumentTextDetection')) {
+				return new Response(
+					JSON.stringify({
+						JobStatus: 'SUCCEEDED',
+						Blocks: [
+							{ BlockType: 'LINE', Text: 'Hello page one.' },
+							{ BlockType: 'LINE', Text: 'Hello page two.' }
+						],
+						DocumentMetadata: { Pages: 1 }
+					}),
+					{ status: 200 }
+				)
+			}
+			return new Response('nope', { status: 500 })
+		})
+		try {
+			const client = DocumentExtractClient.fromAuth(auth)
+			const result = await client.extractText({
+				source: { store: 'object', key: 'docs/a.pdf' },
+				output: 'chunks',
+				chunk: { max_chars: 20, overlap: 0 }
+			})
+			expect(result.status).toBe('succeeded')
+			expect(result.output).toBe('chunks')
+			expect(result.text).toBeUndefined()
+			expect(result.chunks?.length).toBeGreaterThan(0)
+			expect(result.chunks?.[0]?.id).toContain('docs/a.pdf')
+		} finally {
+			restore()
+		}
+	})
+
+	test('output inline fails when text exceeds max', async () => {
+		const long = 'x'.repeat(100_001)
+		const restore = mockFetch((input, init) => {
+			const target = amzTarget(input, init)
+			if (target.includes('StartDocumentTextDetection')) {
+				return new Response(JSON.stringify({ JobId: 'job-big' }), { status: 200 })
+			}
+			if (target.includes('GetDocumentTextDetection')) {
+				return new Response(
+					JSON.stringify({
+						JobStatus: 'SUCCEEDED',
+						Blocks: [{ BlockType: 'LINE', Text: long }],
+						DocumentMetadata: { Pages: 1 }
+					}),
+					{ status: 200 }
+				)
+			}
+			return new Response('nope', { status: 500 })
+		})
+		try {
+			const client = DocumentExtractClient.fromAuth(auth)
+			await client.extractText({
+				source: { store: 'object', key: 'big.pdf' },
+				output: 'inline'
+			})
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error) && error.code === 'too_large').toBe(true)
+		} finally {
+			restore()
+		}
+	})
 })

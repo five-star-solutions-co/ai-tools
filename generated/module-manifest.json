@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-28T15:19:05.746Z",
+	"generatedAt": "2026-07-28T15:26:54.329Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -701,17 +701,21 @@
 			"exportNames": [
 				"DocumentExtractAuth",
 				"DocumentExtractClient",
+				"ExtractOutputMode",
 				"ExtractResult",
 				"ExtractTextBatchInput",
 				"ExtractTextBatchOutput",
+				"ExtractTextChunk",
 				"ExtractTextInput",
 				"MAX_BATCH_EXTRACT",
+				"MAX_INLINE_EXTRACT_CHARS",
 				"StatusInput",
 				"documentExtractAuthSchema",
 				"documentExtractModule",
 				"documentExtractStatusTool",
 				"documentExtractTextBatchTool",
 				"documentExtractTextTool",
+				"extractOutputModeSchema",
 				"extractResultSchema",
 				"extractTextBatchInputSchema",
 				"extractTextBatchOutputSchema",

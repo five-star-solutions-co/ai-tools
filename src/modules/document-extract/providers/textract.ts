@@ -6,18 +6,16 @@
 import type { HttpServiceOptions } from '../../../transport/http-service'
 import { TextractClient } from '../../../vendors/textract'
 import type {
-	DocumentExtractOps,
+	DocumentExtractProviderOps,
 	ExtractResult,
-	ExtractTextBatchInput,
 	ExtractTextBatchOutput,
-	ExtractTextInput,
-	StatusInput,
 	TextractDocumentExtractAuth
 } from '../contracts'
+import type { ArtifactRef } from '../../../shared/artifact'
 
 export type TextractDocumentExtractProviderOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
-export class TextractDocumentExtractProvider implements DocumentExtractOps {
+export class TextractDocumentExtractProvider implements DocumentExtractProviderOps {
 	readonly #client: TextractClient
 
 	constructor(auth: TextractDocumentExtractAuth, options: TextractDocumentExtractProviderOptions = {}) {
@@ -25,15 +23,15 @@ export class TextractDocumentExtractProvider implements DocumentExtractOps {
 		this.#client = new TextractClient(vendorAuth, options)
 	}
 
-	extractText(input: ExtractTextInput): Promise<ExtractResult> {
+	extractText(input: { source: ArtifactRef }): Promise<ExtractResult> {
 		return this.#client.extractText(input)
 	}
 
-	getStatus(input: StatusInput): Promise<ExtractResult> {
+	getStatus(input: { job_id: string }): Promise<ExtractResult> {
 		return this.#client.getStatus(input)
 	}
 
-	extractTextBatch(input: ExtractTextBatchInput): Promise<ExtractTextBatchOutput> {
+	extractTextBatch(input: { sources: ArtifactRef[] }): Promise<ExtractTextBatchOutput> {
 		return this.#client.extractTextBatch(input)
 	}
 }

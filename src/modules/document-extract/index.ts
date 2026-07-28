@@ -25,5 +25,8 @@ export {
 	extractTextBatchOutputSchema,
 	extractTextInputSchema,
 	MAX_BATCH_EXTRACT,
+	MAX_INLINE_EXTRACT_CHARS,
+	extractOutputModeSchema,
 	statusInputSchema
 } from './contracts'
+export type { ExtractOutputMode, ExtractTextChunk } from './contracts'
