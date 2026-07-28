@@ -243,8 +243,8 @@ describe('public package compatibility matrix', () => {
 	}, 120_000)
 
 	test('presentation + office-open core survive Node CJS bundle (regression for TLA zlib)', async () => {
+		// Does not require `dist/` — pre-push `check` runs tests without `bun run build`.
 		const presentationSource = path.join(repoRoot, 'src/modules/presentation/index.ts')
-		const presentationDist = path.join(repoRoot, 'dist/modules/presentation/index.js')
 		const officeOpenUtil = path.join(repoRoot, 'node_modules/@office-open/core/dist/util-Tq9PSjK0.mjs')
 
 		// 1) Patched util: no executable top-level await import of node:zlib
@@ -257,12 +257,7 @@ describe('public package compatibility matrix', () => {
 		assertNoTopLevelAwaitImport(await readFile(fromSource, 'utf8'), 'presentation-source')
 		await assertNodeLoad([fromSource], 'cjs')
 
-		// 3) Built dist entry → CJS rebundle (what hosts often import from package)
-		const fromDist = await buildNodeCjsBundle(presentationDist, 'presentation-dist')
-		assertNoTopLevelAwaitImport(await readFile(fromDist, 'utf8'), 'presentation-dist')
-		await assertNodeLoad([fromDist], 'cjs')
-
-		// 4) office-open util alone as CJS (guards the patch independent of presentation)
+		// 3) office-open util alone as CJS (guards the patch independent of presentation)
 		const utilCjs = await buildNodeCjsBundle(officeOpenUtil, 'office-open-util')
 		assertNoTopLevelAwaitImport(await readFile(utilCjs, 'utf8'), 'office-open-util-cjs')
 		await assertNodeLoad([utilCjs], 'cjs')
