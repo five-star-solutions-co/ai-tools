@@ -27,6 +27,8 @@ export type ModuleCatalogEntry = {
 	runtime: ModuleDefinition['runtime']
 	title: string
 	tools: ToolCatalogEntry[]
+	/** Inline SVG when the pack has a logo. */
+	logo?: string | undefined
 }
 
 export function toToolCatalogEntry(tool: ToolDefinition): ToolCatalogEntry {
@@ -56,6 +58,7 @@ export function toModuleCatalogEntry(module: ModuleDefinition): ModuleCatalogEnt
 		description: module.description,
 		runtime: module.runtime,
 		authType: module.auth.type,
-		tools: module.tools.map(toToolCatalogEntry)
+		tools: module.tools.map(toToolCatalogEntry),
+		...(module.logo !== undefined && { logo: module.logo })
 	}
 }

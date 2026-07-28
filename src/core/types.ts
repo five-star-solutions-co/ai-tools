@@ -102,6 +102,11 @@ export type ModuleDefinition<TAuth = unknown> = {
 	runtime: ToolRuntime
 	title: string
 	tools: readonly ToolDefinition[]
+	/**
+	 * Inline SVG markup for this pack (catalog / UI).
+	 * Filled by `defineModule` from the shared logo map — hosts use `module.logo` as-is.
+	 */
+	logo?: string | undefined
 }
 
 /** Module, or a flat tool list (adapters). */

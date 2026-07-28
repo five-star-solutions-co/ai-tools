@@ -3,7 +3,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { discoverModules } from './discover'
-import { renderGeneratedModulesTs, renderModuleManifest, renderPackageExports, renderTsdownConfig } from './render'
+import {
+	renderGeneratedModulesTs,
+	renderModuleManifest,
+	renderPackageExports,
+	renderPackLogosTs,
+	renderTsdownConfig
+} from './render'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -52,7 +58,8 @@ export async function runCodegen(options: { checkOnly?: boolean } = {}): Promise
 			relative: 'generated/module-manifest.json',
 			content: `${JSON.stringify(renderModuleManifest(modules, { repoRoot }), null, '\t')}\n`
 		},
-		{ relative: 'src/generated/module-keys.ts', content: renderGeneratedModulesTs(modules) }
+		{ relative: 'src/generated/module-keys.ts', content: renderGeneratedModulesTs(modules) },
+		{ relative: 'src/generated/pack-logos.ts', content: renderPackLogosTs(repoRoot, modules) }
 	]
 
 	if (checkOnly) {

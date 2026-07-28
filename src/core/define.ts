@@ -1,3 +1,4 @@
+import { logoForModuleId } from '../generated/pack-logos'
 import type {
 	AuthDefinition,
 	ModuleDefinition,
@@ -79,6 +80,8 @@ export type DefineModuleOptions<TAuth = unknown> = {
 	runtime?: ToolRuntime
 	title: string
 	tools: readonly ToolDefinition[]
+	/** Optional override; default comes from the pack logo map by module id. */
+	logo?: string | undefined
 }
 
 export function defineModule<TAuth = unknown>(options: DefineModuleOptions<TAuth>): ModuleDefinition<TAuth> {
@@ -99,12 +102,15 @@ export function defineModule<TAuth = unknown>(options: DefineModuleOptions<TAuth
 		(id) => `Module ${options.id} has duplicate tool id: ${id}`
 	)
 
+	const logo = options.logo ?? logoForModuleId(options.id)
+
 	return {
 		id: options.id,
 		title: options.title,
 		description,
 		runtime: options.runtime ?? 'both',
 		auth: options.auth ?? { type: 'none' },
-		tools: options.tools
+		tools: options.tools,
+		...(logo !== undefined && { logo })
 	}
 }

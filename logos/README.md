@@ -1,39 +1,32 @@
 # Pack logos
 
-**One SVG file per unique mark.** Many packs share the same file.
+**One SVG file per unique mark** under `logos/`. Shared via `pack-logos.json`.
+
+## Host usage (preferred)
+
+Logos are **inlined on the module** by `defineModule` (codegen → `src/generated/pack-logos.ts` → build).
+
+```ts
+import { telegramModule } from '@harryy/ai-tools/telegram'
+
+// Inline SVG markup — no separate asset path required
+telegramModule.logo
+// also on catalog: toModuleCatalogEntry(telegramModule).logo
+```
+
+Hosts that only import packs do not need to know about `logos/` or static files.
+
+## Source layout (maintainers)
 
 ```text
 logos/
-  amazon.svg              # used by s3, sqs, bedrock-*, eventbridge-scheduler, amazon-sp-api, …
+  amazon.svg              # once — referenced by many pack keys
   telegram.svg
-  files.svg
-  …
-  pack-logos.json         # pack key → logo id (basename without .svg)
+  pack-logos.json         # pack key → logo id
 ```
 
-## How sharing works
-
-`pack-logos.json`:
-
-```json
-{
-  "s3": "amazon",
-  "sqs": "amazon",
-  "telegram": "telegram",
-  "files": "files"
-}
-```
-
-Resolves to `logos/{id}.svg`. Hosts should use the path from the manifest (or the map + id), **not** invent per-pack copies.
-
-```ts
-// generated/module-manifest.json
-// { "key": "s3", "logo": "logos/amazon.svg" }
-// { "key": "sqs", "logo": "logos/amazon.svg" }  // same file
-
-import packLogos from '@harryy/ai-tools/logos/pack-logos.json'
-// packLogos['s3'] === 'amazon' → logos/amazon.svg
-```
+`bun run codegen` embeds these into `src/generated/pack-logos.ts` for the JS build.
+Optional package export `@harryy/ai-tools/logos/*` remains for raw file access.
 
 ## Pattern
 
