@@ -39,6 +39,7 @@ const expectedToolIds = [
 	'katana-list-purchase-orders',
 	'katana-list-sales-orders',
 	'katana-list-suppliers',
+	'katana-query-sales-orders',
 	'katana-update-customer',
 	'katana-update-manufacturing-order',
 	'katana-update-product',
@@ -107,6 +108,110 @@ describe('katana', () => {
 			if (!tool) throw new Error('missing tool')
 			const result = await runTool(tool, { sales_order_id: 3 })
 			expect(result).toEqual({ sales_order: { id: 3, order_no: 'SO-3' } })
+		} finally {
+			restore()
+		}
+	})
+
+	test('querySalesOrders composites list, rows, and customer enrich', async () => {
+		const calls: string[] = []
+		const restore = mockFetch((url, init) => {
+			calls.push(url)
+			expect(init?.method).toBe('GET')
+			if (url.includes('/sales_orders') && !url.includes('/sales_order_rows')) {
+				expect(url).toContain('created_at_min=2026-01-01')
+				expect(url).toContain('status=NOT_SHIPPED')
+				return new Response(
+					JSON.stringify({
+						data: [
+							{
+								id: 10,
+								order_no: 'SO-10',
+								status: 'NOT_SHIPPED',
+								customer_id: 5,
+								order_created_date: '2026-02-01T00:00:00.000Z',
+								created_at: '2026-02-01T01:00:00.000Z',
+								total: 100
+							},
+							{
+								id: 11,
+								order_no: 'SO-11',
+								status: 'NOT_SHIPPED',
+								customer_id: 5,
+								// Outside client-side order_created window
+								order_created_date: '2025-01-01T00:00:00.000Z',
+								created_at: '2025-01-01T01:00:00.000Z'
+							}
+						],
+						pagination: { page: 1, total_pages: 1 }
+					}),
+					{ status: 200 }
+				)
+			}
+			if (url.includes('/sales_order_rows')) {
+				expect(url).toContain('sales_order_ids=10')
+				expect(url).toContain('extend=variant')
+				return new Response(
+					JSON.stringify({
+						data: [
+							{
+								id: 100,
+								sales_order_id: 10,
+								quantity: '2.00000',
+								price_per_unit: '12.5000000000',
+								total_discount: '1.00000',
+								variant: { sku: 'SKU-A', purchase_price: '3.50' }
+							}
+						],
+						pagination: { page: 1, total_pages: 1 }
+					}),
+					{ status: 200 }
+				)
+			}
+			if (url.includes('/customers/5')) {
+				return new Response(JSON.stringify({ data: { id: 5, name: 'Acme Co', first_name: 'A', last_name: 'C' } }), {
+					status: 200
+				})
+			}
+			return new Response(`unexpected ${url}`, { status: 404 })
+		})
+
+		try {
+			const client = new KatanaClient(auth)
+			const result = await client.querySalesOrders({
+				scopes: [
+					{
+						created_from: '2026-01-01T00:00:00.000Z',
+						order_created_from: '2026-01-15T00:00:00.000Z',
+						statuses: ['NOT_SHIPPED']
+					}
+				]
+			})
+			expect(result.order_count).toBe(1)
+			expect(result.orders).toEqual([
+				{
+					id: 10,
+					created_at: '2026-02-01T01:00:00.000Z',
+					order_created_date: '2026-02-01T00:00:00.000Z',
+					order_no: 'SO-10',
+					status: 'NOT_SHIPPED',
+					customer_id: 5,
+					customer_name: 'Acme Co',
+					rows: [
+						{
+							sku: 'SKU-A',
+							quantity: 2,
+							// (2 * 12.5 - 1) * 100 = 2400
+							tax_exclusive_total_cents: 2400,
+							// 3.50 * 2 * 100 = 700
+							cogs_value_cents: 700
+						}
+					]
+				}
+			])
+			expect(calls.some((u) => u.includes('/sales_orders'))).toBe(true)
+			expect(calls.some((u) => u.includes('/sales_order_rows'))).toBe(true)
+			expect(calls.some((u) => u.includes('/customers/5'))).toBe(true)
 		} finally {
 			restore()
 		}

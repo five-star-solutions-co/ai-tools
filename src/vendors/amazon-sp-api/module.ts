@@ -19,7 +19,9 @@ import {
 	amazonSpApiListReportsInputSchema,
 	amazonSpApiListReportsOutputSchema,
 	amazonSpApiSearchCatalogItemsInputSchema,
-	amazonSpApiSearchCatalogItemsOutputSchema
+	amazonSpApiSearchCatalogItemsOutputSchema,
+	amazonSpApiSearchOrdersInputSchema,
+	amazonSpApiSearchOrdersOutputSchema
 } from './contracts'
 
 export const amazonSpApiListOrdersTool = defineTool({
@@ -54,6 +56,18 @@ export const amazonSpApiGetOrderItemsTool = defineTool({
 	sideEffect: 'read',
 	runtime: 'both',
 	execute: async (input, ctx) => AmazonSpApiClient.fromContext(ctx).getOrderItems(input)
+})
+
+export const amazonSpApiSearchOrdersTool = defineTool({
+	id: 'amazon-sp-api-search-orders',
+	name: 'amazonSpApiSearchOrders',
+	description:
+		'Search Amazon orders via Orders API v2026-01-01 (searchOrders). Filter by created_after (required) and optional created_before. Always includes FULFILLMENT data for fulfillment_status. Optional max_pages drains pages sequentially (max 50). Paginate with next_cursor when truncated.',
+	inputSchema: amazonSpApiSearchOrdersInputSchema,
+	outputSchema: amazonSpApiSearchOrdersOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	execute: async (input, ctx) => AmazonSpApiClient.fromContext(ctx).searchOrders(input)
 })
 
 export const amazonSpApiListInventorySummariesTool = defineTool({
@@ -132,13 +146,14 @@ export const amazonSpApiModule = defineModule({
 	id: 'amazon-sp-api',
 	title: 'Amazon SP-API',
 	description:
-		'Amazon Selling Partner API vendor pack: orders and order items, FBA inventory summaries, reports (create/get/list/document), and catalog item search.',
+		'Amazon Selling Partner API vendor pack: orders v0 and SearchOrders v2026, order items, FBA inventory summaries, reports (create/get/list/document), and catalog item search.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: amazonSpApiAuthSchema },
 	tools: [
 		amazonSpApiListOrdersTool,
 		amazonSpApiGetOrderTool,
 		amazonSpApiGetOrderItemsTool,
+		amazonSpApiSearchOrdersTool,
 		amazonSpApiListInventorySummariesTool,
 		amazonSpApiCreateReportTool,
 		amazonSpApiGetReportTool,

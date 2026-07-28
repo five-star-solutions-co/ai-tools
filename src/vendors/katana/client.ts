@@ -3,6 +3,8 @@
  * Host: `new KatanaClient(auth)`. Agent tools: `fromContext(ctx)`.
  */
 
+import { isPlainObject } from 'es-toolkit'
+
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
@@ -54,6 +56,8 @@ import type {
 	KatanaListSalesOrdersOutput,
 	KatanaListSuppliersInput,
 	KatanaListSuppliersOutput,
+	KatanaQuerySalesOrdersInput,
+	KatanaQuerySalesOrdersOutput,
 	KatanaUpdateCustomerInput,
 	KatanaUpdateCustomerOutput,
 	KatanaUpdateManufacturingOrderInput,
@@ -72,6 +76,9 @@ import {
 	listPageMeta,
 	manufacturingOrderCreateBody,
 	manufacturingOrderUpdateBody,
+	matchOrderCreatedDateScope,
+	normalizeSalesOrderHeader,
+	normalizeSalesOrderRow,
 	pageFromCursor,
 	parseCustomer,
 	parseInventory,
@@ -81,16 +88,20 @@ import {
 	parseProduct,
 	parsePurchaseOrder,
 	parseSalesOrder,
+	parseSalesOrderCreatedAt,
+	parseSalesOrderRow,
 	parseSupplier,
 	productCreateBody,
 	productUpdateBody,
 	purchaseOrderCreateBody,
 	purchaseOrderUpdateBody,
 	salesOrderCreateBody,
+	salesOrderListDateQuery,
 	salesOrderUpdateBody,
 	supplierCreateBody,
 	unwrapResource
 } from './domain'
+import type { ParsedSalesOrderRow } from './domain'
 
 export type KatanaClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -181,6 +192,121 @@ export class KatanaClient {
 			label: 'Katana deleteSalesOrder'
 		})
 		return { deleted: true, id: input.sales_order_id }
+	}
+
+	/**
+	 * Composite sales-order query for reporting/reconciliation.
+	 * Multi-scope × multi-status sequential pagination, dedupe by id, customer + row enrichment.
+	 *
+	 * API spike (GET /sales_orders): created_at_min/max, single status, customer_id, location_id.
+	 * order_created_date ranges are client-side (no list filter). Rows via GET /sales_order_rows
+	 * with sales_order_ids + extend=variant.
+	 */
+	async querySalesOrders(input: KatanaQuerySalesOrdersInput): Promise<KatanaQuerySalesOrdersOutput> {
+		const maxPages = input.max_pages_per_list ?? 20
+		const pageSize = input.page_size ?? 50
+		const byId = new Map<number, ReturnType<typeof parseSalesOrder>>()
+
+		for (const scope of input.scopes) {
+			const statuses: Array<string | undefined> =
+				scope.statuses && scope.statuses.length > 0 ? scope.statuses : [undefined]
+			const dateQuery = salesOrderListDateQuery(scope)
+			for (const status of statuses) {
+				let cursor: string | undefined
+				for (let page = 0; page < maxPages; page += 1) {
+					const pageNum = pageFromCursor(cursor)
+					const { data } = await this.#http.get('/sales_orders', {
+						label: 'Katana querySalesOrders list',
+						query: {
+							page: pageNum,
+							limit: pageSize,
+							...(status && { status }),
+							...(scope.customer_id !== undefined && { customer_id: scope.customer_id }),
+							...(scope.location_id !== undefined && { location_id: scope.location_id }),
+							...dateQuery
+						}
+					})
+					const parsed = parseListEnvelope(data, parseSalesOrder, 'sales orders')
+					for (const order of parsed.items) {
+						if (byId.has(order.id)) continue
+						if (!matchOrderCreatedDateScope(order.order_created_date, scope)) continue
+						const rawRows =
+							isPlainObject(data) && Array.isArray(data['data']) ? data['data'] : Array.isArray(data) ? data : []
+						const raw = rawRows.find((r) => isPlainObject(r) && r['id'] === order.id)
+						const rawCreated = parseSalesOrderCreatedAt(raw) ?? order.created_at
+						byId.set(order.id, { ...order, ...(rawCreated && { created_at: rawCreated }) })
+					}
+					const pageMeta = listPageMeta(pageNum, pageSize, parsed.items.length, parsed.totalPages)
+					if (!pageMeta.next_cursor) break
+					cursor = pageMeta.next_cursor
+				}
+			}
+		}
+
+		const orderIds = [...byId.keys()]
+		const customerCache = new Map<number, string | undefined>()
+		const rowsByOrder = new Map<number, ParsedSalesOrderRow[]>()
+
+		const chunkSize = 50
+		for (let i = 0; i < orderIds.length; i += chunkSize) {
+			const chunk = orderIds.slice(i, i + chunkSize)
+			const rows = await this.#listSalesOrderRowsForOrders(chunk)
+			for (const row of rows) {
+				const list = rowsByOrder.get(row.sales_order_id) ?? []
+				list.push(row)
+				rowsByOrder.set(row.sales_order_id, list)
+			}
+		}
+
+		for (const order of byId.values()) {
+			if (order.customer_id === undefined || customerCache.has(order.customer_id)) continue
+			try {
+				const { customer } = await this.getCustomer({ customer_id: order.customer_id })
+				const combined = [customer.first_name, customer.last_name].filter(Boolean).join(' ')
+				const name = customer.name ?? (combined.length > 0 ? combined : undefined) ?? customer.company
+				customerCache.set(order.customer_id, name && name.length > 0 ? name : undefined)
+			} catch {
+				customerCache.set(order.customer_id, undefined)
+			}
+		}
+
+		const orders = orderIds.map((id) => {
+			const order = byId.get(id)
+			if (!order) {
+				throw new ToolError('Internal order map missing id', { code: 'internal' })
+			}
+			const rows = normalizeSalesOrderRow(rowsByOrder.get(id) ?? [])
+			const customerName = order.customer_id !== undefined ? customerCache.get(order.customer_id) : undefined
+			return normalizeSalesOrderHeader(order, customerName, rows)
+		})
+
+		return { orders, order_count: orders.length }
+	}
+
+	async #listSalesOrderRowsForOrders(salesOrderIds: number[]): Promise<ParsedSalesOrderRow[]> {
+		if (salesOrderIds.length === 0) return []
+		const pageSize = 250
+		const out: ParsedSalesOrderRow[] = []
+		let cursor: string | undefined
+		for (let page = 0; page < 100; page += 1) {
+			const pageNum = pageFromCursor(cursor)
+			const { data } = await this.#http.get('/sales_order_rows', {
+				label: 'Katana listSalesOrderRows',
+				query: {
+					page: pageNum,
+					limit: pageSize,
+					// Docs: array of integers; HttpService query values are scalar — comma join.
+					sales_order_ids: salesOrderIds.join(','),
+					extend: 'variant'
+				}
+			})
+			const parsed = parseListEnvelope(data, parseSalesOrderRow, 'sales order rows')
+			out.push(...parsed.items)
+			const pageMeta = listPageMeta(pageNum, pageSize, parsed.items.length, parsed.totalPages)
+			if (!pageMeta.next_cursor) break
+			cursor = pageMeta.next_cursor
+		}
+		return out
 	}
 
 	// ── Products ────────────────────────────────────────────────────────────

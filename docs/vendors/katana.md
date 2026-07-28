@@ -25,6 +25,7 @@ Katana MRP surface: **sales orders**, **products**, **materials**, **customers**
 | `katana-create-sales-order` | `createSalesOrder` | `POST /sales_orders` |
 | `katana-update-sales-order` | `updateSalesOrder` | `PATCH /sales_orders/{id}` |
 | `katana-delete-sales-order` | `deleteSalesOrder` | `DELETE /sales_orders/{id}` |
+| `katana-query-sales-orders` | `querySalesOrders` | Composite: `GET /sales_orders` + `GET /sales_order_rows` (+ customer enrich) |
 | `katana-list-products` | `listProducts` | `GET /products` |
 | `katana-get-product` | `getProduct` | `GET /products/{id}` |
 | `katana-create-product` | `createProduct` | `POST /products` |
@@ -49,6 +50,16 @@ Katana MRP surface: **sales orders**, **products**, **materials**, **customers**
 | `katana-list-inventory` | `listInventory` | `GET /inventory` |
 
 List responses normalize `{ data, pagination }` into `{ items, next_cursor?, truncated }`. Get/create/update unwrap optional `{ data }` envelopes. Updates use `PATCH`. Delete sales order returns `{ deleted, id }` after `204`.
+
+### Composite query (`querySalesOrders`)
+
+Multi-scope union for reporting/reconciliation:
+
+1. For each scope × each status: `GET /sales_orders` with `created_at_min` (when `created_from` set), `customer_id`, `location_id`, sequential pages.
+2. **Client-side** filter for `order_created_from` / `order_created_to` (list API has no `order_created_date` range params).
+3. Dedupe by order id; enrich customer name via `GET /customers/{id}` (cached).
+4. Line rows via `GET /sales_order_rows?sales_order_ids=…&extend=variant` in chunks of 50 order ids.
+5. Output: normalized headers + rows with `tax_exclusive_total_cents` and `cogs_value_cents` (safe integer cents).
 
 ## Bind
 

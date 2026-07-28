@@ -51,7 +51,8 @@ describe('amazon-sp-api', () => {
 			'amazon-sp-api-list-inventory-summaries',
 			'amazon-sp-api-list-orders',
 			'amazon-sp-api-list-reports',
-			'amazon-sp-api-search-catalog-items'
+			'amazon-sp-api-search-catalog-items',
+			'amazon-sp-api-search-orders'
 		])
 	})
 
@@ -92,6 +93,65 @@ describe('amazon-sp-api', () => {
 			expect(lwaCalls).toBe(1)
 			expect(result.items[0]?.amazon_order_id).toBe('111-222')
 			expect(result.items[0]?.order_total_amount).toBe('10.00')
+			expect(result.truncated).toBe(false)
+		} finally {
+			restore()
+		}
+	})
+
+	test('searchOrders uses Orders API v2026 with FULFILLMENT includedData', async () => {
+		let pages = 0
+		const restore = mockFetch((url, headers) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', expires_in: 3600 }), {
+					status: 200
+				})
+			}
+			expect(url).toContain('/orders/2026-01-01/orders')
+			expect(url).toContain('createdAfter=')
+			expect(url).toContain('includedData=FULFILLMENT')
+			expect(headers.get('x-amz-access-token') ?? headers.get('X-Amz-Access-Token')).toBe('Atza|access')
+			pages += 1
+			if (pages === 1) {
+				return new Response(
+					JSON.stringify({
+						orders: [
+							{
+								orderId: '111-aaa',
+								createdTime: '2026-03-01T12:00:00Z',
+								fulfillment: { fulfillmentStatus: 'SHIPPED' }
+							}
+						],
+						pagination: { nextToken: 'page-2' }
+					}),
+					{ status: 200 }
+				)
+			}
+			expect(url).toContain('paginationToken=page-2')
+			return new Response(
+				JSON.stringify({
+					orders: [
+						{
+							orderId: '111-bbb',
+							createdTime: '2026-03-02T12:00:00Z',
+							fulfillment: { fulfillmentStatus: 'UNSHIPPED' }
+						}
+					]
+				}),
+				{ status: 200 }
+			)
+		})
+		try {
+			const client = new AmazonSpApiClient(auth)
+			const result = await client.searchOrders({
+				created_after: '2026-03-01T00:00:00Z',
+				max_pages: 2
+			})
+			expect(pages).toBe(2)
+			expect(result.items).toEqual([
+				{ order_id: '111-aaa', created_time: '2026-03-01T12:00:00Z', fulfillment_status: 'SHIPPED' },
+				{ order_id: '111-bbb', created_time: '2026-03-02T12:00:00Z', fulfillment_status: 'UNSHIPPED' }
+			])
 			expect(result.truncated).toBe(false)
 		} finally {
 			restore()

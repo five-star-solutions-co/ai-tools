@@ -25,7 +25,10 @@ export {
 	amazonSpApiOrderSchema,
 	amazonSpApiReportSchema,
 	amazonSpApiSearchCatalogItemsInputSchema,
-	amazonSpApiSearchCatalogItemsOutputSchema
+	amazonSpApiSearchCatalogItemsOutputSchema,
+	amazonSpApiSearchOrderSchema,
+	amazonSpApiSearchOrdersInputSchema,
+	amazonSpApiSearchOrdersOutputSchema
 } from './contracts'
 export type {
 	AmazonSpApiAuth,
@@ -51,7 +54,10 @@ export type {
 	AmazonSpApiOrderItem,
 	AmazonSpApiReport,
 	AmazonSpApiSearchCatalogItemsInput,
-	AmazonSpApiSearchCatalogItemsOutput
+	AmazonSpApiSearchCatalogItemsOutput,
+	AmazonSpApiSearchOrder,
+	AmazonSpApiSearchOrdersInput,
+	AmazonSpApiSearchOrdersOutput
 } from './contracts'
 export {
 	amazonSpApiCreateReportTool,
@@ -63,5 +69,6 @@ export {
 	amazonSpApiListOrdersTool,
 	amazonSpApiListReportsTool,
 	amazonSpApiModule,
-	amazonSpApiSearchCatalogItemsTool
+	amazonSpApiSearchCatalogItemsTool,
+	amazonSpApiSearchOrdersTool
 } from './module'

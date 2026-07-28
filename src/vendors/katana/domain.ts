@@ -20,6 +20,9 @@ import type {
 	KatanaProductVariantInput,
 	KatanaPurchaseOrder,
 	KatanaPurchaseOrderRowInput,
+	KatanaNormalizedSalesOrder,
+	KatanaNormalizedSalesOrderRow,
+	KatanaQuerySalesOrderScope,
 	KatanaSalesOrder,
 	KatanaSalesOrderRowInput,
 	KatanaSupplier,
@@ -61,7 +64,13 @@ function optionalString(value: unknown): string | undefined {
 }
 
 function optionalNumber(value: unknown): number | undefined {
-	return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+	if (typeof value === 'number' && Number.isFinite(value)) return value
+	// Katana often returns decimal quantities/money as strings (e.g. "1.00000").
+	if (isString(value) && value.trim().length > 0) {
+		const n = Number(value)
+		if (Number.isFinite(n)) return n
+	}
+	return undefined
 }
 
 function optionalBoolean(value: unknown): boolean | undefined {
@@ -115,6 +124,7 @@ export function parseSalesOrder(value: unknown): KatanaSalesOrder {
 	const currency = optionalString(value['currency'])
 	const additionalInfo = optionalString(value['additional_info'])
 	const customerRef = optionalString(value['customer_ref'])
+	const createdAt = optionalString(value['created_at'])
 	return {
 		id: value['id'],
 		...(orderNo && { order_no: orderNo }),
@@ -126,8 +136,134 @@ export function parseSalesOrder(value: unknown): KatanaSalesOrder {
 		...(currency && { currency }),
 		...(total !== undefined && { total }),
 		...(additionalInfo !== undefined && { additional_info: additionalInfo }),
-		...(customerRef !== undefined && { customer_ref: customerRef })
+		...(customerRef !== undefined && { customer_ref: customerRef }),
+		...(createdAt && { created_at: createdAt })
 	}
+}
+
+/**
+ * Wire query params for GET /sales_orders date windows.
+ * Spike (Katana docs): `created_at_min` / `created_at_max` only — no `order_created_date` list filter.
+ * `order_created_*` scopes are applied client-side after list (see matchOrderCreatedDateScope).
+ */
+export function salesOrderListDateQuery(scope: KatanaQuerySalesOrderScope): Record<string, string> {
+	const out: Record<string, string> = {}
+	if (scope.created_from) out['created_at_min'] = scope.created_from
+	return out
+}
+
+/** Client-side filter for order_created_date when the list endpoint cannot express it. */
+export function matchOrderCreatedDateScope(
+	orderCreatedDate: string | undefined,
+	scope: KatanaQuerySalesOrderScope
+): boolean {
+	if (!scope.order_created_from && !scope.order_created_to) return true
+	if (!orderCreatedDate) return false
+	if (scope.order_created_from && orderCreatedDate < scope.order_created_from) return false
+	if (scope.order_created_to && orderCreatedDate > scope.order_created_to) return false
+	return true
+}
+
+/**
+ * Convert a major-unit money amount to safe integer cents.
+ * Rounds half away from zero via Math.round after * 100.
+ */
+export function moneyToSafeCents(amount: number): number {
+	if (!Number.isFinite(amount)) {
+		throw new ToolError('Invalid money amount for cents conversion', {
+			code: 'upstream',
+			details: { amount }
+		})
+	}
+	const cents = Math.round(amount * 100)
+	if (!Number.isSafeInteger(cents)) {
+		throw new ToolError('Money amount exceeds safe integer cents range', {
+			code: 'upstream',
+			details: { amount }
+		})
+	}
+	return cents
+}
+
+/** Line revenue cents: quantity * price_per_unit - total_discount (tax exclusive). */
+export function lineTaxExclusiveTotalCents(quantity: number, pricePerUnit: number, totalDiscount: number): number {
+	return moneyToSafeCents(quantity * pricePerUnit - totalDiscount)
+}
+
+export type ParsedSalesOrderRow = {
+	sales_order_id: number
+	quantity: number
+	variant_id?: number
+	price_per_unit: number
+	total_discount: number
+	sku?: string
+	/** Unit cost from extended variant when present. */
+	unit_cost?: number
+}
+
+export function parseSalesOrderRow(value: unknown): ParsedSalesOrderRow {
+	if (!isPlainObject(value)) {
+		throw new ToolError('Katana returned an invalid sales order row', { code: 'upstream' })
+	}
+	const salesOrderId = optionalNumber(value['sales_order_id'])
+	const quantity = optionalNumber(value['quantity'])
+	if (salesOrderId === undefined || quantity === undefined) {
+		throw new ToolError('Katana sales order row missing sales_order_id or quantity', { code: 'upstream' })
+	}
+	const pricePerUnit = optionalNumber(value['price_per_unit']) ?? 0
+	const totalDiscount = optionalNumber(value['total_discount']) ?? 0
+	const variantId = optionalNumber(value['variant_id'])
+	const variant = value['variant']
+	let sku = optionalString(value['sku'])
+	let unitCost: number | undefined
+	if (isPlainObject(variant)) {
+		sku = sku ?? optionalString(variant['sku'])
+		unitCost =
+			optionalNumber(variant['purchase_price']) ??
+			optionalNumber(variant['average_cost']) ??
+			optionalNumber(variant['cost_per_unit'])
+	}
+	return {
+		sales_order_id: salesOrderId,
+		quantity,
+		price_per_unit: pricePerUnit,
+		total_discount: totalDiscount,
+		...(variantId !== undefined && { variant_id: variantId }),
+		...(sku && { sku }),
+		...(unitCost !== undefined && { unit_cost: unitCost })
+	}
+}
+
+export function normalizeSalesOrderRow(rows: readonly ParsedSalesOrderRow[]): KatanaNormalizedSalesOrderRow[] {
+	return rows.map((row) => ({
+		quantity: row.quantity,
+		tax_exclusive_total_cents: lineTaxExclusiveTotalCents(row.quantity, row.price_per_unit, row.total_discount),
+		cogs_value_cents: moneyToSafeCents((row.unit_cost ?? 0) * row.quantity),
+		...(row.sku && { sku: row.sku })
+	}))
+}
+
+export function normalizeSalesOrderHeader(
+	order: KatanaSalesOrder,
+	customerName: string | undefined,
+	rows: KatanaNormalizedSalesOrderRow[]
+): KatanaNormalizedSalesOrder {
+	return {
+		id: order.id,
+		...(order.created_at && { created_at: order.created_at }),
+		...(order.order_created_date && { order_created_date: order.order_created_date }),
+		...(order.order_no && { order_no: order.order_no }),
+		...(order.status && { status: order.status }),
+		...(order.customer_id !== undefined && { customer_id: order.customer_id }),
+		...(customerName && { customer_name: customerName }),
+		rows
+	}
+}
+
+/** Parse optional created_at onto a sales order (used by composite enrichment). */
+export function parseSalesOrderCreatedAt(value: unknown): string | undefined {
+	if (!isPlainObject(value)) return undefined
+	return optionalString(value['created_at'])
 }
 
 export function parseProduct(value: unknown): KatanaProduct {

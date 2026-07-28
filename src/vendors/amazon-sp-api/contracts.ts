@@ -92,6 +92,41 @@ export const amazonSpApiGetOrderItemsOutputSchema = z.object({
 	truncated: z.boolean()
 })
 
+// ─── Orders v2026-01-01 SearchOrders ──────────────────────────────────────────
+
+export const amazonSpApiSearchOrdersInputSchema = z.object({
+	created_after: z
+		.string()
+		.min(1)
+		.describe('ISO 8601; orders created at or after this time (required for reconciliation)'),
+	created_before: z.string().min(1).optional().describe('ISO 8601; orders created at or before this time'),
+	marketplace_ids: z
+		.array(z.string().min(1))
+		.min(1)
+		.optional()
+		.describe('Marketplace ids (defaults to auth.marketplace_ids)'),
+	max_results: z.int().min(1).max(100).optional().describe('Page size (1-100, default 100)'),
+	cursor: z.string().min(1).optional().describe('paginationToken from a prior page'),
+	max_pages: z
+		.int()
+		.min(1)
+		.max(50)
+		.optional()
+		.describe('When set, drains up to this many pages and returns a combined list (default 1)')
+})
+
+export const amazonSpApiSearchOrderSchema = z.object({
+	order_id: z.string().describe('Amazon order id'),
+	created_time: z.string().optional().describe('Order created time (ISO 8601)'),
+	fulfillment_status: z.string().optional().describe('Fulfillment status when FULFILLMENT data is included')
+})
+
+export const amazonSpApiSearchOrdersOutputSchema = z.object({
+	items: z.array(amazonSpApiSearchOrderSchema),
+	next_cursor: z.string().optional().describe('paginationToken for the next page when not fully drained'),
+	truncated: z.boolean()
+})
+
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
 export const amazonSpApiListInventorySummariesInputSchema = z.object({
@@ -238,6 +273,9 @@ export type AmazonSpApiGetReportDocumentInput = z.infer<typeof amazonSpApiGetRep
 export type AmazonSpApiGetReportDocumentOutput = z.infer<typeof amazonSpApiGetReportDocumentOutputSchema>
 export type AmazonSpApiSearchCatalogItemsInput = z.infer<typeof amazonSpApiSearchCatalogItemsInputSchema>
 export type AmazonSpApiSearchCatalogItemsOutput = z.infer<typeof amazonSpApiSearchCatalogItemsOutputSchema>
+export type AmazonSpApiSearchOrdersInput = z.infer<typeof amazonSpApiSearchOrdersInputSchema>
+export type AmazonSpApiSearchOrdersOutput = z.infer<typeof amazonSpApiSearchOrdersOutputSchema>
+export type AmazonSpApiSearchOrder = z.infer<typeof amazonSpApiSearchOrderSchema>
 export type AmazonSpApiOrder = z.infer<typeof amazonSpApiOrderSchema>
 export type AmazonSpApiOrderItem = z.infer<typeof amazonSpApiOrderItemSchema>
 export type AmazonSpApiInventorySummary = z.infer<typeof amazonSpApiInventorySummarySchema>

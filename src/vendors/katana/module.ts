@@ -16,6 +16,8 @@ import {
 	katanaCreateSupplierOutputSchema,
 	katanaDeleteSalesOrderInputSchema,
 	katanaDeleteSalesOrderOutputSchema,
+	katanaQuerySalesOrdersInputSchema,
+	katanaQuerySalesOrdersOutputSchema,
 	katanaGetCustomerInputSchema,
 	katanaGetCustomerOutputSchema,
 	katanaGetManufacturingOrderInputSchema,
@@ -115,6 +117,18 @@ export const katanaDeleteSalesOrderTool = defineTool({
 	sideEffect: 'delete',
 	runtime: 'both',
 	execute: async (input, ctx) => KatanaClient.fromContext(ctx).deleteSalesOrder(input)
+})
+
+export const katanaQuerySalesOrdersTool = defineTool({
+	id: 'katana-query-sales-orders',
+	name: 'katanaQuerySalesOrders',
+	description:
+		'Composite Katana MRP sales-order query for reporting: multi-scope union (status × date windows), sequential page drain, dedupe by order id, customer name enrichment, and line rows with tax-exclusive revenue and COGS in integer cents. Use when list/get alone are not enough for reconciliation.',
+	inputSchema: katanaQuerySalesOrdersInputSchema,
+	outputSchema: katanaQuerySalesOrdersOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	execute: async (input, ctx) => KatanaClient.fromContext(ctx).querySalesOrders(input)
 })
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -384,7 +398,7 @@ export const katanaModule = defineModule({
 	id: 'katana',
 	title: 'Katana',
 	description:
-		'Katana MRP vendor pack: sales orders, products, materials, customers, suppliers, purchase orders, manufacturing orders, and inventory.',
+		'Katana MRP vendor pack: sales orders (including composite query for reporting), products, materials, customers, suppliers, purchase orders, manufacturing orders, and inventory.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: katanaAuthSchema },
 	tools: [
@@ -393,6 +407,7 @@ export const katanaModule = defineModule({
 		katanaCreateSalesOrderTool,
 		katanaUpdateSalesOrderTool,
 		katanaDeleteSalesOrderTool,
+		katanaQuerySalesOrdersTool,
 		katanaListProductsTool,
 		katanaGetProductTool,
 		katanaCreateProductTool,

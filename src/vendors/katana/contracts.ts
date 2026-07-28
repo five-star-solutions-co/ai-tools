@@ -40,7 +40,8 @@ export const katanaSalesOrderSchema = z.object({
 	currency: z.string().optional(),
 	total: z.number().optional(),
 	additional_info: z.string().optional(),
-	customer_ref: z.string().optional()
+	customer_ref: z.string().optional(),
+	created_at: z.string().optional().describe('Resource created_at timestamp when returned by Katana')
 })
 
 export const katanaListSalesOrdersInputSchema = z.object({
@@ -104,6 +105,78 @@ export const katanaDeleteSalesOrderInputSchema = z.object({
 export const katanaDeleteSalesOrderOutputSchema = z.object({
 	deleted: z.boolean(),
 	id: z.number()
+})
+
+// ── Sales order composite query ─────────────────────────────────────────────
+
+export const katanaQuerySalesOrderScopeSchema = z.object({
+	created_from: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('ISO 8601 lower bound on resource created_at (maps to created_at_min)'),
+	order_created_from: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('ISO 8601 lower bound on order_created_date (client-side; list API has no order_created filter)'),
+	order_created_to: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('ISO 8601 upper bound on order_created_date (client-side; list API has no order_created filter)'),
+	statuses: z
+		.array(z.string().min(1))
+		.min(1)
+		.max(20)
+		.optional()
+		.describe('Sales order statuses to include for this scope (one API list pass each; single status per call)'),
+	customer_id: z.int().positive().optional().describe('Filter by customer id'),
+	location_id: z.int().positive().optional().describe('Filter by location id')
+})
+
+export const katanaQuerySalesOrdersInputSchema = z.object({
+	scopes: z
+		.array(katanaQuerySalesOrderScopeSchema)
+		.min(1)
+		.max(20)
+		.describe('Independent filter scopes; results are unioned and deduplicated by order id'),
+	max_pages_per_list: z
+		.int()
+		.min(1)
+		.max(100)
+		.optional()
+		.describe('Max sequential pages per scope×status list call (default 20)'),
+	page_size: z.int().min(1).max(250).optional().describe('Page size for list calls (default 50)')
+})
+
+export const katanaNormalizedSalesOrderRowSchema = z.object({
+	sku: z.string().optional().describe('Variant SKU when known'),
+	quantity: z.number().describe('Line quantity'),
+	tax_exclusive_total_cents: z
+		.number()
+		.int()
+		.describe('Line revenue in safe integer cents: (quantity * price_per_unit - total_discount)'),
+	cogs_value_cents: z
+		.number()
+		.int()
+		.describe('Line COGS in safe integer cents when variant cost is available; otherwise 0')
+})
+
+export const katanaNormalizedSalesOrderSchema = z.object({
+	id: z.number(),
+	created_at: z.string().optional().describe('Resource created_at when returned by Katana'),
+	order_created_date: z.string().optional(),
+	order_no: z.string().optional(),
+	status: z.string().optional(),
+	customer_id: z.number().optional(),
+	customer_name: z.string().optional().describe('Enriched from customers API when available'),
+	rows: z.array(katanaNormalizedSalesOrderRowSchema)
+})
+
+export const katanaQuerySalesOrdersOutputSchema = z.object({
+	orders: z.array(katanaNormalizedSalesOrderSchema),
+	order_count: z.number().int().describe('Number of unique orders after deduplication')
 })
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -502,6 +575,11 @@ export type KatanaUpdateSalesOrderInput = z.infer<typeof katanaUpdateSalesOrderI
 export type KatanaUpdateSalesOrderOutput = z.infer<typeof katanaUpdateSalesOrderOutputSchema>
 export type KatanaDeleteSalesOrderInput = z.infer<typeof katanaDeleteSalesOrderInputSchema>
 export type KatanaDeleteSalesOrderOutput = z.infer<typeof katanaDeleteSalesOrderOutputSchema>
+export type KatanaQuerySalesOrderScope = z.infer<typeof katanaQuerySalesOrderScopeSchema>
+export type KatanaQuerySalesOrdersInput = z.infer<typeof katanaQuerySalesOrdersInputSchema>
+export type KatanaQuerySalesOrdersOutput = z.infer<typeof katanaQuerySalesOrdersOutputSchema>
+export type KatanaNormalizedSalesOrder = z.infer<typeof katanaNormalizedSalesOrderSchema>
+export type KatanaNormalizedSalesOrderRow = z.infer<typeof katanaNormalizedSalesOrderRowSchema>
 
 export type KatanaProductVariantInput = z.infer<typeof katanaProductVariantInputSchema>
 export type KatanaProduct = z.infer<typeof katanaProductSchema>

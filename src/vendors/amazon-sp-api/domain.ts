@@ -10,7 +10,8 @@ import type {
 	AmazonSpApiInventorySummary,
 	AmazonSpApiOrder,
 	AmazonSpApiOrderItem,
-	AmazonSpApiReport
+	AmazonSpApiReport,
+	AmazonSpApiSearchOrder
 } from './contracts'
 
 export const LWA_TOKEN_URL = 'https://api.amazon.com/auth/o2/token'
@@ -75,6 +76,47 @@ export function parseOrderPayload(data: unknown): AmazonSpApiOrder {
 		throw new ToolError('Amazon SP-API get order payload invalid', { code: 'upstream' })
 	}
 	return parseOrder(data['payload'])
+}
+
+/** Orders API v2026-01-01 SearchOrders — camelCase body, not v0 payload wrapper. */
+export function parseSearchOrder(value: unknown): AmazonSpApiSearchOrder {
+	if (!isPlainObject(value) || !isString(value['orderId']) || value['orderId'].length === 0) {
+		throw new ToolError('Amazon SP-API searchOrders returned an invalid order', { code: 'upstream' })
+	}
+	const fulfillment = value['fulfillment']
+	const fulfillmentStatus =
+		isPlainObject(fulfillment) && isString(fulfillment['fulfillmentStatus'])
+			? fulfillment['fulfillmentStatus']
+			: undefined
+	return {
+		order_id: value['orderId'],
+		...(isString(value['createdTime']) && { created_time: value['createdTime'] }),
+		...(fulfillmentStatus && { fulfillment_status: fulfillmentStatus })
+	}
+}
+
+export function parseSearchOrdersPayload(data: unknown): {
+	items: AmazonSpApiSearchOrder[]
+	nextToken?: string
+} {
+	if (!isPlainObject(data)) {
+		throw new ToolError('Amazon SP-API searchOrders payload invalid', { code: 'upstream' })
+	}
+	// Some gateways still wrap; accept both shapes.
+	const root = isPlainObject(data['payload']) ? data['payload'] : data
+	if (!isPlainObject(root)) {
+		throw new ToolError('Amazon SP-API searchOrders missing body', { code: 'upstream' })
+	}
+	const orders = root['orders']
+	if (!Array.isArray(orders)) {
+		throw new ToolError('Amazon SP-API searchOrders missing orders array', { code: 'upstream' })
+	}
+	const pagination = root['pagination']
+	const nextToken =
+		isPlainObject(pagination) && isString(pagination['nextToken']) && pagination['nextToken'].length > 0
+			? pagination['nextToken']
+			: undefined
+	return { items: orders.map(parseSearchOrder), ...(nextToken && { nextToken }) }
 }
 
 export function parseOrderItem(value: unknown): AmazonSpApiOrderItem {

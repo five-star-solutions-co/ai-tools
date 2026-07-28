@@ -31,7 +31,9 @@ import type {
 	AmazonSpApiListReportsInput,
 	AmazonSpApiListReportsOutput,
 	AmazonSpApiSearchCatalogItemsInput,
-	AmazonSpApiSearchCatalogItemsOutput
+	AmazonSpApiSearchCatalogItemsOutput,
+	AmazonSpApiSearchOrdersInput,
+	AmazonSpApiSearchOrdersOutput
 } from './contracts'
 import { amazonSpApiAuthSchema } from './contracts'
 import {
@@ -47,6 +49,7 @@ import {
 	parseOrdersPayload,
 	parseReportDocumentPayload,
 	parseSearchCatalogItemsPayload,
+	parseSearchOrdersPayload,
 	requireMarketplaceIds
 } from './domain'
 
@@ -178,6 +181,48 @@ export class AmazonSpApiClient {
 			items: parsed.items,
 			truncated: Boolean(parsed.nextToken),
 			...(parsed.nextToken && { next_cursor: parsed.nextToken })
+		}
+	}
+
+	/**
+	 * GET /orders/2026-01-01/orders (searchOrders).
+	 * Always requests includedData=FULFILLMENT for fulfillmentStatus.
+	 * Optional max_pages drains pages sequentially (bounded).
+	 */
+	async searchOrders(input: AmazonSpApiSearchOrdersInput): Promise<AmazonSpApiSearchOrdersOutput> {
+		const marketplaceIds = requireMarketplaceIds(
+			input.marketplace_ids,
+			this.#auth.marketplace_ids,
+			'Amazon SP-API searchOrders'
+		)
+		const maxPages = input.max_pages ?? 1
+		const pageSize = input.max_results ?? 100
+		const items: AmazonSpApiSearchOrdersOutput['items'] = []
+		let cursor: string | undefined = input.cursor
+		let pages = 0
+		let nextToken: string | undefined
+
+		while (pages < maxPages) {
+			pages += 1
+			const { data } = await this.#spGet('/orders/2026-01-01/orders', 'Amazon SP-API searchOrders', {
+				createdAfter: input.created_after,
+				...(input.created_before && { createdBefore: input.created_before }),
+				marketplaceIds: marketplaceIds.join(','),
+				includedData: 'FULFILLMENT',
+				maxResultsPerPage: pageSize,
+				...(cursor && { paginationToken: cursor })
+			})
+			const parsed = parseSearchOrdersPayload(data)
+			items.push(...parsed.items)
+			nextToken = parsed.nextToken
+			if (!nextToken) break
+			cursor = nextToken
+		}
+
+		return {
+			items,
+			truncated: Boolean(nextToken),
+			...(nextToken && { next_cursor: nextToken })
 		}
 	}
 

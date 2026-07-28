@@ -7,7 +7,7 @@
 | **Module id** | `amazon-sp-api` |
 | **Client** | `AmazonSpApiClient` |
 
-Deliberate surface: **orders** (list/get/items), **FBA inventory summaries**, **reports** (create/get/list/document), **catalog search**.
+Deliberate surface: **orders** (v0 list/get/items + SearchOrders v2026 with FULFILLMENT), **FBA inventory summaries**, **reports** (create/get/list/document), **catalog search**.
 
 ## Auth
 
@@ -41,6 +41,7 @@ Flow: LWA refresh → `access_token`, then SP-API calls with **AwsService** (`ex
 | `amazon-sp-api-get-report` | `getReport` | `GET /reports/2021-06-30/reports/{reportId}` |
 | `amazon-sp-api-list-reports` | `listReports` | `GET /reports/2021-06-30/reports` |
 | `amazon-sp-api-get-report-document` | `getReportDocument` | `GET /reports/2021-06-30/documents/{reportDocumentId}` |
+| `amazon-sp-api-search-orders` | `searchOrders` | `GET /orders/2026-01-01/orders` (SearchOrders + FULFILLMENT) |
 | `amazon-sp-api-search-catalog-items` | `searchCatalogItems` | `GET /catalog/2022-04-01/items` |
 
 ## Bind
