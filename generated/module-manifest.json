@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-28T15:43:45.393Z",
+	"generatedAt": "2026-07-28T20:39:11.756Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -1512,7 +1512,7 @@
 				"presentationSourceSchema"
 			],
 			"runtime": "node",
-			"nodeFormats": ["esm"],
+			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "presentation",
 			"moduleIdSource": "src/modules/presentation/module.ts",
 			"logo": "logos/presentation.svg"

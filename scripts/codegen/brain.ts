@@ -45,3 +45,16 @@ export const NEVER_BUNDLE = [
 	'postal-mime',
 	'zod'
 ] as const
+
+/**
+ * Force-inline into pack dist so consumers (esp. Bun → CJS lambda) never resolve
+ * `@office-open/core`'s broken top-level-await zlib path from node_modules.
+ * Source is patched via `patchedDependencies` before build.
+ */
+export const ALWAYS_BUNDLE = [
+	// picomatch: bare package names only match exact ids; include /** for subpaths
+	'@office-open/**',
+	'fflate',
+	'@noble/hashes',
+	'@noble/hashes/**'
+] as const

@@ -38,6 +38,10 @@ function surfaceEntry(surface: ManifestSurface): string {
 	return path.join(repoRoot, entry)
 }
 
+function isNodeSurface(surface: ManifestSurface): boolean {
+	return surface.runtime === 'node' || surface.runtime === 'both'
+}
+
 async function consumerEntry(surface: ManifestSurface): Promise<string> {
 	const key = surfaceKey(surface)
 	const fixtureDir = path.join(tempRoot, 'fixtures')
@@ -101,20 +105,80 @@ async function buildConsumer(
 	}
 }
 
+/** Bun.build of an arbitrary entry as Node CommonJS with deps inlined (host lambda shape). */
+async function buildNodeCjsBundle(
+	entry: string,
+	label: string,
+	options: { packages?: 'bundle' | 'external'; root?: string } = {}
+): Promise<string> {
+	const packages = options.packages ?? 'bundle'
+	const root = options.root ?? repoRoot
+	const outputDir = path.join(tempRoot, 'forced-cjs', label)
+	const output = path.join(outputDir, 'index.cjs')
+	await mkdir(outputDir, { recursive: true })
+	const build = Bun.spawn({
+		cmd: [
+			process.execPath,
+			'--no-env-file',
+			'build',
+			entry,
+			'--target=node',
+			'--format=cjs',
+			`--packages=${packages}`,
+			`--root=${root}`,
+			`--outdir=${outputDir}`,
+			'--entry-naming=index.cjs'
+		],
+		cwd: repoRoot,
+		stdout: 'pipe',
+		stderr: 'pipe'
+	})
+	const [exitCode, stdout, stderr] = await Promise.all([
+		build.exited,
+		new Response(build.stdout).text(),
+		new Response(build.stderr).text()
+	])
+	if (exitCode !== 0) {
+		throw new Error(`forced Node CJS bundle failed for ${label}:\n${stderr || stdout}`)
+	}
+	return output
+}
+
 async function assertNodeLoad(paths: string[], format: NodeFormat): Promise<void> {
 	if (paths.length === 0) return
 	const script =
 		format === 'cjs'
 			? 'for (const file of JSON.parse(process.argv[1])) require(file)'
 			: "const { pathToFileURL } = await import('node:url'); for (const file of JSON.parse(process.argv[1])) await import(pathToFileURL(file).href)"
-	const process = Bun.spawn({
+	const child = Bun.spawn({
 		cmd: ['node', ...(format === 'esm' ? ['--input-type=module'] : []), '-e', script, JSON.stringify(paths)],
 		stdout: 'pipe',
 		stderr: 'pipe'
 	})
-	const [exitCode, stderr] = await Promise.all([process.exited, new Response(process.stderr).text()])
+	const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()])
 	if (exitCode !== 0) {
 		throw new Error(`Node ${format.toUpperCase()} load failed:\n${stderr}`)
+	}
+}
+
+/**
+ * Footgun that broke host Lambda: top-level `await import(...)` in a dependency.
+ * Bun's CJS emit fails hard on real TLA; this scanner catches residual patterns that
+ * would re-introduce the office-open/core failure (not ordinary await inside async fns).
+ */
+function assertNoTopLevelAwaitImport(source: string, label: string): void {
+	const withoutBlockComments = source.replace(/\/\*[\s\S]*?\*\//g, '')
+	const lines = withoutBlockComments.split('\n')
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i] ?? ''
+		const code = line.replace(/\/\/.*$/, '').trim()
+		if (code.length === 0) continue
+		// Module-level dynamic import await (the exact office-open failure mode)
+		if (/^(?:const|let|var)\s+[\w$]+\s*=\s*await\s+import\s*\(/.test(code) || /^await\s+import\s*\(/.test(code)) {
+			throw new Error(
+				`Node CJS artifact "${label}" has top-level await import at line ${i + 1} (breaks CJS / lambda):\n${line}`
+			)
+		}
 	}
 }
 
@@ -155,5 +219,52 @@ describe('public package compatibility matrix', () => {
 		const documentInputs = Object.keys(documentMetafile?.inputs ?? {})
 		expect(documentInputs.some((input) => input.includes('@office-open/pptx'))).toBe(false)
 		expect(documentInputs.some((input) => input.includes('@office-open/core'))).toBe(false)
+	}, 60_000)
+
+	test('every Node surface CJS-bundles with inlined deps and loads under node require', async () => {
+		// Force CJS even when nodeFormats omits it — host Lambda historically ships CJS archives.
+		const manifest = JSON.parse(
+			await readFile(path.join(repoRoot, 'generated/module-manifest.json'), 'utf8')
+		) as ModuleManifest
+		const nodeSurfaces = [...manifest.brain, ...manifest.modules].filter(isNodeSurface)
+		expect(nodeSurfaces.length).toBeGreaterThan(0)
+
+		const outputs: string[] = []
+		for (const surface of nodeSurfaces) {
+			// Bun CJS build throws on module-level top-level await (the lambda failure mode).
+			// Nested `await import` inside async methods (e.g. pdf.js workers) is fine.
+			const build = await buildConsumer(surface, 'node', 'cjs', 'bundle')
+			outputs.push(build.output)
+		}
+
+		// Real Node.js CommonJS runtime — not Bun's ESM loader.
+		await assertNodeLoad(outputs, 'cjs')
+		expect(outputs.some((file) => file.includes(`${path.sep}presentation${path.sep}`))).toBe(true)
+	}, 120_000)
+
+	test('presentation + office-open core survive Node CJS bundle (regression for TLA zlib)', async () => {
+		const presentationSource = path.join(repoRoot, 'src/modules/presentation/index.ts')
+		const presentationDist = path.join(repoRoot, 'dist/modules/presentation/index.js')
+		const officeOpenUtil = path.join(repoRoot, 'node_modules/@office-open/core/dist/util-Tq9PSjK0.mjs')
+
+		// 1) Patched util: no executable top-level await import of node:zlib
+		const utilSource = await readFile(officeOpenUtil, 'utf8')
+		assertNoTopLevelAwaitImport(utilSource, 'office-open-util-source')
+		expect(utilSource).not.toMatch(/const\s+zlib\s*=\s*await\s+import\s*\(\s*['"]node:zlib['"]\s*\)/)
+
+		// 2) Source entry → CJS with packages=bundle (same failure mode as host lambda)
+		const fromSource = await buildNodeCjsBundle(presentationSource, 'presentation-source')
+		assertNoTopLevelAwaitImport(await readFile(fromSource, 'utf8'), 'presentation-source')
+		await assertNodeLoad([fromSource], 'cjs')
+
+		// 3) Built dist entry → CJS rebundle (what hosts often import from package)
+		const fromDist = await buildNodeCjsBundle(presentationDist, 'presentation-dist')
+		assertNoTopLevelAwaitImport(await readFile(fromDist, 'utf8'), 'presentation-dist')
+		await assertNodeLoad([fromDist], 'cjs')
+
+		// 4) office-open util alone as CJS (guards the patch independent of presentation)
+		const utilCjs = await buildNodeCjsBundle(officeOpenUtil, 'office-open-util')
+		assertNoTopLevelAwaitImport(await readFile(utilCjs, 'utf8'), 'office-open-util-cjs')
+		await assertNodeLoad([utilCjs], 'cjs')
 	}, 60_000)
 })

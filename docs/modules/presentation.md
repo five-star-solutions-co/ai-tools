@@ -5,7 +5,7 @@
 | **Import** | `@harryy/ai-tools/presentation` |
 | **Kind** | capability **seam** (`src/modules/presentation`) |
 | **Module id** | `presentation` |
-| **Runtime** | Node ESM only |
+| **Runtime** | Node (ESM + CJS) |
 | **Auth** | Host: `{ storage: S3Auth }` for ArtifactRef IO |
 | **Tools** | `presentation-read`, `presentation-build`, `presentation-edit` |
 
@@ -19,7 +19,12 @@ PPTX reader, builder, and editor. This is intentionally separate from [`document
 | PPTX build | PptxGenJS |
 | PPTX slide-content edit | `pptx-automizer` |
 
-`@office-open/core` currently contains top-level await in its shared Node compression path. Presentation therefore remains Node ESM-only until that dependency exposes runtime-conditional packaging without top-level await in the CommonJS graph.
+`@office-open/core@0.10.13` ships top-level `await import("node:zlib")` in its compression util, which breaks Bun → CJS lambda bundlers. This package:
+
+1. Applies a Bun patch (`patches/@office-open%2Fcore@0.10.13.patch`) that drops the optional native-zlib init (fflate-only fallback).
+2. Force-bundles `@office-open/*` into the presentation pack dist so consumers do not re-resolve the broken module graph.
+
+Public emit is Node ESM; the package-compatibility suite also forces a Node **CommonJS** consumer bundle+`require` for every Node pack (including presentation) so top-level-await regressions cannot ship.
 
 ## Tools
 

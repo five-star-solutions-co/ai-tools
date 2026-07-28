@@ -77,6 +77,7 @@ export default defineConfig({
 			'p-retry',
 			'postal-mime',
 			'zod'
-		]
+		],
+		alwaysBundle: ['@office-open/**', 'fflate', '@noble/hashes', '@noble/hashes/**']
 	}
 })

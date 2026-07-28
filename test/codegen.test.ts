@@ -112,6 +112,6 @@ describe('repo codegen artifacts', () => {
 		expect(manifest.brain.every((surface) => ['node', 'edge', 'both'].includes(surface.runtime))).toBe(true)
 		expect(manifest.modules.every((surface) => ['node', 'edge', 'both'].includes(surface.runtime))).toBe(true)
 		expect(manifest.modules.find((surface) => surface.key === 'document')?.nodeFormats).toEqual(['esm', 'cjs'])
-		expect(manifest.modules.find((surface) => surface.key === 'presentation')?.nodeFormats).toEqual(['esm'])
+		expect(manifest.modules.find((surface) => surface.key === 'presentation')?.nodeFormats).toEqual(['esm', 'cjs'])
 	})
 })
