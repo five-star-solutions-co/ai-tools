@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import { validateModule } from '../../src/core'
+import { ToolError, validateModule } from '../../src/core'
 import { AmazonSpApiClient, amazonSpApiModule } from '../../src/vendors/amazon-sp-api'
+import { parseSettlementV2Tsv, parseUsMoneyToSafeCents } from '../../src/vendors/amazon-sp-api/domain/settlement'
 
 function mockFetch(
 	handler: (
@@ -48,6 +49,7 @@ describe('amazon-sp-api', () => {
 			'amazon-sp-api-get-order-items',
 			'amazon-sp-api-get-report',
 			'amazon-sp-api-get-report-document',
+			'amazon-sp-api-get-settlement-summary',
 			'amazon-sp-api-list-inventory-summaries',
 			'amazon-sp-api-list-orders',
 			'amazon-sp-api-list-reports',
@@ -180,5 +182,198 @@ describe('amazon-sp-api', () => {
 		} finally {
 			restore()
 		}
+	})
+
+	test('getSettlementSummary lists DONE report, downloads once, returns eight fields', async () => {
+		const header = [
+			'settlement-id',
+			'settlement-start-date',
+			'settlement-end-date',
+			'deposit-date',
+			'total-amount',
+			'currency',
+			'transaction-type',
+			'order-id',
+			'merchant-order-id',
+			'adjustment-id',
+			'shipment-id',
+			'marketplace-name',
+			'amount-type',
+			'amount-description',
+			'amount',
+			'fulfillment-id',
+			'posted-date',
+			'order-item-code',
+			'merchant-order-item-id',
+			'merchant-adjustment-item-id',
+			'sku',
+			'quantity-purchased',
+			'promotion-id'
+		].join('\t')
+		const row = (amount: string) =>
+			[
+				'12345678901',
+				'2026-01-01 00:00:00 UTC',
+				'2026-01-15 23:59:59 UTC',
+				'2026-01-17 00:00:00 UTC',
+				'25.50',
+				'USD',
+				'Order',
+				'111-SECRET',
+				'',
+				'',
+				'',
+				'Amazon.com',
+				'ItemPrice',
+				'Principal',
+				amount,
+				'',
+				'2026-01-02',
+				'',
+				'',
+				'',
+				'SKU-SECRET',
+				'1',
+				''
+			].join('\t')
+		// 10 + 15.50 = 25.50
+		const tsv = `${header}\n${row('10.00')}\n${row('15.50')}\n`
+
+		const restore = mockFetch((url) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', expires_in: 3600 }), {
+					status: 200
+				})
+			}
+			if (url.includes('/reports/2021-06-30/reports') && !url.includes('/documents/')) {
+				expect(url).toContain('GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE_V2')
+				expect(url).toContain('DONE')
+				return new Response(
+					JSON.stringify({
+						reports: [
+							{
+								reportId: 'rep-1',
+								reportType: 'GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE_V2',
+								processingStatus: 'DONE',
+								reportDocumentId: 'doc-1',
+								createdTime: '2026-01-18T00:00:00Z'
+							}
+						]
+					}),
+					{ status: 200 }
+				)
+			}
+			if (url.includes('/reports/2021-06-30/documents/doc-1')) {
+				return new Response(
+					JSON.stringify({
+						reportDocumentId: 'doc-1',
+						url: 'https://tortuga.amazon.com/settlement-doc-body'
+					}),
+					{ status: 200 }
+				)
+			}
+			if (url.includes('tortuga.amazon.com/settlement-doc-body')) {
+				return new Response(tsv, {
+					status: 200,
+					headers: { 'content-type': 'text/tab-separated-values' }
+				})
+			}
+			return new Response(`unexpected ${url}`, { status: 404 })
+		})
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			const result = await client.getSettlementSummary({})
+			expect(result).toEqual({
+				settlement_id: '12345678901',
+				settlement_start_date: '2026-01-01 00:00:00 UTC',
+				settlement_end_date: '2026-01-15 23:59:59 UTC',
+				deposit_date: '2026-01-17 00:00:00 UTC',
+				currency: 'USD',
+				total_amount_cents: 2550,
+				amount_sum_cents: 2550,
+				row_count: 2
+			})
+			// Output must not leak order/sku secrets from the TSV.
+			expect(JSON.stringify(result)).not.toContain('111-SECRET')
+			expect(JSON.stringify(result)).not.toContain('SKU-SECRET')
+			expect(JSON.stringify(result)).not.toContain('tortuga')
+		} finally {
+			restore()
+		}
+	})
+})
+
+describe('amazon-sp-api settlement domain', () => {
+	const header = [
+		'settlement-id',
+		'settlement-start-date',
+		'settlement-end-date',
+		'deposit-date',
+		'total-amount',
+		'currency',
+		'transaction-type',
+		'order-id',
+		'merchant-order-id',
+		'adjustment-id',
+		'shipment-id',
+		'marketplace-name',
+		'amount-type',
+		'amount-description',
+		'amount',
+		'fulfillment-id',
+		'posted-date',
+		'order-item-code',
+		'merchant-order-item-id',
+		'merchant-adjustment-item-id',
+		'sku',
+		'quantity-purchased',
+		'promotion-id'
+	].join('\t')
+
+	test('parseUsMoneyToSafeCents and sum mismatch', () => {
+		expect(parseUsMoneyToSafeCents('12.34')).toBe(1234)
+		expect(parseUsMoneyToSafeCents('-1.00')).toBe(-100)
+		expect(parseUsMoneyToSafeCents('1,234.56')).toBe(123456)
+
+		const bad = `${header}\n${[
+			'1',
+			's',
+			'e',
+			'd',
+			'10.00',
+			'USD',
+			't',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'9.00',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			''
+		].join('\t')}\n`
+		expect(() => parseSettlementV2Tsv(bad)).toThrow(ToolError)
+		try {
+			parseSettlementV2Tsv(bad)
+		} catch (error) {
+			expect(error).toBeInstanceOf(ToolError)
+			if (error instanceof ToolError) {
+				expect(error.message).toContain('does not match total-amount')
+				expect(JSON.stringify(error.details ?? {})).not.toContain('order')
+			}
+		}
+	})
+
+	test('rejects wrong header columns', () => {
+		expect(() => parseSettlementV2Tsv('a\tb\n1\t2\n')).toThrow(ToolError)
 	})
 })

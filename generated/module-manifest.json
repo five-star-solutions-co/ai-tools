@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-28T14:33:11.516Z",
+	"generatedAt": "2026-07-28T14:47:36.544Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -73,6 +73,8 @@
 				"AmazonSpApiGetReportDocumentOutput",
 				"AmazonSpApiGetReportInput",
 				"AmazonSpApiGetReportOutput",
+				"AmazonSpApiGetSettlementSummaryInput",
+				"AmazonSpApiGetSettlementSummaryOutput",
 				"AmazonSpApiInventorySummary",
 				"AmazonSpApiListInventorySummariesInput",
 				"AmazonSpApiListInventorySummariesOutput",
@@ -88,6 +90,7 @@
 				"AmazonSpApiSearchOrder",
 				"AmazonSpApiSearchOrdersInput",
 				"AmazonSpApiSearchOrdersOutput",
+				"AmazonSpApiSettlementSummary",
 				"amazonSpApiAuthSchema",
 				"amazonSpApiCatalogItemSchema",
 				"amazonSpApiCreateReportInputSchema",
@@ -106,6 +109,9 @@
 				"amazonSpApiGetReportInputSchema",
 				"amazonSpApiGetReportOutputSchema",
 				"amazonSpApiGetReportTool",
+				"amazonSpApiGetSettlementSummaryInputSchema",
+				"amazonSpApiGetSettlementSummaryOutputSchema",
+				"amazonSpApiGetSettlementSummaryTool",
 				"amazonSpApiInventorySummarySchema",
 				"amazonSpApiListInventorySummariesInputSchema",
 				"amazonSpApiListInventorySummariesOutputSchema",
@@ -126,7 +132,8 @@
 				"amazonSpApiSearchOrderSchema",
 				"amazonSpApiSearchOrdersInputSchema",
 				"amazonSpApiSearchOrdersOutputSchema",
-				"amazonSpApiSearchOrdersTool"
+				"amazonSpApiSearchOrdersTool",
+				"amazonSpApiSettlementSummarySchema"
 			],
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],

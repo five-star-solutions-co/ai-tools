@@ -21,7 +21,9 @@ import {
 	amazonSpApiSearchCatalogItemsInputSchema,
 	amazonSpApiSearchCatalogItemsOutputSchema,
 	amazonSpApiSearchOrdersInputSchema,
-	amazonSpApiSearchOrdersOutputSchema
+	amazonSpApiSearchOrdersOutputSchema,
+	amazonSpApiGetSettlementSummaryInputSchema,
+	amazonSpApiGetSettlementSummaryOutputSchema
 } from './contracts'
 
 export const amazonSpApiListOrdersTool = defineTool({
@@ -142,11 +144,23 @@ export const amazonSpApiSearchCatalogItemsTool = defineTool({
 	execute: async (input, ctx) => AmazonSpApiClient.fromContext(ctx).searchCatalogItems(input)
 })
 
+export const amazonSpApiGetSettlementSummaryTool = defineTool({
+	id: 'amazon-sp-api-get-settlement-summary',
+	name: 'amazonSpApiGetSettlementSummary',
+	description:
+		'Summarize the newest completed Amazon Flat File V2 settlement report (or a specific report_id): downloads one document, validates the TSV, and returns eight summary fields in integer cents (settlement id, period, deposit date, currency, total and amount sum, row count). Does not return line-level order or SKU data. Optional created_since (default last 90 days when listing).',
+	inputSchema: amazonSpApiGetSettlementSummaryInputSchema,
+	outputSchema: amazonSpApiGetSettlementSummaryOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	execute: async (input, ctx) => AmazonSpApiClient.fromContext(ctx).getSettlementSummary(input)
+})
+
 export const amazonSpApiModule = defineModule({
 	id: 'amazon-sp-api',
 	title: 'Amazon SP-API',
 	description:
-		'Amazon Selling Partner API vendor pack: orders v0 and SearchOrders v2026, order items, FBA inventory summaries, reports (create/get/list/document), and catalog item search.',
+		'Amazon Selling Partner API vendor pack: orders v0 and SearchOrders v2026, order items, FBA inventory summaries, reports (create/get/list/document), settlement V2 summary, and catalog item search.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: amazonSpApiAuthSchema },
 	tools: [
@@ -159,6 +173,7 @@ export const amazonSpApiModule = defineModule({
 		amazonSpApiGetReportTool,
 		amazonSpApiListReportsTool,
 		amazonSpApiGetReportDocumentTool,
+		amazonSpApiGetSettlementSummaryTool,
 		amazonSpApiSearchCatalogItemsTool
 	]
 })

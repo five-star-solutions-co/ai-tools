@@ -24,6 +24,8 @@ import type {
 	AmazonSpApiGetReportDocumentOutput,
 	AmazonSpApiGetReportInput,
 	AmazonSpApiGetReportOutput,
+	AmazonSpApiGetSettlementSummaryInput,
+	AmazonSpApiGetSettlementSummaryOutput,
 	AmazonSpApiListInventorySummariesInput,
 	AmazonSpApiListInventorySummariesOutput,
 	AmazonSpApiListOrdersInput,
@@ -52,6 +54,12 @@ import {
 	parseSearchOrdersPayload,
 	requireMarketplaceIds
 } from './domain'
+import {
+	SETTLEMENT_MAX_COMPRESSED_BYTES,
+	SETTLEMENT_REPORT_TYPE_V2,
+	settlementCreatedSinceIso,
+	summarizeSettlementDocument
+} from './domain/settlement'
 
 export type AmazonSpApiClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -59,6 +67,8 @@ export class AmazonSpApiClient {
 	readonly #auth: AmazonSpApiAuth
 	readonly #lwa: HttpService
 	readonly #api: AwsService
+	/** Absolute URL document download (report document URLs). */
+	readonly #download: HttpService
 	#accessToken: string | undefined
 	#accessTokenExpiresAt = 0
 
@@ -84,6 +94,10 @@ export class AmazonSpApiClient {
 			baseURL: this.#auth.endpoint,
 			label: 'Amazon SP-API',
 			...(this.#auth.session_token && { sessionToken: this.#auth.session_token })
+		})
+		this.#download = new HttpService({
+			...options,
+			label: 'Amazon SP-API report download'
 		})
 	}
 
@@ -318,6 +332,64 @@ export class AmazonSpApiClient {
 			'Amazon SP-API getReportDocument'
 		)
 		return parseReportDocumentPayload(data)
+	}
+
+	/**
+	 * Composite: newest DONE Flat File V2 settlement report (or `report_id`) →
+	 * one document download → eight summary fields in safe integer cents.
+	 * Never returns raw TSV rows, order ids, skus, or document URLs.
+	 */
+	async getSettlementSummary(
+		input: AmazonSpApiGetSettlementSummaryInput = {}
+	): Promise<AmazonSpApiGetSettlementSummaryOutput> {
+		const reportDocumentId = await this.#resolveSettlementReportDocumentId(input)
+		const doc = await this.getReportDocument({ report_document_id: reportDocumentId })
+		// Download uses absolute URL from Amazon; do not put URL in errors downstream.
+		const { bytes } = await this.#download.bytes('GET', doc.url, {
+			label: 'Amazon SP-API settlement document',
+			maxBytes: SETTLEMENT_MAX_COMPRESSED_BYTES
+		})
+		return await summarizeSettlementDocument(bytes, doc.compression_algorithm)
+	}
+
+	async #resolveSettlementReportDocumentId(input: AmazonSpApiGetSettlementSummaryInput): Promise<string> {
+		if (input.report_id) {
+			const { report } = await this.getReport({ report_id: input.report_id })
+			if (report.processing_status && report.processing_status !== 'DONE') {
+				throw new ToolError('Settlement report is not DONE', {
+					code: 'bad_input',
+					details: { processing_status: report.processing_status }
+				})
+			}
+			if (!report.report_document_id) {
+				throw new ToolError('Settlement report has no document id', { code: 'upstream' })
+			}
+			return report.report_document_id
+		}
+
+		const createdSince = input.created_since ?? settlementCreatedSinceIso()
+		// Drain a few list pages; Amazon returns newest first for this endpoint.
+		let cursor: string | undefined
+		for (let page = 0; page < 5; page += 1) {
+			const listed = await this.listReports({
+				report_types: [SETTLEMENT_REPORT_TYPE_V2],
+				processing_statuses: ['DONE'],
+				created_since: createdSince,
+				page_size: 100,
+				...(cursor && { cursor })
+			})
+			for (const report of listed.items) {
+				if (report.report_document_id) {
+					return report.report_document_id
+				}
+			}
+			if (!listed.next_cursor) break
+			cursor = listed.next_cursor
+		}
+
+		throw new ToolError('No completed settlement report found in the retention window', {
+			code: 'not_found'
+		})
 	}
 
 	/** GET /catalog/2022-04-01/items */

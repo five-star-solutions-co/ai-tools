@@ -221,6 +221,42 @@ export const amazonSpApiGetReportDocumentOutputSchema = z.object({
 	compression_algorithm: z.string().optional()
 })
 
+// ─── Settlement summary (Flat File V2 composite) ──────────────────────────────
+
+/**
+ * Composite input: pick newest completed V2 settlement report in the retention
+ * window (default 90d), download one document, return eight summary fields only.
+ */
+export const amazonSpApiGetSettlementSummaryInputSchema = z.object({
+	report_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Optional report id; when set, uses this report instead of listing the newest DONE settlement report'),
+	created_since: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('ISO 8601 lower bound when listing reports (default: now minus 90 days)')
+})
+
+/** Eight summary fields only — never raw TSV rows. */
+export const amazonSpApiSettlementSummarySchema = z.object({
+	settlement_id: z.string().describe('Amazon settlement id'),
+	settlement_start_date: z.string().describe('Settlement period start'),
+	settlement_end_date: z.string().describe('Settlement period end'),
+	deposit_date: z.string().describe('Deposit date when present; otherwise settlement end'),
+	currency: z.string().describe('ISO currency code from the report'),
+	total_amount_cents: z
+		.number()
+		.int()
+		.describe('Report total-amount as safe integer cents (must equal amount_sum_cents)'),
+	amount_sum_cents: z.number().int().describe('Sum of amount column as safe integer cents'),
+	row_count: z.number().int().describe('Number of data rows in the TSV (excluding header)')
+})
+
+export const amazonSpApiGetSettlementSummaryOutputSchema = amazonSpApiSettlementSummarySchema
+
 // ─── Catalog (2022-04-01) ─────────────────────────────────────────────────────
 
 export const amazonSpApiSearchCatalogItemsInputSchema = z.object({
@@ -276,6 +312,9 @@ export type AmazonSpApiSearchCatalogItemsOutput = z.infer<typeof amazonSpApiSear
 export type AmazonSpApiSearchOrdersInput = z.infer<typeof amazonSpApiSearchOrdersInputSchema>
 export type AmazonSpApiSearchOrdersOutput = z.infer<typeof amazonSpApiSearchOrdersOutputSchema>
 export type AmazonSpApiSearchOrder = z.infer<typeof amazonSpApiSearchOrderSchema>
+export type AmazonSpApiGetSettlementSummaryInput = z.infer<typeof amazonSpApiGetSettlementSummaryInputSchema>
+export type AmazonSpApiGetSettlementSummaryOutput = z.infer<typeof amazonSpApiGetSettlementSummaryOutputSchema>
+export type AmazonSpApiSettlementSummary = z.infer<typeof amazonSpApiSettlementSummarySchema>
 export type AmazonSpApiOrder = z.infer<typeof amazonSpApiOrderSchema>
 export type AmazonSpApiOrderItem = z.infer<typeof amazonSpApiOrderItemSchema>
 export type AmazonSpApiInventorySummary = z.infer<typeof amazonSpApiInventorySummarySchema>
