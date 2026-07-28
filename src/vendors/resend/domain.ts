@@ -22,7 +22,9 @@ export function buildSendPayload(input: ResendSendInput): Record<string, unknown
 				filename: att.filename,
 				content: att.content,
 				content_type: att.type,
-				...(att.disposition && { content_disposition: att.disposition })
+				...(att.disposition && { content_disposition: att.disposition }),
+				// Resend REST uses content_id for CID inline images.
+				...(att.content_id && { content_id: att.content_id })
 			}))
 		})
 	}

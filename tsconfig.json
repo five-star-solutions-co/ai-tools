@@ -15,7 +15,8 @@
 		"verbatimModuleSyntax": true,
 		"isolatedModules": true,
 		"noEmit": true,
-		"types": ["bun"]
+		"types": ["bun"],
+		"allowSyntheticDefaultImports": true
 	},
 	"include": ["src", "test", "scripts", "tsdown.config.ts"]
 }

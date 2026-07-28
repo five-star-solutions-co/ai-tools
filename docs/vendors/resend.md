@@ -54,3 +54,5 @@ contracts.ts · domain.ts · client.ts · module.ts · index.ts
 ```
 
 Email vertical kit: `src/vendors/_email/`. Multi-provider seam: [email](../modules/email.md).
+
+Attachments support optional `content_id` for HTML `cid:…` inline images (mapped to Resend `content_id`; pair with `disposition: 'inline'`).

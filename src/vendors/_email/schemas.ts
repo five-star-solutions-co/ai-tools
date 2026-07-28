@@ -24,7 +24,13 @@ export const attachmentSchema = z.object({
 	content: z.string().min(1).describe('Base64-encoded file bytes (no data: URL prefix)'),
 	filename: z.string().min(1).max(255).describe('Attachment file name'),
 	type: z.string().min(1).describe('MIME type, for example application/pdf'),
-	disposition: z.enum(['attachment', 'inline']).optional().describe('Content disposition. Defaults to attachment')
+	disposition: z.enum(['attachment', 'inline']).optional().describe('Content disposition. Defaults to attachment'),
+	content_id: z
+		.string()
+		.min(1)
+		.max(128)
+		.optional()
+		.describe('Content-ID for inline CID images (HTML src="cid:…"); omit angle brackets')
 })
 
 export type EmailAttachment = z.infer<typeof attachmentSchema>

@@ -14,6 +14,12 @@ function asRecord(value: unknown): Record<string, unknown> {
 	return value
 }
 
+function bodyFromInit(init?: RequestInit): Record<string, unknown> {
+	const raw = init?.body
+	if (typeof raw !== 'string') throw new Error('expected string body')
+	return asRecord(JSON.parse(raw))
+}
+
 function mockFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
 	const original = globalThis.fetch
 	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -55,7 +61,7 @@ describe('cloudflare-email', () => {
 			const headers = new Headers(init?.headers)
 			expect(headers.get('Authorization')).toBe('Bearer tok_secret')
 			expect(headers.get('Content-Type')).toContain('application/json')
-			const body = asRecord(JSON.parse(String(init?.body)))
+			const body = bodyFromInit(init)
 			expect(body['to']).toEqual(['hello@example.com'])
 			expect(body['from']).toEqual({ email: 'from@example.com', name: 'From' })
 			expect(body['subject']).toBe('Hi')
@@ -84,6 +90,45 @@ describe('cloudflare-email', () => {
 				attachments: [{ content: 'dGVzdA==', filename: 'a.txt', type: 'text/plain', disposition: 'attachment' }]
 			})
 			expect(result).toEqual({ success: true, accepted: ['hello@example.com'] })
+		} finally {
+			restore()
+		}
+	})
+
+	test('maps content_id to contentId for inline CID images', async () => {
+		const restore = mockFetch((_url, init) => {
+			const body = bodyFromInit(init)
+			expect(body['html']).toBe('<p><img src="cid:logo"/></p>')
+			expect(body['attachments']).toEqual([
+				{
+					content: 'aW1n',
+					filename: 'logo.png',
+					type: 'image/png',
+					disposition: 'inline',
+					contentId: 'logo'
+				}
+			])
+			expect(JSON.stringify(body)).not.toContain('content_id')
+			return new Response(JSON.stringify(okBody), { status: 200 })
+		})
+
+		try {
+			const client = new CloudflareEmailClient(auth)
+			await client.send({
+				to: 'hello@example.com',
+				from: 'from@example.com',
+				subject: 'Logo',
+				html: '<p><img src="cid:logo"/></p>',
+				attachments: [
+					{
+						content: 'aW1n',
+						filename: 'logo.png',
+						type: 'image/png',
+						disposition: 'inline',
+						content_id: 'logo'
+					}
+				]
+			})
 		} finally {
 			restore()
 		}

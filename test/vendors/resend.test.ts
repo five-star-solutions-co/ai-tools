@@ -78,6 +78,44 @@ describe('resend', () => {
 		}
 	})
 
+	test('maps content_id for inline CID images', async () => {
+		const restore = mockFetch((_url, init) => {
+			const body = bodyFromInit(init)
+			expect(body['attachments']).toEqual([
+				{
+					filename: 'logo.png',
+					content: 'aW1n',
+					content_type: 'image/png',
+					content_disposition: 'inline',
+					content_id: 'logo'
+				}
+			])
+			return new Response(JSON.stringify({ id: 'msg_cid' }), { status: 200 })
+		})
+
+		try {
+			const client = new ResendClient(auth)
+			const result = await client.send({
+				to: 'hello@example.com',
+				from: 'from@example.com',
+				subject: 'Logo',
+				html: '<p><img src="cid:logo"/></p>',
+				attachments: [
+					{
+						content: 'aW1n',
+						filename: 'logo.png',
+						type: 'image/png',
+						disposition: 'inline',
+						content_id: 'logo'
+					}
+				]
+			})
+			expect(result).toEqual({ success: true, id: 'msg_cid' })
+		} finally {
+			restore()
+		}
+	})
+
 	test('send tool via withAuth + fromContext', async () => {
 		const bound = withAuth(resendModule, auth)
 		const tool = bound.tools.find((t) => t.id === 'resend-send')

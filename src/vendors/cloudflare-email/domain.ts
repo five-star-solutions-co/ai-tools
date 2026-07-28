@@ -12,12 +12,22 @@ import type { CloudflareEmailSendInput, CloudflareEmailSendOutput } from './cont
 
 export function buildSendPayload(input: CloudflareEmailSendInput): Record<string, unknown> {
 	return {
-		...pick(input, ['subject', 'html', 'text', 'headers', 'attachments']),
+		...pick(input, ['subject', 'html', 'text', 'headers']),
 		to: addressObjectList(input.to),
 		from: addressObject(input.from),
 		cc: addressObjectList(input.cc),
 		bcc: addressObjectList(input.bcc),
-		...(input.reply_to && { replyTo: addressObject(input.reply_to) })
+		...(input.reply_to && { replyTo: addressObject(input.reply_to) }),
+		...(input.attachments && {
+			attachments: input.attachments.map((att) => ({
+				content: att.content,
+				filename: att.filename,
+				type: att.type,
+				...(att.disposition && { disposition: att.disposition }),
+				// Cloudflare Email Sending uses camelCase wire fields (same as replyTo).
+				...(att.content_id && { contentId: att.content_id })
+			}))
+		})
 	}
 }
 

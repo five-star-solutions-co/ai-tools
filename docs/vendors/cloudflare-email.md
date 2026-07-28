@@ -77,7 +77,7 @@ Never on tool inputs.
 | `send` | `POST /accounts/{account_id}/email/sending/send` |
 | `sendBatch` | N × `send` via `runBatchItems` (partial failure OK) |
 
-Payload uses Cloudflare REST field names (`replyTo` camelCase, attachments `{ content, filename, type, disposition }`). Domain input stays snake_case (`reply_to`) for host/tool consistency with other email packs.
+Payload uses Cloudflare REST field names (`replyTo` camelCase, attachments `{ content, filename, type, disposition?, contentId? }`). Domain input stays snake_case (`reply_to`, `content_id`) for host/tool consistency with other email packs. Optional `content_id` on attachments enables HTML `cid:…` inline images (pair with `disposition: 'inline'`).
 
 ## Email vertical (`vendors/_email`)
 
