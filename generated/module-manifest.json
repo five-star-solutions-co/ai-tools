@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-28T15:31:34.499Z",
+	"generatedAt": "2026-07-28T15:43:45.393Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -401,7 +401,9 @@
 				"cloudflareBrowserStartSessionInputSchema",
 				"cloudflareBrowserStartSessionTool",
 				"cloudflareBrowserStopSessionTool",
-				"cloudflareBrowserViewportSchema"
+				"cloudflareBrowserViewportSchema",
+				"plainTextFromHtml",
+				"titleFromHtml"
 			],
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
@@ -2204,9 +2206,13 @@
 			"entry": "src/vendors/textract/index.ts",
 			"entryKey": "vendors/textract/index",
 			"exportNames": [
+				"DEFAULT_EXTRACT_CHUNK_MAX_CHARS",
+				"DEFAULT_EXTRACT_CHUNK_OVERLAP",
 				"DEFAULT_POLL_INTERVAL_MS",
 				"DEFAULT_POLL_TIMEOUT_MS",
 				"MAX_BATCH_EXTRACT",
+				"MAX_EXTRACT_CHUNK_MAX_CHARS",
+				"MAX_INLINE_EXTRACT_CHARS",
 				"MAX_POLL_INTERVAL_MS",
 				"MAX_POLL_TIMEOUT_MS",
 				"TextractAuth",
@@ -2216,8 +2222,11 @@
 				"TextractExtractTextBatchInput",
 				"TextractExtractTextBatchOutput",
 				"TextractExtractTextInput",
+				"TextractOutputMode",
 				"TextractStatusInput",
+				"TextractTextChunk",
 				"textractAuthSchema",
+				"textractChunkOptionsSchema",
 				"textractExtractResultSchema",
 				"textractExtractTextBatchInputSchema",
 				"textractExtractTextBatchOutputSchema",
@@ -2226,7 +2235,9 @@
 				"textractExtractTextTool",
 				"textractGetStatusTool",
 				"textractModule",
-				"textractStatusInputSchema"
+				"textractOutputModeSchema",
+				"textractStatusInputSchema",
+				"textractTextChunkSchema"
 			],
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],

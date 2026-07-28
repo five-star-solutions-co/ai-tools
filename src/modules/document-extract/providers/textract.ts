@@ -1,21 +1,23 @@
 /**
  * Textract provider for the document-extract seam.
- * Wraps `TextractClient` — no AWS HTTP of its own.
+ * Thin wrap of `TextractClient` — presentation is owned by the vendor.
  */
 
 import type { HttpServiceOptions } from '../../../transport/http-service'
 import { TextractClient } from '../../../vendors/textract'
 import type {
-	DocumentExtractProviderOps,
+	DocumentExtractOps,
 	ExtractResult,
+	ExtractTextBatchInput,
 	ExtractTextBatchOutput,
+	ExtractTextInput,
+	StatusInput,
 	TextractDocumentExtractAuth
 } from '../contracts'
-import type { ArtifactRef } from '../../../shared/artifact'
 
 export type TextractDocumentExtractProviderOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
-export class TextractDocumentExtractProvider implements DocumentExtractProviderOps {
+export class TextractDocumentExtractProvider implements DocumentExtractOps {
 	readonly #client: TextractClient
 
 	constructor(auth: TextractDocumentExtractAuth, options: TextractDocumentExtractProviderOptions = {}) {
@@ -23,15 +25,15 @@ export class TextractDocumentExtractProvider implements DocumentExtractProviderO
 		this.#client = new TextractClient(vendorAuth, options)
 	}
 
-	extractText(input: { source: ArtifactRef }): Promise<ExtractResult> {
+	extractText(input: ExtractTextInput): Promise<ExtractResult> {
 		return this.#client.extractText(input)
 	}
 
-	getStatus(input: { job_id: string }): Promise<ExtractResult> {
+	getStatus(input: StatusInput): Promise<ExtractResult> {
 		return this.#client.getStatus(input)
 	}
 
-	extractTextBatch(input: { sources: ArtifactRef[] }): Promise<ExtractTextBatchOutput> {
+	extractTextBatch(input: ExtractTextBatchInput): Promise<ExtractTextBatchOutput> {
 		return this.#client.extractTextBatch(input)
 	}
 }

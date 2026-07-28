@@ -35,3 +35,4 @@ export {
 	cloudflareBrowserStartSessionTool,
 	cloudflareBrowserStopSessionTool
 } from './module'
+export { plainTextFromHtml, titleFromHtml } from './domain'

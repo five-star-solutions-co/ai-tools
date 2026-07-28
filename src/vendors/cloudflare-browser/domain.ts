@@ -1,6 +1,9 @@
 /**
  * Cloudflare Browser Rendering payload helpers (no HTTP).
+ * HTML → text / title via html-to-text (edge + node). No hand-rolled HTML parsers.
  */
+
+import { compile } from 'html-to-text'
 
 import { ToolError } from '../../core/errors'
 import type { CloudflareBrowserRenderSource } from './contracts'
@@ -27,6 +30,24 @@ export const blockedBrowserResourceTypes = [
 	'other'
 ] as const
 
+const htmlToPlainText = compile({
+	decodeEntities: true,
+	preserveNewlines: false,
+	wordwrap: false,
+	selectors: [
+		{ selector: 'script', format: 'skip' },
+		{ selector: 'style', format: 'skip' },
+		{ selector: 'noscript', format: 'skip' }
+	]
+})
+
+const htmlToTitle = compile({
+	decodeEntities: true,
+	wordwrap: false,
+	baseElements: { selectors: ['title'], orderBy: 'occurrence', returnDomByDefault: false },
+	selectors: [{ selector: 'title', format: 'inline' }]
+})
+
 export function sourceBody(source: CloudflareBrowserRenderSource): Record<string, unknown> {
 	if (source.html) return { html: source.html }
 	if (source.url) return { url: source.url }
@@ -51,9 +72,13 @@ export function defaultRenderKey(kind: 'pdf' | 'screenshot', outputKey: string |
 	return kind === 'pdf' ? `renders/${stamp}.pdf` : `renders/${stamp}.png`
 }
 
-/** Best-effort title from rendered HTML. */
+/** Document title via html-to-text (not a hand-rolled HTML parser). */
 export function titleFromHtml(html: string): string | undefined {
-	const match = html.match(/<title[^>]*>([^<]*)<\/title>/i)
-	const title = match?.[1]?.trim()
-	return title && title.length > 0 ? title : undefined
+	const title = htmlToTitle(html).trim()
+	return title.length > 0 ? title : undefined
+}
+
+/** Visible page text via html-to-text. */
+export function plainTextFromHtml(html: string): string {
+	return htmlToPlainText(html).trim()
 }

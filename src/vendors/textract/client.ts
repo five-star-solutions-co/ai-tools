@@ -1,6 +1,7 @@
 /**
- * Amazon Textract vendor client (async text detection).
+ * Amazon Textract vendor client (async text detection + presentation).
  * Host: `new TextractClient(auth)`. Agent tools: `fromContext(ctx)`.
+ * Output modes (inline | artifact | chunks) live here — not in the seam module.
  */
 
 import { isPlainObject, isString } from 'es-toolkit'
@@ -10,10 +11,12 @@ import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
 import { runBatchItems } from '../../shared/batch'
+import { utf8ToBytes } from '../../shared/bytes'
 import { parseAwsJsonBody } from '../../transport/aws-json'
 import { AwsService } from '../../transport/aws-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import { normalizeKeyPrefix, resolveObjectKey } from '../_storage'
+import { S3Client } from '../s3'
 import type {
 	TextractAuth,
 	TextractExtractResult,
@@ -28,13 +31,15 @@ import {
 	textractAuthSchema,
 	textractExtractResultSchema
 } from './contracts'
-import { lineTextFromBlocks, mapJobStatus, sleep } from './domain'
+import { lineTextFromBlocks, mapJobStatus, presentExtractResult, sleep } from './domain'
+import type { PresentOptions } from './domain'
 
 export type TextractClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
 export class TextractClient {
 	readonly #auth: TextractAuth
 	readonly #aws: AwsService
+	readonly #storage: S3Client
 	readonly #signal: AbortSignal | undefined
 	/** Normalized key_prefix with trailing `/`, or undefined when unbound. */
 	readonly #keyPrefix: string | undefined
@@ -60,6 +65,17 @@ export class TextractClient {
 			label: 'Textract',
 			...(this.#auth.session_token && { sessionToken: this.#auth.session_token })
 		})
+		this.#storage = new S3Client(
+			{
+				access_key_id: this.#auth.access_key_id,
+				secret_access_key: this.#auth.secret_access_key,
+				region: this.#auth.region,
+				bucket: this.#auth.bucket,
+				...(this.#auth.session_token && { session_token: this.#auth.session_token }),
+				...(this.#auth.key_prefix && { key_prefix: this.#auth.key_prefix })
+			},
+			options
+		)
 	}
 
 	static fromContext(ctx: ToolContext): TextractClient {
@@ -70,14 +86,74 @@ export class TextractClient {
 		})
 	}
 
-	/** StartDocumentTextDetection + poll until done, failed, or timeout → pending. */
+	/** StartDocumentTextDetection + poll until done, failed, or timeout → pending; then present. */
 	async extractText(input: TextractExtractTextInput): Promise<TextractExtractResult> {
-		if (input.source.store !== 'object') {
+		const raw = await this.#extractRaw(input.source)
+		return presentExtractResult(
+			raw,
+			presentOpts(input.output, input.destination_key, input.chunk, input.source.key),
+			(key, text) => this.#writeExtractArtifact(key, text, input.source.filename)
+		)
+	}
+
+	/** GetDocumentTextDetection (paged) for an existing job; then present. */
+	async getStatus(input: TextractStatusInput): Promise<TextractExtractResult> {
+		const raw = await this.#statusRaw(input.job_id)
+		return presentExtractResult(
+			raw,
+			presentOpts(input.output, input.destination_key, input.chunk, raw.source?.key),
+			(key, text) => this.#writeExtractArtifact(key, text, raw.source?.filename)
+		)
+	}
+
+	async extractTextBatch(input: TextractExtractTextBatchInput): Promise<TextractExtractTextBatchOutput> {
+		const prefix = input.destination_key_prefix ?? 'extracts/'
+		const rawBatch = await runBatchItems(input.sources, (source) => this.#extractRaw(source))
+		const results: TextractExtractTextBatchOutput['results'] = []
+		let succeeded = 0
+		let failed = 0
+
+		for (const row of rawBatch.results) {
+			if (!row.ok || row.value === undefined) {
+				results.push(row)
+				failed += 1
+				continue
+			}
+			const source = input.sources[row.index]
+			const destKey =
+				input.destination_key ??
+				`${prefix.replace(/\/?$/, '/')}${source?.key.replace(/^.*\//, '') || `item-${row.index}`}.txt`
+			try {
+				const presented = await presentExtractResult(
+					row.value,
+					presentOpts(input.output, destKey, input.chunk, source?.key),
+					(key, text) => this.#writeExtractArtifact(key, text, source?.filename)
+				)
+				results.push({ index: row.index, ok: true, value: presented })
+				succeeded += 1
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Presentation failed'
+				const code =
+					error instanceof Error && 'code' in error && typeof error.code === 'string' ? error.code : 'internal'
+				results.push({
+					index: row.index,
+					ok: false,
+					error: { code, message }
+				})
+				failed += 1
+			}
+		}
+
+		return { results, succeeded, failed }
+	}
+
+	async #extractRaw(source: TextractExtractTextInput['source']): Promise<TextractExtractResult> {
+		if (source.store !== 'object') {
 			throw new ToolError('Textract requires source.store "object"', { code: 'bad_input' })
 		}
 
 		// Logical ArtifactRef.key → wire S3 object name under optional key_prefix.
-		const wireName = resolveObjectKey(input.source.key, this.#keyPrefix)
+		const wireName = resolveObjectKey(source.key, this.#keyPrefix)
 
 		let start: Record<string, unknown>
 		try {
@@ -98,7 +174,7 @@ export class TextractClient {
 					details: {
 						...(isPlainObject(error.details) ? error.details : {}),
 						// Surface logical key to callers (not wire path).
-						key: input.source.key
+						key: source.key
 					}
 				})
 			}
@@ -127,7 +203,7 @@ export class TextractClient {
 						job_id: jobId,
 						text: lines.text,
 						...(lines.page_count !== undefined && { page_count: lines.page_count }),
-						source: input.source
+						source
 					})
 				}
 				if (status === 'failed') {
@@ -136,7 +212,7 @@ export class TextractClient {
 						status: 'failed',
 						job_id: jobId,
 						error: isString(msg) ? msg : 'Textract job failed',
-						source: input.source
+						source
 					})
 				}
 
@@ -159,13 +235,12 @@ export class TextractClient {
 		return textractExtractResultSchema.parse({
 			status: 'pending',
 			job_id: jobId,
-			source: input.source
+			source
 		})
 	}
 
-	/** GetDocumentTextDetection (paged) for an existing job. */
-	async getStatus(input: TextractStatusInput): Promise<TextractExtractResult> {
-		const payload = await this.#getJobPayload(input.job_id)
+	async #statusRaw(jobId: string): Promise<TextractExtractResult> {
+		const payload = await this.#getJobPayload(jobId)
 		const statusRaw = payload['JobStatus']
 		const status = isString(statusRaw) ? mapJobStatus(statusRaw) : 'pending'
 
@@ -173,7 +248,7 @@ export class TextractClient {
 			const lines = lineTextFromBlocks(payload)
 			return textractExtractResultSchema.parse({
 				status: 'succeeded',
-				job_id: input.job_id,
+				job_id: jobId,
 				text: lines.text,
 				...(lines.page_count !== undefined && { page_count: lines.page_count })
 			})
@@ -182,18 +257,26 @@ export class TextractClient {
 			const msg = payload['StatusMessage']
 			return textractExtractResultSchema.parse({
 				status: 'failed',
-				job_id: input.job_id,
+				job_id: jobId,
 				error: isString(msg) ? msg : 'Textract job failed'
 			})
 		}
 		return textractExtractResultSchema.parse({
 			status: 'pending',
-			job_id: input.job_id
+			job_id: jobId
 		})
 	}
 
-	async extractTextBatch(input: TextractExtractTextBatchInput): Promise<TextractExtractTextBatchOutput> {
-		return runBatchItems(input.sources, (source) => this.extractText({ source }))
+	async #writeExtractArtifact(key: string, text: string, filename?: string) {
+		const bytes = utf8ToBytes(text)
+		await this.#storage.putBytes(key, bytes, 'text/plain; charset=utf-8')
+		return {
+			store: 'object' as const,
+			key,
+			media_type: 'text/plain',
+			byte_length: bytes.byteLength,
+			...(filename && { filename: filename.replace(/\.[^.]+$/, '') + '.txt' })
+		}
 	}
 
 	async #getJobPayload(jobId: string): Promise<Record<string, unknown>> {
@@ -263,6 +346,25 @@ export class TextractClient {
 		}
 		return payload
 	}
+}
+
+function presentOpts(
+	output: TextractExtractTextInput['output'],
+	destinationKey: string | undefined,
+	chunk: TextractExtractTextInput['chunk'],
+	sourceKey: string | undefined
+): PresentOptions {
+	const opts: PresentOptions = {}
+	if (output !== undefined) opts.output = output
+	if (destinationKey !== undefined) opts.destination_key = destinationKey
+	if (chunk !== undefined) {
+		const c: NonNullable<PresentOptions['chunk']> = {}
+		if (chunk.max_chars !== undefined) c.max_chars = chunk.max_chars
+		if (chunk.overlap !== undefined) c.overlap = chunk.overlap
+		opts.chunk = c
+	}
+	if (sourceKey !== undefined) opts.source_key = sourceKey
+	return opts
 }
 
 function formatTextractError(target: string, status: number, payload: unknown): string {

@@ -1,5 +1,5 @@
 import { ToolError } from '../../../core/errors'
-import { CloudflareBrowserClient } from '../../../vendors/cloudflare-browser'
+import { CloudflareBrowserClient, plainTextFromHtml } from '../../../vendors/cloudflare-browser'
 import type {
 	CloudflareBrowserClientOptions,
 	CloudflareBrowserSessionOutput
@@ -110,13 +110,12 @@ export class CloudflareBrowserProvider implements BrowserOps {
 		}
 		const page = await this.#client.fetchContent({ url })
 		if (format === 'text') {
-			const text = page.html
-				.replace(/<script[\s\S]*?<\/script>/gi, ' ')
-				.replace(/<style[\s\S]*?<\/style>/gi, ' ')
-				.replace(/<[^>]+>/g, ' ')
-				.replace(/\s+/g, ' ')
-				.trim()
-			return { session_id: input.session_id, format: 'text', content: text, url }
+			return {
+				session_id: input.session_id,
+				format: 'text',
+				content: plainTextFromHtml(page.html),
+				url
+			}
 		}
 		return { session_id: input.session_id, format: 'html', content: page.html, url }
 	}
