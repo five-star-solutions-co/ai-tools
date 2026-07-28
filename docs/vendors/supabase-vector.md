@@ -22,6 +22,7 @@ Supabase Postgres + **pgvector** via PostgREST.
   embedding_column?: 'embedding',
   metadata_column?: 'metadata',
   match_rpc?: 'match_vectors',
+  default_filter?: { organization_id: '…' }, // always passed to match RPC; flat keys stamped on upsert
 }
 ```
 

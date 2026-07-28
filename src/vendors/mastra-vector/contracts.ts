@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { vectorDefaultFilterSchema } from '../_vector'
+
 export {
 	MAX_TOP_K,
 	MAX_VECTOR_BATCH,
@@ -52,7 +54,12 @@ export const mastraVectorAuthSchema = z.object({
 		.boolean()
 		.optional()
 		.describe('When true, create the index on upsert if missing (needs dimension)'),
-	disable_init: z.boolean().optional().describe('Pass disableInit to PgVector (host manages migration/init)')
+	disable_init: z.boolean().optional().describe('Pass disableInit to PgVector (host manages migration/init)'),
+	default_filter: vectorDefaultFilterSchema
+		.optional()
+		.describe(
+			'Host-bound metadata filter always applied on query (Mongo-style / Mastra PG filter); flat keys stamped on upsert'
+		)
 })
 
 export type MastraVectorAuth = z.infer<typeof mastraVectorAuthSchema>

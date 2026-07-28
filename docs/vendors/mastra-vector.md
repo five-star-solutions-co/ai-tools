@@ -29,6 +29,7 @@ Optional peer of `@harryy/ai-tools` (same idea as `@mastra/core` for the adapter
   dimension?: 1024,                  // needed if auto_create_index
   auto_create_index?: false,
   disable_init?: true,               // host manages store init when true
+  default_filter?: { organization_id: '…' }, // Mongo-style / flat equality via PgVector
 }
 ```
 
@@ -54,12 +55,13 @@ withAuth(vectorStoreModule, {
   schema_name: 'agent',
   default_index: 'organization_knowledge',
   disable_init: true,
+  default_filter: { organization_id: 'org_42' },
 })
 ```
 
-## Filter note
+## Filters
 
-Shared seam `filter` is an opaque `Record`. Mastra’s `PGVectorFilter` is typed more tightly, so **query `filter` is rejected** on this pack for now (`unsupported`). Hosts that need Mastra filters should call `PgVector` directly or extend the pack.
+Query accepts optional tool `filter` (Mongo-style / flat equality). Host `default_filter` is always merged in (host keys win). Flat equality keys from `default_filter` are stamped onto upsert metadata.
 
 ## Not included
 

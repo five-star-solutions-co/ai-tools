@@ -5,12 +5,13 @@
  */
 
 import { PgVector } from '@mastra/pg'
-import { isNumber, isString } from 'es-toolkit'
+import { isNumber, isPlainObject, isString } from 'es-toolkit'
 
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
-import { parseMetadata, requireCollection } from '../_vector/domain'
+import { mergeVectorFilter, parseMetadata, requireCollection, stampDefaultFilterMetadata } from '../_vector/domain'
+import type { VectorDefaultFilter } from '../_vector/domain'
 import type {
 	DeleteVectorsInput,
 	DeleteVectorsOutput,
@@ -23,29 +24,50 @@ import type {
 } from './contracts'
 import { mastraVectorAuthSchema } from './contracts'
 
+/** Injected / real store surface (filter is opaque Record for seam compatibility). */
+type MastraStore = {
+	upsert: (input: {
+		indexName: string
+		ids: string[]
+		vectors: number[][]
+		metadata: Array<Record<string, unknown>>
+	}) => Promise<unknown>
+	query: (input: {
+		indexName: string
+		queryVector: number[]
+		topK?: number
+		includeVector?: boolean
+		filter?: Record<string, unknown>
+	}) => Promise<Array<{ id?: string; score?: number; metadata?: unknown; vector?: number[] }>>
+	deleteVectors: (input: { indexName: string; ids: string[] }) => Promise<unknown>
+	createIndex: (input: { indexName: string; dimension: number }) => Promise<unknown>
+	disconnect?: () => Promise<void>
+}
+
+type PgQueryArgs = Parameters<PgVector['query']>[0]
+
+/** Narrow a built arg bag to PgVector query params (Mongo-style filter is structural). */
+function isPgQueryArgs(value: unknown): value is PgQueryArgs {
+	return (
+		isPlainObject(value) &&
+		isString(value['indexName']) &&
+		value['indexName'].length > 0 &&
+		Array.isArray(value['queryVector'])
+	)
+}
+
 export type MastraVectorClientOptions = {
 	/**
 	 * Test injection — production uses PgVector.
 	 * Must implement the same method names as PgVector for upsert/query/deleteVectors/createIndex.
 	 */
-	store?: {
-		upsert: PgVector['upsert']
-		query: PgVector['query']
-		deleteVectors: PgVector['deleteVectors']
-		createIndex: PgVector['createIndex']
-		disconnect?: PgVector['disconnect']
-	}
+	store?: MastraStore
 }
 
 export class MastraVectorClient {
-	readonly #store: {
-		upsert: PgVector['upsert']
-		query: PgVector['query']
-		deleteVectors: PgVector['deleteVectors']
-		createIndex: PgVector['createIndex']
-		disconnect?: PgVector['disconnect']
-	}
+	readonly #store: MastraStore
 	readonly #defaultIndex: string | undefined
+	readonly #defaultFilter: VectorDefaultFilter | undefined
 	readonly #dimension: number | undefined
 	readonly #autoCreateIndex: boolean
 	readonly #ownsStore: boolean
@@ -60,6 +82,7 @@ export class MastraVectorClient {
 		}
 		const data = parsed.data
 		this.#defaultIndex = data.default_index
+		this.#defaultFilter = data.default_filter
 		this.#dimension = data.dimension
 		this.#autoCreateIndex = data.auto_create_index === true
 
@@ -81,7 +104,33 @@ export class MastraVectorClient {
 		if (data.schema_name) config.schemaName = data.schema_name
 		if (data.disable_init === true) config.disableInit = true
 
-		this.#store = new PgVector(config)
+		const pg = new PgVector(config)
+		// Adapt PgVector to opaque Record filters (Mongo-style / flat equality is native).
+		this.#store = {
+			upsert: (input) =>
+				pg.upsert({
+					indexName: input.indexName,
+					ids: input.ids,
+					vectors: input.vectors,
+					metadata: input.metadata
+				}),
+			query: (input) => {
+				const args: Record<string, unknown> = {
+					indexName: input.indexName,
+					queryVector: input.queryVector,
+					...(input.topK !== undefined && { topK: input.topK }),
+					...(input.includeVector !== undefined && { includeVector: input.includeVector }),
+					...(input.filter !== undefined && { filter: input.filter })
+				}
+				if (!isPgQueryArgs(args)) {
+					throw new ToolError('Invalid Mastra vector query args', { code: 'internal' })
+				}
+				return pg.query(args)
+			},
+			deleteVectors: (input) => pg.deleteVectors({ indexName: input.indexName, ids: input.ids }),
+			createIndex: (input) => pg.createIndex({ indexName: input.indexName, dimension: input.dimension }),
+			disconnect: () => pg.disconnect()
+		}
 		this.#ownsStore = true
 	}
 
@@ -98,29 +147,23 @@ export class MastraVectorClient {
 			indexName,
 			ids: input.vectors.map((point) => point.id),
 			vectors: input.vectors.map((point) => point.values),
-			metadata: input.vectors.map((point) => point.metadata ?? {})
+			metadata: input.vectors.map((point) => stampDefaultFilterMetadata(point.metadata, this.#defaultFilter) ?? {})
 		})
 		return { upserted: input.vectors.length, collection: indexName }
 	}
 
 	async query(input: QueryVectorsInput): Promise<QueryVectorsOutput> {
 		const indexName = requireCollection(input.collection, this.#defaultIndex, 'Mastra vector query')
-		if (input.filter !== undefined) {
-			// PgVector filter is a branded PGVectorFilter; shared seam uses opaque Record.
-			// Hosts that need Mastra filters should call PgVector directly or extend this pack.
-			throw new ToolError(
-				'Mastra vector query does not accept filter on the shared seam shape; omit filter or use @mastra/pg directly',
-				{ code: 'unsupported' }
-			)
-		}
 		const topK = input.top_k ?? 8
 		const includeVector = input.include_values === true
+		const filter = mergeVectorFilter(this.#defaultFilter, input.filter)
 
 		const rows = await this.#store.query({
 			indexName,
 			queryVector: input.vector,
 			topK,
-			includeVector
+			includeVector,
+			...(filter && { filter })
 		})
 
 		const includeMetadata = input.include_metadata !== false

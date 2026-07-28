@@ -12,13 +12,16 @@ import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import {
 	mapVectorHttpStatus,
+	mergeVectorFilter,
 	parseMetadata,
 	parseNumberArray,
 	parsePointId,
 	parseScore,
 	parseUpstreamMessage,
-	requireCollection
+	requireCollection,
+	stampDefaultFilterMetadata
 } from '../_vector/domain'
+import type { VectorDefaultFilter } from '../_vector/domain'
 import type {
 	DeleteVectorsInput,
 	DeleteVectorsOutput,
@@ -39,6 +42,7 @@ export type SupabaseVectorClientOptions = {
 export class SupabaseVectorClient {
 	readonly #http: HttpService
 	readonly #defaultCollection: string | undefined
+	readonly #defaultFilter: VectorDefaultFilter | undefined
 	readonly #idColumn: string
 	readonly #embeddingColumn: string
 	readonly #metadataColumn: string
@@ -54,6 +58,7 @@ export class SupabaseVectorClient {
 		}
 		const data = parsed.data
 		this.#defaultCollection = data.default_collection
+		this.#defaultFilter = data.default_filter
 		this.#idColumn = data.id_column ?? 'id'
 		this.#embeddingColumn = data.embedding_column ?? 'embedding'
 		this.#metadataColumn = data.metadata_column ?? 'metadata'
@@ -88,11 +93,12 @@ export class SupabaseVectorClient {
 	async upsert(input: UpsertVectorsInput): Promise<UpsertVectorsOutput> {
 		const table = requireCollection(input.collection, this.#defaultCollection, 'Supabase vector upsert')
 		const rows = input.vectors.map((point) => {
+			const metadata = stampDefaultFilterMetadata(point.metadata, this.#defaultFilter)
 			const row: Record<string, unknown> = {
 				[this.#idColumn]: point.id,
 				[this.#embeddingColumn]: point.values
 			}
-			if (point.metadata) row[this.#metadataColumn] = point.metadata
+			if (metadata) row[this.#metadataColumn] = metadata
 			return row
 		})
 
@@ -119,7 +125,8 @@ export class SupabaseVectorClient {
 			match_count: topK,
 			collection: table
 		}
-		if (input.filter) body['filter'] = input.filter
+		const filter = mergeVectorFilter(this.#defaultFilter, input.filter)
+		if (filter) body['filter'] = filter
 
 		const res = await this.#http.post(`/rpc/${encodeURIComponent(this.#matchRpc)}`, body, {
 			label: 'Supabase vector match',

@@ -23,10 +23,31 @@ Shared I/O shapes: `vendors/_vector/` (codegen-skipped kit).
 ## Auth
 
 ```ts
-{ provider: 'qdrant', base_url: '…', api_key?: '…', default_collection?: '…' }
-{ provider: 'pinecone', api_key: '…', base_url: 'https://…', default_namespace?: '…' }
-{ provider: 'supabase', url: '…', api_key: '…', default_collection?: '…', match_rpc?: '…' }
-{ provider: 'mastra', connection_string: '…', id: '…', schema_name?: 'agent', default_index?: '…' }
+{ provider: 'qdrant', base_url: '…', api_key?: '…', default_collection?: '…', default_filter?: { … } }
+{ provider: 'pinecone', api_key: '…', base_url: 'https://…', default_namespace?: '…', default_filter?: { … } }
+{ provider: 'supabase', url: '…', api_key: '…', default_collection?: '…', match_rpc?: '…', default_filter?: { … } }
+{ provider: 'mastra', connection_string: '…', id: '…', schema_name?: 'agent', default_index?: '…', default_filter?: { … } }
+```
+
+### Tenant isolation (native store features)
+
+| Auth field | Behavior |
+| --- | --- |
+| `default_filter` | Always applied on **query**. Tool `filter` is merged with **host keys winning**. Flat equality keys are **stamped onto upsert metadata** so points match the filter. |
+| `default_namespace` (Pinecone) | **Locked** when set — all upsert/query/delete use it; tool cannot switch namespace. |
+
+Providers execute their native filter/namespace APIs. This package only enforces host-bound defaults so the model cannot omit tenant isolation.
+
+Example:
+
+```ts
+withAuth(vectorStoreModule, {
+  provider: 'pinecone',
+  api_key: '…',
+  base_url: 'https://…',
+  default_namespace: 'org_42',
+  default_filter: { organization_id: 'org_42' },
+})
 ```
 
 ## Tools
@@ -48,6 +69,7 @@ VectorStoreClient.fromAuth({
   url: process.env.SUPABASE_URL!,
   api_key: process.env.SUPABASE_SERVICE_ROLE_KEY!,
   default_collection: 'org_memory',
+  default_filter: { organization_id: 'org_42' },
 })
 
 withAuth(vectorStoreModule, { /* same */ })

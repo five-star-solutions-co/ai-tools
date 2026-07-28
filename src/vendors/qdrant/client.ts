@@ -13,12 +13,15 @@ import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import {
 	mapVectorHttpStatus,
+	mergeQdrantFilter,
 	parseMetadata,
 	parseNumberArray,
 	parsePointId,
 	parseUpstreamMessage,
-	requireCollection
+	requireCollection,
+	stampDefaultFilterMetadata
 } from '../_vector/domain'
+import type { VectorDefaultFilter } from '../_vector/domain'
 import type {
 	DeleteVectorsInput,
 	DeleteVectorsOutput,
@@ -46,6 +49,7 @@ export type QdrantClientOptions = {
 export class QdrantClient {
 	readonly #http: HttpService
 	readonly #defaultCollection: string | undefined
+	readonly #defaultFilter: VectorDefaultFilter | undefined
 
 	constructor(auth: QdrantAuth, options: QdrantClientOptions = {}) {
 		const parsed = qdrantAuthSchema.safeParse(auth)
@@ -56,6 +60,7 @@ export class QdrantClient {
 			})
 		}
 		this.#defaultCollection = parsed.data.default_collection
+		this.#defaultFilter = parsed.data.default_filter
 		const headers: Record<string, string> = { 'Content-Type': 'application/json' }
 		if (parsed.data.api_key) headers['api-key'] = parsed.data.api_key
 		const httpOptions: HttpServiceOptions = {
@@ -80,7 +85,8 @@ export class QdrantClient {
 		const collection = requireCollection(input.collection, this.#defaultCollection, 'Qdrant upsert')
 		const points = input.vectors.map((point) => {
 			const wireId = toQdrantPointId(point.id)
-			const payload: Record<string, string | number | boolean | null> = point.metadata ? { ...point.metadata } : {}
+			const stamped = stampDefaultFilterMetadata(point.metadata, this.#defaultFilter)
+			const payload: Record<string, string | number | boolean | null> = stamped ? { ...stamped } : {}
 			if (!isNativeQdrantId(point.id)) {
 				payload[QDRANT_LOGICAL_ID_KEY] = point.id
 			}
@@ -113,7 +119,8 @@ export class QdrantClient {
 			with_payload: true,
 			with_vector: input.include_values === true
 		}
-		if (input.filter) body['filter'] = input.filter
+		const filter = mergeQdrantFilter(this.#defaultFilter, input.filter)
+		if (filter) body['filter'] = filter
 
 		const res = await this.#http.post(`/collections/${encodeURIComponent(collection)}/points/search`, body, {
 			label: 'Qdrant search',

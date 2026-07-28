@@ -92,6 +92,74 @@ describe('vector-store seam', () => {
 		}
 	})
 
+	test('pinecone default_filter + locked namespace on query and upsert', async () => {
+		const restore = mockFetch((url, init) => {
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			if (url.includes('/vectors/upsert')) {
+				expect(body.namespace).toBe('org_ns')
+				expect(body.vectors[0].metadata).toEqual({
+					text: 'hi',
+					organization_id: 'org_42'
+				})
+				return new Response(JSON.stringify({ upsertedCount: 1 }), { status: 200 })
+			}
+			if (url.includes('/query')) {
+				expect(body.namespace).toBe('org_ns')
+				// host wins over tool organization_id
+				expect(body.filter).toEqual({ organization_id: 'org_42', doc_type: 'pdf' })
+				return new Response(JSON.stringify({ matches: [] }), { status: 200 })
+			}
+			return new Response(JSON.stringify({}), { status: 200 })
+		})
+
+		try {
+			const client = VectorStoreClient.fromAuth({
+				provider: 'pinecone',
+				api_key: 'pk',
+				base_url: 'https://idx.pinecone.io',
+				default_namespace: 'org_ns',
+				default_filter: { organization_id: 'org_42' }
+			})
+			await client.upsert({
+				// tool tries other namespace — ignored
+				namespace: 'attacker',
+				vectors: [{ id: 'v1', values: [1], metadata: { text: 'hi' } }]
+			})
+			await client.query({
+				vector: [1],
+				namespace: 'attacker',
+				filter: { organization_id: 'other', doc_type: 'pdf' }
+			})
+		} finally {
+			restore()
+		}
+	})
+
+	test('qdrant default_filter converts flat equality to must', async () => {
+		const restore = mockFetch((url, init) => {
+			if (url.includes('/points/search')) {
+				const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+				expect(body.filter).toEqual({
+					must: [{ key: 'organization_id', match: { value: 'org_42' } }]
+				})
+				return new Response(JSON.stringify({ result: [] }), { status: 200 })
+			}
+			return new Response(JSON.stringify({ result: { status: 'ok' } }), { status: 200 })
+		})
+
+		try {
+			const client = VectorStoreClient.fromAuth({
+				provider: 'qdrant',
+				base_url: 'https://qdrant.example',
+				default_collection: 'docs',
+				default_filter: { organization_id: 'org_42' }
+			})
+			await client.query({ vector: [0.1] })
+		} finally {
+			restore()
+		}
+	})
+
 	test('qdrant requires collection when no default', async () => {
 		const client = VectorStoreClient.fromAuth({
 			provider: 'qdrant',

@@ -13,11 +13,15 @@ import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import {
 	mapVectorHttpStatus,
+	mergeVectorFilter,
 	parseMetadata,
 	parseNumberArray,
 	parsePointId,
-	parseUpstreamMessage
+	parseUpstreamMessage,
+	resolveVectorNamespace,
+	stampDefaultFilterMetadata
 } from '../_vector/domain'
+import type { VectorDefaultFilter } from '../_vector/domain'
 import type {
 	DeleteVectorsInput,
 	DeleteVectorsOutput,
@@ -38,6 +42,7 @@ export type PineconeClientOptions = {
 export class PineconeClient {
 	readonly #http: HttpService
 	readonly #defaultNamespace: string | undefined
+	readonly #defaultFilter: VectorDefaultFilter | undefined
 
 	constructor(auth: PineconeAuth, options: PineconeClientOptions = {}) {
 		const parsed = pineconeAuthSchema.safeParse(auth)
@@ -48,6 +53,7 @@ export class PineconeClient {
 			})
 		}
 		this.#defaultNamespace = parsed.data.default_namespace
+		this.#defaultFilter = parsed.data.default_filter
 		const httpOptions: HttpServiceOptions = {
 			baseURL: parsed.data.base_url,
 			headers: {
@@ -69,15 +75,16 @@ export class PineconeClient {
 		return new PineconeClient(auth, options)
 	}
 
-	#namespace(override: string | undefined): string | undefined {
-		return override ?? this.#defaultNamespace
+	#namespace(toolNamespace: string | undefined): string | undefined {
+		return resolveVectorNamespace(this.#defaultNamespace, toolNamespace)
 	}
 
 	async upsert(input: UpsertVectorsInput): Promise<UpsertVectorsOutput> {
 		const body: Record<string, unknown> = {
 			vectors: input.vectors.map((point) => {
+				const metadata = stampDefaultFilterMetadata(point.metadata, this.#defaultFilter)
 				const row: Record<string, unknown> = { id: point.id, values: point.values }
-				if (point.metadata) row['metadata'] = point.metadata
+				if (metadata) row['metadata'] = metadata
 				return row
 			})
 		}
@@ -110,7 +117,8 @@ export class PineconeClient {
 		}
 		const ns = this.#namespace(input.namespace)
 		if (ns) body['namespace'] = ns
-		if (input.filter) body['filter'] = input.filter
+		const filter = mergeVectorFilter(this.#defaultFilter, input.filter)
+		if (filter) body['filter'] = filter
 
 		const res = await this.#http.post('/query', body, { label: 'Pinecone query', noThrow: true })
 		if (!res.ok) {

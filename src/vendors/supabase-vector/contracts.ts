@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { vectorDefaultFilterSchema } from '../_vector'
+
 export {
 	MAX_TOP_K,
 	MAX_VECTOR_BATCH,
@@ -49,7 +51,10 @@ export const supabaseVectorAuthSchema = z.object({
 	id_column: z.string().min(1).optional().describe('Id column name (default id)'),
 	embedding_column: z.string().min(1).optional().describe('Embedding/vector column name (default embedding)'),
 	metadata_column: z.string().min(1).optional().describe('Metadata jsonb column name (default metadata)'),
-	match_rpc: z.string().min(1).optional().describe('Nearest-neighbor RPC name (default match_vectors)')
+	match_rpc: z.string().min(1).optional().describe('Nearest-neighbor RPC name (default match_vectors)'),
+	default_filter: vectorDefaultFilterSchema
+		.optional()
+		.describe('Host-bound filter always applied on match RPC; flat keys stamped on upsert metadata')
 })
 
 export type SupabaseVectorAuth = z.infer<typeof supabaseVectorAuthSchema>

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { vectorDefaultFilterSchema } from '../_vector'
+
 export {
 	MAX_TOP_K,
 	MAX_VECTOR_BATCH,
@@ -32,7 +34,12 @@ export const qdrantAuthSchema = z.object({
 		.url()
 		.describe('Qdrant HTTP origin, for example http://127.0.0.1:6333 or https://xxx.cloud.qdrant.io'),
 	api_key: z.string().min(1).optional().describe('Optional Qdrant API key'),
-	default_collection: z.string().min(1).optional().describe('Default collection name when tool input omits collection')
+	default_collection: z.string().min(1).optional().describe('Default collection name when tool input omits collection'),
+	default_filter: vectorDefaultFilterSchema
+		.optional()
+		.describe(
+			'Host-bound filter always applied on query (flat equality or native Qdrant must/should); flat keys stamped on upsert'
+		)
 })
 
 export type QdrantAuth = z.infer<typeof qdrantAuthSchema>

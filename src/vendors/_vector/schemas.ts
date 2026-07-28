@@ -29,7 +29,11 @@ export const vectorMatchSchema = z.object({
 
 export const upsertVectorsInputSchema = z.object({
 	collection: z.string().min(1).optional().describe('Collection / table / index name when not defaulted on host auth'),
-	namespace: z.string().min(1).optional().describe('Optional namespace when the store supports it; ignored otherwise'),
+	namespace: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Optional namespace when the store supports it; ignored when auth locks default_namespace'),
 	vectors: z.array(vectorPointSchema).min(1).max(MAX_VECTOR_BATCH).describe(`1–${MAX_VECTOR_BATCH} vectors to upsert`)
 })
 
@@ -40,7 +44,11 @@ export const upsertVectorsOutputSchema = z.object({
 
 export const queryVectorsInputSchema = z.object({
 	collection: z.string().min(1).optional().describe('Collection / table / index name when not defaulted on host auth'),
-	namespace: z.string().min(1).optional().describe('Optional namespace when the store supports it'),
+	namespace: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Optional namespace when the store supports it; ignored when auth locks default_namespace'),
 	vector: z.array(z.number()).min(1).max(MAX_VECTOR_DIMENSIONS).describe('Query embedding'),
 	top_k: z
 		.number()
@@ -51,7 +59,12 @@ export const queryVectorsInputSchema = z.object({
 		.describe(`Number of nearest neighbors (default 8, max ${MAX_TOP_K})`),
 	include_values: z.boolean().optional().describe('Include embedding values in matches'),
 	include_metadata: z.boolean().optional().describe('Include metadata in matches (default true)'),
-	filter: z.record(z.string(), z.unknown()).optional().describe('Optional provider-native metadata filter object')
+	filter: z
+		.record(z.string(), z.unknown())
+		.optional()
+		.describe(
+			'Optional provider-native metadata filter; merged with host-bound default_filter when set (host keys win)'
+		)
 })
 
 export const queryVectorsOutputSchema = z.object({
@@ -70,9 +83,18 @@ export const deleteVectorsOutputSchema = z.object({
 	collection: z.string().optional()
 })
 
+/** Host-bound filter bag (opaque provider dialect or flat equality metadata). */
+export const vectorDefaultFilterSchema = z
+	.record(z.string(), z.unknown())
+	.describe(
+		'Host-bound metadata filter always applied on query (tool filter merged; host keys win). Flat equality keys are stamped onto upsert metadata.'
+	)
+
 export type VectorMetadata = z.infer<typeof vectorMetadataSchema>
+export type VectorMetadataValue = z.infer<typeof vectorMetadataValueSchema>
 export type VectorPoint = z.infer<typeof vectorPointSchema>
 export type VectorMatch = z.infer<typeof vectorMatchSchema>
+export type VectorDefaultFilter = z.infer<typeof vectorDefaultFilterSchema>
 export type UpsertVectorsInput = z.infer<typeof upsertVectorsInputSchema>
 export type UpsertVectorsOutput = z.infer<typeof upsertVectorsOutputSchema>
 export type QueryVectorsInput = z.infer<typeof queryVectorsInputSchema>

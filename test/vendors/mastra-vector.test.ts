@@ -72,4 +72,30 @@ describe('mastra-vector vendor', () => {
 		expect(store.calls.some((c) => c.startsWith('query:knowledge:'))).toBe(true)
 		expect(store.calls.some((c) => c.startsWith('delete:knowledge:a'))).toBe(true)
 	})
+
+	test('default_filter stamps upsert metadata and merges on query', async () => {
+		const seen: unknown[] = []
+		const store: NonNullable<MastraVectorClientOptions['store']> = {
+			upsert: async (input) => {
+				seen.push(input.metadata)
+				return input.ids ?? []
+			},
+			query: async (input) => {
+				seen.push(input.filter)
+				return [{ id: 'a', score: 1, metadata: {} }]
+			},
+			deleteVectors: async () => {},
+			createIndex: async () => {}
+		}
+		const client = new MastraVectorClient({ ...auth, default_filter: { organization_id: 'org_42' } }, { store })
+		await client.upsert({
+			vectors: [{ id: 'a', values: [0.1, 0.2], metadata: { text: 'x' } }]
+		})
+		await client.query({
+			vector: [0.1, 0.2],
+			filter: { organization_id: 'other', tag: 'a' }
+		})
+		expect(seen[0]).toEqual([{ text: 'x', organization_id: 'org_42' }])
+		expect(seen[1]).toEqual({ organization_id: 'org_42', tag: 'a' })
+	})
 })

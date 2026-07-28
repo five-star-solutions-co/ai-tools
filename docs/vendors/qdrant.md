@@ -17,6 +17,7 @@ Qdrant REST: upsert / search / delete points.
   base_url: 'https://xxx.cloud.qdrant.io', // or http://127.0.0.1:6333
   api_key?: string,
   default_collection?: string,
+  default_filter?: { organization_id: '…' }, // flat equality → must; or native must/should
 }
 ```
 

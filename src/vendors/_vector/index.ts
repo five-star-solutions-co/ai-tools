@@ -14,6 +14,7 @@ export {
 	queryVectorsOutputSchema,
 	upsertVectorsInputSchema,
 	upsertVectorsOutputSchema,
+	vectorDefaultFilterSchema,
 	vectorMatchSchema,
 	vectorMetadataSchema,
 	vectorMetadataValueSchema,
@@ -26,7 +27,9 @@ export type {
 	QueryVectorsOutput,
 	UpsertVectorsInput,
 	UpsertVectorsOutput,
+	VectorDefaultFilter,
 	VectorMatch,
 	VectorMetadata,
+	VectorMetadataValue,
 	VectorPoint
 } from './schemas'
