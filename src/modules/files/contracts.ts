@@ -1,6 +1,14 @@
 import { z } from 'zod'
 
+import { artifactRefSchema } from '../../shared/artifact'
 import { s3AuthSchema } from '../../vendors/s3'
+
+/** Max bytes for a single range read through files tools. */
+export const MAX_FILES_RANGE_BYTES = 8 * 1024 * 1024
+/** Max lines for files-read-lines. */
+export const MAX_FILES_READ_LINES = 2_000
+/** Max UTF-8 bytes scanned for line reads. */
+export const MAX_FILES_LINES_SCAN_BYTES = 2 * 1024 * 1024
 
 export const filesAuthSchema = z.object({
 	root_prefix: z
@@ -75,6 +83,55 @@ export const filesGetOutputSchema = z.object({
 	encoding: z.enum(['base64', 'utf8']),
 	content_type: z.string().optional(),
 	content_length: z.number().optional()
+})
+
+export const filesGetRangeInputSchema = z.object({
+	path: z.string().min(1).describe('Relative file path under root'),
+	start_byte: z.int().min(0).describe('Inclusive start byte offset'),
+	end_byte: z.int().min(0).describe(`Inclusive end byte offset (range size max ${MAX_FILES_RANGE_BYTES} bytes)`),
+	encoding: z.enum(['base64', 'utf8']).optional().describe('Body encoding. Defaults to base64')
+})
+
+export const filesGetRangeOutputSchema = z.object({
+	path: z.string(),
+	body: z.string().describe('Range body encoded per encoding'),
+	encoding: z.enum(['base64', 'utf8']),
+	start_byte: z.number().int().nonnegative(),
+	end_byte: z.number().int().nonnegative(),
+	total_bytes: z.number().int().nonnegative().optional().describe('Full object size when known'),
+	content_type: z.string().optional()
+})
+
+export const filesReadLinesInputSchema = z.object({
+	path: z.string().min(1).describe('Relative file path under root (UTF-8 text)'),
+	start_line: z.int().min(1).optional().describe('1-based start line (default 1)'),
+	max_lines: z
+		.int()
+		.min(1)
+		.max(MAX_FILES_READ_LINES)
+		.optional()
+		.describe(`Max lines to return (default 200, max ${MAX_FILES_READ_LINES})`)
+})
+
+export const filesReadLinesOutputSchema = z.object({
+	path: z.string(),
+	start_line: z.number().int().positive(),
+	lines: z.array(z.string()),
+	truncated: z.boolean().describe('True when more lines may exist after this page'),
+	next_start_line: z.number().int().positive().optional().describe('Pass as start_line for the next page')
+})
+
+export const filesCreateArtifactInputSchema = z.object({
+	path: z.string().min(1).describe('Relative file path under root to expose as ArtifactRef'),
+	filename: z.string().min(1).optional().describe('Display filename on the ArtifactRef'),
+	media_type: z.string().min(1).optional().describe('MIME type override (defaults from head when known)')
+})
+
+export const filesCreateArtifactOutputSchema = z.object({
+	path: z.string(),
+	artifact: artifactRefSchema.describe(
+		'Object-store ArtifactRef for the same object (logical key under storage key_prefix + root_prefix)'
+	)
 })
 
 export const filesPutInputSchema = z.object({
@@ -195,6 +252,9 @@ export type FilesSearchOutput = z.infer<typeof filesSearchOutputSchema>
 export type FilesStatInput = z.infer<typeof filesStatInputSchema>
 export type FilesStatOutput = z.infer<typeof filesStatOutputSchema>
 export type FilesGetInput = z.infer<typeof filesGetInputSchema>
+export type FilesGetRangeInput = z.infer<typeof filesGetRangeInputSchema>
+export type FilesReadLinesInput = z.infer<typeof filesReadLinesInputSchema>
+export type FilesCreateArtifactInput = z.infer<typeof filesCreateArtifactInputSchema>
 export type FilesPutInput = z.infer<typeof filesPutInputSchema>
 export type FilesDeleteInput = z.infer<typeof filesDeleteInputSchema>
 export type FilesCopyInput = z.infer<typeof filesCopyInputSchema>

@@ -6,8 +6,12 @@ import {
 	filesCopyOutputSchema,
 	filesDeleteInputSchema,
 	filesDeleteOutputSchema,
+	filesCreateArtifactInputSchema,
+	filesCreateArtifactOutputSchema,
 	filesGetInputSchema,
 	filesGetOutputSchema,
+	filesGetRangeInputSchema,
+	filesGetRangeOutputSchema,
 	filesListInputSchema,
 	filesListOutputSchema,
 	filesMkdirInputSchema,
@@ -24,6 +28,8 @@ import {
 	filesMultipartUploadPartOutputSchema,
 	filesPutInputSchema,
 	filesPutOutputSchema,
+	filesReadLinesInputSchema,
+	filesReadLinesOutputSchema,
 	filesSearchInputSchema,
 	filesSearchOutputSchema,
 	filesStatInputSchema,
@@ -79,6 +85,42 @@ export const filesGetTool = defineTool({
 	sideEffect: 'read',
 	runtime: 'both',
 	execute: async (input, ctx) => FilesClient.fromContext(ctx).get(input)
+})
+
+export const filesGetRangeTool = defineTool({
+	id: 'files-get-range',
+	name: 'getFileRange',
+	description:
+		'Download a byte range of one file under the bound workspace root (inclusive start_byte/end_byte). Max range size is 8 MiB. Prefer this over files-get for large objects.',
+	inputSchema: filesGetRangeInputSchema,
+	outputSchema: filesGetRangeOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	execute: async (input, ctx) => FilesClient.fromContext(ctx).getRange(input)
+})
+
+export const filesReadLinesTool = defineTool({
+	id: 'files-read-lines',
+	name: 'readFileLines',
+	description:
+		'Read a page of UTF-8 text lines from a file under the bound workspace root (1-based start_line, max_lines). Scans at most 2 MiB from the start of the object for line boundaries.',
+	inputSchema: filesReadLinesInputSchema,
+	outputSchema: filesReadLinesOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	execute: async (input, ctx) => FilesClient.fromContext(ctx).readLines(input)
+})
+
+export const filesCreateArtifactTool = defineTool({
+	id: 'files-create-artifact',
+	name: 'createFileArtifact',
+	description:
+		'Return an object-store ArtifactRef for an existing file under the bound workspace root (zero-copy; same storage key). Use when another tool needs an ArtifactRef without re-uploading bytes.',
+	inputSchema: filesCreateArtifactInputSchema,
+	outputSchema: filesCreateArtifactOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	execute: async (input, ctx) => FilesClient.fromContext(ctx).createArtifact(input)
 })
 
 export const filesPutTool = defineTool({
@@ -193,7 +235,7 @@ export const filesModule = defineModule({
 	id: 'files',
 	title: 'Files',
 	description:
-		'Manage files under a host-bound object storage root prefix. Paths are relative to that root. List, search, stat, get, put, delete, copy, move, mkdir, and multipart stay inside the root; host maps tenant to prefix and storage credentials.',
+		'Manage files under a host-bound object storage root prefix. Paths are relative to that root. List, search, stat, get, get-range, read-lines, create-artifact, put, delete, copy, move, mkdir, and multipart stay inside the root; host maps tenant to prefix and storage credentials.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: filesAuthSchema },
 	tools: [
@@ -201,6 +243,9 @@ export const filesModule = defineModule({
 		filesSearchTool,
 		filesStatTool,
 		filesGetTool,
+		filesGetRangeTool,
+		filesReadLinesTool,
+		filesCreateArtifactTool,
 		filesPutTool,
 		filesDeleteTool,
 		filesCopyTool,

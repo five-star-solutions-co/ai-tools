@@ -90,8 +90,10 @@ describe('files module', () => {
 		expect(validateModule(filesModule).ok).toBe(true)
 		expect(filesModule.tools.map((t) => t.id).sort()).toEqual([
 			'files-copy',
+			'files-create-artifact',
 			'files-delete',
 			'files-get',
+			'files-get-range',
 			'files-list',
 			'files-mkdir',
 			'files-move',
@@ -100,6 +102,7 @@ describe('files module', () => {
 			'files-multipart-start',
 			'files-multipart-upload-part',
 			'files-put',
+			'files-read-lines',
 			'files-search',
 			'files-stat'
 		])

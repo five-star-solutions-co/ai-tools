@@ -6,12 +6,17 @@
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
+import { bytesToBase64, bytesToUtf8 } from '../../shared/bytes'
 import { S3Client } from '../../vendors/s3'
 import {
+	MAX_FILES_LINES_SCAN_BYTES,
+	MAX_FILES_RANGE_BYTES,
 	filesAuthSchema,
 	filesCopyOutputSchema,
+	filesCreateArtifactOutputSchema,
 	filesDeleteOutputSchema,
 	filesGetOutputSchema,
+	filesGetRangeOutputSchema,
 	filesListOutputSchema,
 	filesMkdirOutputSchema,
 	filesMoveOutputSchema,
@@ -20,6 +25,7 @@ import {
 	filesMultipartStartOutputSchema,
 	filesMultipartUploadPartOutputSchema,
 	filesPutOutputSchema,
+	filesReadLinesOutputSchema,
 	filesSearchOutputSchema,
 	filesStatOutputSchema
 } from './contracts'
@@ -27,8 +33,10 @@ import type {
 	FileItem,
 	FilesAuth,
 	FilesCopyInput,
+	FilesCreateArtifactInput,
 	FilesDeleteInput,
 	FilesGetInput,
+	FilesGetRangeInput,
 	FilesListInput,
 	FilesMkdirInput,
 	FilesMoveInput,
@@ -37,6 +45,7 @@ import type {
 	FilesMultipartStartInput,
 	FilesMultipartUploadPartInput,
 	FilesPutInput,
+	FilesReadLinesInput,
 	FilesSearchInput,
 	FilesStatInput
 } from './contracts'
@@ -176,6 +185,85 @@ export class FilesClient {
 			...(got.content_type && { content_type: got.content_type }),
 			...(got.content_length !== undefined && { content_length: got.content_length })
 		})
+	}
+
+	async getRange(input: FilesGetRangeInput) {
+		if (input.end_byte < input.start_byte) {
+			throw new ToolError('end_byte must be >= start_byte', { code: 'bad_input' })
+		}
+		const rangeSize = input.end_byte - input.start_byte + 1
+		if (rangeSize > MAX_FILES_RANGE_BYTES) {
+			throw new ToolError(`Byte range exceeds max of ${MAX_FILES_RANGE_BYTES} bytes`, {
+				code: 'too_large',
+				details: { max_bytes: MAX_FILES_RANGE_BYTES, requested_bytes: rangeSize }
+			})
+		}
+		const absolute = resolveUnderRoot(this.#root, input.path)
+		const range = await this.#s3.getBytesRange(absolute, {
+			start_byte: input.start_byte,
+			end_byte: input.end_byte
+		})
+		const encoding = input.encoding ?? 'base64'
+		const body = encoding === 'utf8' ? bytesToUtf8(range.bytes) : bytesToBase64(range.bytes)
+		return filesGetRangeOutputSchema.parse({
+			path: input.path,
+			body,
+			encoding,
+			start_byte: range.start_byte,
+			end_byte: range.end_byte,
+			...(range.total_bytes !== undefined && { total_bytes: range.total_bytes }),
+			...(range.content_type && { content_type: range.content_type })
+		})
+	}
+
+	async readLines(input: FilesReadLinesInput) {
+		const startLine = input.start_line ?? 1
+		const maxLines = input.max_lines ?? 200
+		const absolute = resolveUnderRoot(this.#root, input.path)
+		// Scan a bounded prefix of the object as UTF-8 to extract lines.
+		const range = await this.#s3.getBytesRange(absolute, {
+			start_byte: 0,
+			end_byte: MAX_FILES_LINES_SCAN_BYTES - 1
+		})
+		const text = bytesToUtf8(range.bytes)
+		const allLines = text.split(/\r\n|\n|\r/)
+		// Drop trailing empty segment from final newline.
+		if (allLines.length > 0 && allLines[allLines.length - 1] === '') {
+			allLines.pop()
+		}
+		const sliceStart = startLine - 1
+		const page = allLines.slice(sliceStart, sliceStart + maxLines)
+		const scannedAll = range.total_bytes === undefined || range.end_byte >= range.total_bytes - 1
+		const moreInScan = sliceStart + page.length < allLines.length
+		const truncated = moreInScan || !scannedAll
+		return filesReadLinesOutputSchema.parse({
+			path: input.path,
+			start_line: startLine,
+			lines: page,
+			truncated,
+			...(truncated && { next_start_line: startLine + page.length })
+		})
+	}
+
+	async createArtifact(input: FilesCreateArtifactInput) {
+		const absolute = resolveUnderRoot(this.#root, input.path)
+		const head = await this.#s3.head({ key: absolute })
+		if (!head.exists) {
+			throw new ToolError('File not found', { code: 'not_found', details: { path: input.path } })
+		}
+		// Zero-copy: ArtifactRef points at the same logical key under storage key_prefix + root.
+		const artifact = {
+			store: 'object' as const,
+			key: absolute,
+			...(input.filename && { filename: input.filename }),
+			...(input.media_type
+				? { media_type: input.media_type }
+				: head.content_type
+					? { media_type: head.content_type }
+					: {}),
+			...(head.content_length !== undefined && { byte_length: head.content_length })
+		}
+		return filesCreateArtifactOutputSchema.parse({ path: input.path, artifact })
 	}
 
 	async put(input: FilesPutInput) {

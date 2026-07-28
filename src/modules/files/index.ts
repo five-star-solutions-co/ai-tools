@@ -7,7 +7,9 @@ export { FilesClient } from './client'
 export {
 	filesAuthSchema,
 	filesCopyTool,
+	filesCreateArtifactTool,
 	filesDeleteTool,
+	filesGetRangeTool,
 	filesGetTool,
 	filesListTool,
 	filesMkdirTool,
@@ -18,6 +20,7 @@ export {
 	filesMultipartStartTool,
 	filesMultipartUploadPartTool,
 	filesPutTool,
+	filesReadLinesTool,
 	filesSearchTool,
 	filesStatTool
 } from './module'
