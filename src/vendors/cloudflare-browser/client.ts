@@ -25,7 +25,7 @@ import {
 	cloudflareBrowserRenderOutputSchema,
 	cloudflareBrowserSessionOutputSchema
 } from './contracts'
-import { assertBinaryPrefix, blockedBrowserResourceTypes, defaultRenderKey, sourceBody } from './domain'
+import { assertBinaryPrefix, blockedBrowserResourceTypes, defaultRenderKey, sourceBody, titleFromHtml } from './domain'
 
 export type CloudflareBrowserClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -89,6 +89,41 @@ export class CloudflareBrowserClient {
 	/** Browser Rendering screenshot (PNG); store result in object storage. */
 	async renderScreenshot(input: CloudflareBrowserRenderScreenshotInput): Promise<CloudflareBrowserRenderOutput> {
 		return this.#renderAndStore('screenshot', input)
+	}
+
+	/**
+	 * One-shot rendered HTML for a URL or HTML source (Browser Rendering content API).
+	 * Not session-bound CDP; used for seam navigate/snapshot on Cloudflare.
+	 */
+	async fetchContent(input: { url?: string; html?: string }): Promise<{ html: string; title?: string }> {
+		const body: Record<string, unknown> = {
+			...sourceBody({
+				...(input.url && { url: input.url }),
+				...(input.html && { html: input.html })
+			}),
+			setJavaScriptEnabled: true
+		}
+		const { data } = await this.#http.post('/browser-rendering/content', body, {
+			label: 'Cloudflare Browser content',
+			headers: { 'Content-Type': 'application/json', Accept: 'text/html, application/json' }
+		})
+		if (isString(data)) {
+			const out: { html: string; title?: string } = { html: data }
+			const title = titleFromHtml(data)
+			if (title) out.title = title
+			return out
+		}
+		if (isPlainObject(data)) {
+			const result = data['result']
+			const html = isString(result) ? result : isString(data['html']) ? data['html'] : undefined
+			if (html) {
+				const out: { html: string; title?: string } = { html }
+				const title = titleFromHtml(html)
+				if (title) out.title = title
+				return out
+			}
+		}
+		throw new ToolError('Cloudflare Browser content response missing HTML', { code: 'upstream' })
 	}
 
 	async #renderAndStore(

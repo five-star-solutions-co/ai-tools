@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 
-import { runTool, validateModule } from '../../src/core'
+import { isToolError, runTool, validateModule } from '../../src/core'
 import {
+	browserClickTool,
 	browserGetSessionTool,
 	browserModule,
+	browserNavigateTool,
 	browserStartSessionTool,
 	browserStopSessionTool
 } from '../../src/modules/browser'
@@ -19,9 +21,16 @@ describe('browser', () => {
 	test('module contracts and capability tool ids', () => {
 		expect(validateModule(browserModule).ok).toBe(true)
 		expect(browserModule.tools.map((tool) => tool.id).sort()).toEqual([
+			'browser-click',
 			'browser-get-session',
+			'browser-get-state',
+			'browser-navigate',
+			'browser-screenshot',
+			'browser-snapshot',
 			'browser-start-session',
-			'browser-stop-session'
+			'browser-stop-session',
+			'browser-type',
+			'browser-wait'
 		])
 	})
 
@@ -77,6 +86,33 @@ describe('browser', () => {
 		const got = await runTool(browserGetSessionTool, { session_id: sessionId }, ctx)
 		expect(got.streams?.live_view_stream_endpoint).toContain(sessionId)
 		expect((await runTool(browserStopSessionTool, { session_id: sessionId }, ctx)).status).toBe('closing')
+	})
+
+	test('Cloudflare navigate uses content API; click is unsupported', async () => {
+		const sessionId = '1909cef7-23e8-4394-bc31-27404bf4348f'
+		const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+			const request = input instanceof Request ? input : new Request(input, init)
+			if (request.url.includes('/browser-rendering/content')) {
+				return new Response('<html><title>Hi</title><body>ok</body></html>', {
+					status: 200,
+					headers: { 'content-type': 'text/html' }
+				})
+			}
+			return new Response('unexpected', { status: 500 })
+		}
+		const ctx = {
+			auth: { provider: 'cloudflare', account_id: 'account', api_token: 'token' } as const,
+			fetch
+		}
+		const nav = await runTool(browserNavigateTool, { session_id: sessionId, url: 'https://example.com/' }, ctx)
+		expect(nav.title).toBe('Hi')
+		expect(nav.html).toContain('ok')
+		try {
+			await runTool(browserClickTool, { session_id: sessionId, selector: '#x' }, ctx)
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error) && error.code === 'unsupported').toBe(true)
+		}
 	})
 
 	test('Cloudflare provider rejects unsupported start fields and timeout bounds', async () => {

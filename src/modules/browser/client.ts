@@ -1,6 +1,18 @@
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
-import type { BrowserAuth, BrowserOps, BrowserSessionIdInput, BrowserStartSessionInput } from './contracts'
+import type {
+	BrowserAuth,
+	BrowserClickInput,
+	BrowserGetStateInput,
+	BrowserNavigateInput,
+	BrowserOps,
+	BrowserScreenshotInput,
+	BrowserSessionIdInput,
+	BrowserSnapshotInput,
+	BrowserStartSessionInput,
+	BrowserTypeInput,
+	BrowserWaitInput
+} from './contracts'
 import { browserAuthSchema } from './contracts'
 import { AgentCoreBrowserProvider } from './providers/bedrock-agentcore'
 import { CloudflareBrowserProvider } from './providers/cloudflare'
@@ -45,5 +57,33 @@ export class BrowserClient implements BrowserOps {
 
 	stopSession(input: BrowserSessionIdInput) {
 		return this.#ops.stopSession(input)
+	}
+
+	navigate(input: BrowserNavigateInput) {
+		return this.#ops.navigate(input)
+	}
+
+	snapshot(input: BrowserSnapshotInput) {
+		return this.#ops.snapshot(input)
+	}
+
+	click(input: BrowserClickInput) {
+		return this.#ops.click(input)
+	}
+
+	type(input: BrowserTypeInput) {
+		return this.#ops.type(input)
+	}
+
+	wait(input: BrowserWaitInput) {
+		return this.#ops.wait(input)
+	}
+
+	screenshot(input: BrowserScreenshotInput) {
+		return this.#ops.screenshot(input)
+	}
+
+	getState(input: BrowserGetStateInput) {
+		return this.#ops.getState(input)
 	}
 }

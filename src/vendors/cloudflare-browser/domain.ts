@@ -50,3 +50,10 @@ export function defaultRenderKey(kind: 'pdf' | 'screenshot', outputKey: string |
 	const stamp = Date.now()
 	return kind === 'pdf' ? `renders/${stamp}.pdf` : `renders/${stamp}.png`
 }
+
+/** Best-effort title from rendered HTML. */
+export function titleFromHtml(html: string): string | undefined {
+	const match = html.match(/<title[^>]*>([^<]*)<\/title>/i)
+	const title = match?.[1]?.trim()
+	return title && title.length > 0 ? title : undefined
+}
