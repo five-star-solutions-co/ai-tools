@@ -45,6 +45,25 @@ export const woocommerceLineItemInputSchema = z.object({
 	total: z.string().min(1).optional().describe('Line total as string')
 })
 
+/** Order line item on read responses (list/get order). */
+export const woocommerceOrderLineItemSchema = z.object({
+	id: z.number().describe('Order line item id'),
+	product_id: z.number().optional().describe('Product id'),
+	variation_id: z.number().optional().describe('Variation id when applicable'),
+	quantity: z.number().optional().describe('Quantity'),
+	name: z.string().optional().describe('Line item name'),
+	sku: z.string().optional().describe('SKU'),
+	price: z.string().optional().describe('Unit price as string'),
+	total: z.string().optional().describe('Line total as string')
+})
+
+/** Nested category on product read responses. */
+export const woocommerceProductCategoryRefSchema = z.object({
+	id: z.number().describe('Category id'),
+	name: z.string().optional().describe('Category name'),
+	slug: z.string().optional().describe('Category slug')
+})
+
 // ── Orders ──────────────────────────────────────────────────────────────────
 
 export const woocommerceOrderSchema = z.object({
@@ -57,7 +76,8 @@ export const woocommerceOrderSchema = z.object({
 	customer_id: z.number().optional(),
 	payment_method: z.string().optional(),
 	payment_method_title: z.string().optional(),
-	customer_note: z.string().optional()
+	customer_note: z.string().optional(),
+	line_items: z.array(woocommerceOrderLineItemSchema).optional().describe('Order line items when returned by the store')
 })
 
 export const woocommerceListOrdersInputSchema = z.object({
@@ -212,7 +232,11 @@ export const woocommerceProductSchema = z.object({
 	sale_price: z.string().optional(),
 	stock_status: z.string().optional(),
 	stock_quantity: z.number().optional(),
-	manage_stock: z.boolean().optional()
+	manage_stock: z.boolean().optional(),
+	categories: z
+		.array(woocommerceProductCategoryRefSchema)
+		.optional()
+		.describe('Product categories when returned by the store')
 })
 
 export const woocommerceListProductsInputSchema = z.object({
@@ -221,6 +245,12 @@ export const woocommerceListProductsInputSchema = z.object({
 	sku: z.string().min(1).optional().describe('Exact SKU filter'),
 	category: z.int().positive().optional().describe('Product category id'),
 	type: z.string().min(1).optional().describe('Product type (simple, variable, …)'),
+	include: z
+		.array(z.int().positive())
+		.min(1)
+		.max(100)
+		.optional()
+		.describe('Limit results to these product ids (WooCommerce include parameter)'),
 	...listCursorFields
 })
 

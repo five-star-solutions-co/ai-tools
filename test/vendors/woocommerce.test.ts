@@ -76,7 +76,19 @@ describe('woocommerce', () => {
 						status: 'processing',
 						currency: 'USD',
 						total: '19.00',
-						date_created: '2026-01-01T00:00:00'
+						date_created: '2026-01-01T00:00:00',
+						line_items: [
+							{
+								id: 1,
+								product_id: 44,
+								variation_id: 0,
+								quantity: 2,
+								name: 'Widget',
+								sku: 'W-1',
+								price: 9.5,
+								total: '19.00'
+							}
+						]
 					}
 				]),
 				{ status: 200, headers: { 'x-wp-totalpages': '1' } }
@@ -88,7 +100,54 @@ describe('woocommerce', () => {
 			const result = await client.listOrders({})
 			expect(result.items).toHaveLength(1)
 			expect(result.items[0]?.id).toBe(12)
+			expect(result.items[0]?.line_items).toEqual([
+				{
+					id: 1,
+					product_id: 44,
+					variation_id: 0,
+					quantity: 2,
+					name: 'Widget',
+					sku: 'W-1',
+					price: '9.5',
+					total: '19.00'
+				}
+			])
 			expect(result.truncated).toBe(false)
+		} finally {
+			restore()
+		}
+	})
+
+	test('listProducts supports include and returns categories', async () => {
+		const restore = mockFetch((url, init) => {
+			expect(url).toContain('/wp-json/wc/v3/products')
+			expect(url).toContain('include=10,20')
+			expect(init?.method).toBe('GET')
+			return new Response(
+				JSON.stringify([
+					{
+						id: 10,
+						name: 'Alpha',
+						type: 'simple',
+						status: 'publish',
+						sku: 'A-1',
+						categories: [
+							{ id: 3, name: 'Widgets', slug: 'widgets' },
+							{ id: 4, name: 'Sale' }
+						]
+					}
+				]),
+				{ status: 200, headers: { 'x-wp-totalpages': '1' } }
+			)
+		})
+		try {
+			const client = new WoocommerceClient(auth)
+			const result = await client.listProducts({ include: [10, 20] })
+			expect(result.items).toHaveLength(1)
+			expect(result.items[0]?.categories).toEqual([
+				{ id: 3, name: 'Widgets', slug: 'widgets' },
+				{ id: 4, name: 'Sale' }
+			])
 		} finally {
 			restore()
 		}

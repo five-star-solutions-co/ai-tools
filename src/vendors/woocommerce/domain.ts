@@ -229,6 +229,56 @@ export function orderRefundWriteBody(
 	}
 }
 
+function parseOrderLineItem(value: unknown): {
+	id: number
+	product_id?: number
+	variation_id?: number
+	quantity?: number
+	name?: string
+	sku?: string
+	price?: string
+	total?: string
+} {
+	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+		throw new ToolError('WooCommerce returned an invalid order line item', { code: 'upstream' })
+	}
+	const productId = optionalNumber(value['product_id'])
+	const variationId = optionalNumber(value['variation_id'])
+	const quantity = optionalNumber(value['quantity'])
+	const name = optionalNonEmptyString(value['name'])
+	const sku = optionalNonEmptyString(value['sku'])
+	// WC may return price/total as string or number
+	const priceRaw = value['price']
+	const totalRaw = value['total']
+	const price =
+		isString(priceRaw) && priceRaw.length > 0
+			? priceRaw
+			: typeof priceRaw === 'number' && Number.isFinite(priceRaw)
+				? String(priceRaw)
+				: undefined
+	const total =
+		isString(totalRaw) && totalRaw.length > 0
+			? totalRaw
+			: typeof totalRaw === 'number' && Number.isFinite(totalRaw)
+				? String(totalRaw)
+				: undefined
+	return {
+		id: value['id'],
+		...(productId !== undefined && { product_id: productId }),
+		...(variationId !== undefined && { variation_id: variationId }),
+		...(quantity !== undefined && { quantity }),
+		...(name && { name }),
+		...(sku && { sku }),
+		...(price && { price }),
+		...(total && { total })
+	}
+}
+
+function parseOrderLineItems(value: unknown): ReturnType<typeof parseOrderLineItem>[] | undefined {
+	if (!Array.isArray(value) || value.length === 0) return undefined
+	return value.map(parseOrderLineItem)
+}
+
 export function parseOrder(value: unknown): WoocommerceOrder {
 	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
 		throw new ToolError('WooCommerce returned an invalid order', { code: 'upstream' })
@@ -245,6 +295,7 @@ export function parseOrder(value: unknown): WoocommerceOrder {
 	const paymentMethod = optionalNonEmptyString(value['payment_method'])
 	const paymentMethodTitle = optionalNonEmptyString(value['payment_method_title'])
 	const customerNote = optionalString(value['customer_note'])
+	const lineItems = parseOrderLineItems(value['line_items'])
 	return {
 		id: value['id'],
 		number,
@@ -255,7 +306,8 @@ export function parseOrder(value: unknown): WoocommerceOrder {
 		...(customerId !== undefined && { customer_id: customerId }),
 		...(paymentMethod && { payment_method: paymentMethod }),
 		...(paymentMethodTitle && { payment_method_title: paymentMethodTitle }),
-		...(customerNote !== undefined && { customer_note: customerNote })
+		...(customerNote !== undefined && { customer_note: customerNote }),
+		...(lineItems && { line_items: lineItems })
 	}
 }
 
@@ -313,6 +365,24 @@ export function parseOrderRefunds(value: unknown): WoocommerceOrderRefund[] {
 	return value.map(parseOrderRefund)
 }
 
+function parseProductCategoryRef(value: unknown): { id: number; name?: string; slug?: string } {
+	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+		throw new ToolError('WooCommerce returned an invalid product category ref', { code: 'upstream' })
+	}
+	const name = optionalNonEmptyString(value['name'])
+	const slug = optionalNonEmptyString(value['slug'])
+	return {
+		id: value['id'],
+		...(name && { name }),
+		...(slug && { slug })
+	}
+}
+
+function parseProductCategoryRefs(value: unknown): ReturnType<typeof parseProductCategoryRef>[] | undefined {
+	if (!Array.isArray(value) || value.length === 0) return undefined
+	return value.map(parseProductCategoryRef)
+}
+
 export function parseProduct(value: unknown): WoocommerceProduct {
 	if (
 		!isPlainObject(value) ||
@@ -333,6 +403,7 @@ export function parseProduct(value: unknown): WoocommerceProduct {
 	const stockStatus = optionalString(value['stock_status'])
 	const stockQuantity = optionalNumber(value['stock_quantity'])
 	const manageStock = optionalBoolean(value['manage_stock'])
+	const categories = parseProductCategoryRefs(value['categories'])
 	return {
 		id: value['id'],
 		name: value['name'],
@@ -344,7 +415,8 @@ export function parseProduct(value: unknown): WoocommerceProduct {
 		...(salePrice && { sale_price: salePrice }),
 		...(stockStatus && { stock_status: stockStatus }),
 		...(stockQuantity !== undefined && { stock_quantity: stockQuantity }),
-		...(manageStock !== undefined && { manage_stock: manageStock })
+		...(manageStock !== undefined && { manage_stock: manageStock }),
+		...(categories && { categories })
 	}
 }
 

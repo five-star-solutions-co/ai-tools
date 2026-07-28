@@ -261,7 +261,9 @@ export class WoocommerceClient {
 				...(input.search && { search: input.search }),
 				...(input.sku && { sku: input.sku }),
 				...(input.category !== undefined && { category: input.category }),
-				...(input.type && { type: input.type })
+				...(input.type && { type: input.type }),
+				// WC REST: include is a list of product ids
+				...(input.include && input.include.length > 0 && { include: input.include.join(',') })
 			}
 		})
 		const items = parseProducts(data)
