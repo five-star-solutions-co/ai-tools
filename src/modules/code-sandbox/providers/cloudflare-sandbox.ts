@@ -77,30 +77,34 @@ export class CloudflareCodeSandboxProvider implements CodeSandboxOps {
 			sandbox_id: input.session_id,
 			paths: input.paths
 		})
-		return { session_id: input.session_id, files: out.files }
+		// Seam contract is utf-8 text only; vendor defaults encoding to utf8.
+		return {
+			session_id: input.session_id,
+			files: out.files.map((file) => ({
+				path: file.path,
+				text: file.text ?? ''
+			}))
+		}
 	}
 
 	async listFiles(input: CodeSandboxListFilesInput): Promise<CodeSandboxListFilesOutput> {
-		const dir = input.directory_path?.trim() || '/workspace'
-		const out = await this.#client.exec({
+		const out = await this.#client.listFiles({
 			sandbox_id: input.session_id,
-			argv: ['sh', '-lc', `find ${shellQuote(dir)} -maxdepth 4 -type f 2>/dev/null | head -n 500`]
+			...(input.directory_path !== undefined && { directory_path: input.directory_path })
 		})
-		const paths = out.stdout
-			.split('\n')
-			.map((line) => line.trim())
-			.filter((line) => line.length > 0)
-		return { session_id: input.session_id, paths, raw: { stdout: out.stdout, stderr: out.stderr } }
+		return {
+			session_id: input.session_id,
+			paths: out.paths,
+			...(out.raw !== undefined && { raw: out.raw })
+		}
 	}
 
 	async removeFiles(input: CodeSandboxRemoveFilesInput) {
-		for (const path of input.paths) {
-			await this.#client.exec({
-				sandbox_id: input.session_id,
-				argv: ['rm', '-f', '--', path.startsWith('/') ? path : `/workspace/${path}`]
-			})
-		}
-		return { session_id: input.session_id, paths: input.paths, ok: true as const }
+		const out = await this.#client.removeFiles({
+			sandbox_id: input.session_id,
+			paths: input.paths
+		})
+		return { session_id: input.session_id, paths: out.paths, ok: true as const }
 	}
 }
 
@@ -124,8 +128,4 @@ function normalizeLanguage(language: string | undefined): 'python' | 'javascript
 	if (raw === 'ts' || raw === 'typescript') return 'typescript'
 	if (raw === 'sh' || raw === 'bash' || raw === 'shell') return 'shell'
 	return 'python'
-}
-
-function shellQuote(value: string): string {
-	return `'${value.replaceAll("'", `'\\''`)}'`
 }

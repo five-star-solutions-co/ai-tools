@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { isPlainObject } from 'es-toolkit'
 
-import { validateModule } from '../../src/core'
+import { isToolError, validateModule } from '../../src/core'
 import {
 	CloudflareSandboxClient,
 	cloudflareSandboxModule,
@@ -42,9 +42,13 @@ describe('cloudflare-sandbox', () => {
 			'cloudflare-sandbox-destroy',
 			'cloudflare-sandbox-exec',
 			'cloudflare-sandbox-execute-code',
+			'cloudflare-sandbox-export-artifact',
 			'cloudflare-sandbox-health',
+			'cloudflare-sandbox-import-artifact',
+			'cloudflare-sandbox-list-files',
 			'cloudflare-sandbox-read-file',
 			'cloudflare-sandbox-read-files',
+			'cloudflare-sandbox-remove-files',
 			'cloudflare-sandbox-running',
 			'cloudflare-sandbox-write-file',
 			'cloudflare-sandbox-write-files'
@@ -140,12 +144,14 @@ describe('cloudflare-sandbox', () => {
 			expect(await client.writeFile({ sandbox_id: 'sbx-1', path: 'hi.py', text: 'print(1)' })).toEqual({
 				sandbox_id: 'sbx-1',
 				path: 'hi.py',
-				ok: true
+				ok: true,
+				byte_length: 8
 			})
 			expect(await client.readFile({ sandbox_id: 'sbx-1', path: 'hi.py' })).toEqual({
 				sandbox_id: 'sbx-1',
 				path: 'hi.py',
-				text: 'print(1)'
+				text: 'print(1)',
+				byte_length: 8
 			})
 			expect(await client.destroy({ sandbox_id: 'sbx-1' })).toEqual({
 				sandbox_id: 'sbx-1',
@@ -153,6 +159,129 @@ describe('cloudflare-sandbox', () => {
 			})
 		} finally {
 			restore()
+		}
+	})
+
+	test('write/read body_base64 binary', async () => {
+		const payload = new Uint8Array([0, 1, 2, 255])
+		const b64 = Buffer.from(payload).toString('base64')
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			const url = req.url
+			const method = req.method.toUpperCase()
+			if (url.includes('/file/workspace/bin.dat') && method === 'PUT') {
+				const buf = new Uint8Array(await req.arrayBuffer())
+				expect([...buf]).toEqual([0, 1, 2, 255])
+				return Response.json({ ok: true })
+			}
+			if (url.includes('/file/workspace/bin.dat') && method === 'GET') {
+				return new Response(payload, {
+					status: 200,
+					headers: { 'content-type': 'application/octet-stream' }
+				})
+			}
+			return new Response(`unexpected ${method} ${url}`, { status: 500 })
+		})
+		try {
+			const client = new CloudflareSandboxClient(auth)
+			const written = await client.writeFile({
+				sandbox_id: 'sbx-1',
+				path: 'bin.dat',
+				body_base64: b64
+			})
+			expect(written.byte_length).toBe(4)
+			const read = await client.readFile({
+				sandbox_id: 'sbx-1',
+				path: 'bin.dat',
+				encoding: 'base64'
+			})
+			expect(read.body_base64).toBe(b64)
+			expect(read.byte_length).toBe(4)
+			expect(read.text).toBeUndefined()
+		} finally {
+			restore()
+		}
+	})
+
+	test('importArtifact and exportArtifact use bound storage', async () => {
+		const fileBytes = new Uint8Array([9, 8, 7])
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			const url = req.url
+			const method = req.method.toUpperCase()
+			// S3 get for import
+			if (url.includes('example.r2.cloudflarestorage.com') && method === 'GET' && url.includes('in.bin')) {
+				return new Response(fileBytes, { status: 200 })
+			}
+			// S3 put for export
+			if (url.includes('example.r2.cloudflarestorage.com') && method === 'PUT' && url.includes('out.bin')) {
+				const buf = new Uint8Array(await req.arrayBuffer())
+				expect([...buf]).toEqual([9, 8, 7])
+				return new Response(null, { status: 200 })
+			}
+			// sandbox file
+			if (url.includes('/file/workspace/work.bin') && method === 'PUT') {
+				const buf = new Uint8Array(await req.arrayBuffer())
+				expect([...buf]).toEqual([9, 8, 7])
+				return Response.json({ ok: true })
+			}
+			if (url.includes('/file/workspace/work.bin') && method === 'GET') {
+				return new Response(fileBytes, { status: 200 })
+			}
+			// S3 Head often used by getBytes bounded path - return content-length
+			if (url.includes('example.r2.cloudflarestorage.com') && method === 'HEAD') {
+				return new Response(null, { status: 200, headers: { 'content-length': '3' } })
+			}
+			return new Response(`unexpected ${method} ${url}`, { status: 500 })
+		})
+		try {
+			const client = new CloudflareSandboxClient({
+				...auth,
+				storage: {
+					access_key_id: 'AKIA',
+					secret_access_key: 'secret',
+					region: 'auto',
+					bucket: 'bkt',
+					endpoint: 'https://example.r2.cloudflarestorage.com'
+				}
+			})
+			const imported = await client.importArtifact({
+				sandbox_id: 'sbx-1',
+				path: 'work.bin',
+				source: { store: 'object', key: 'in.bin' }
+			})
+			expect(imported).toEqual({
+				sandbox_id: 'sbx-1',
+				path: 'work.bin',
+				ok: true,
+				byte_length: 3
+			})
+			const exported = await client.exportArtifact({
+				sandbox_id: 'sbx-1',
+				path: 'work.bin',
+				destination_key: 'out.bin'
+			})
+			expect(exported.artifact).toEqual({
+				store: 'object',
+				key: 'out.bin',
+				byte_length: 3
+			})
+		} finally {
+			restore()
+		}
+	})
+
+	test('importArtifact without storage is bad_auth', async () => {
+		const client = new CloudflareSandboxClient(auth)
+		try {
+			await client.importArtifact({
+				sandbox_id: 'sbx-1',
+				path: 'a.bin',
+				source: { store: 'object', key: 'k' }
+			})
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error) && error.code === 'bad_auth').toBe(true)
 		}
 	})
 })

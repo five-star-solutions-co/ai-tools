@@ -6,12 +6,17 @@
 
 import { z } from 'zod'
 
+import { s3AuthSchema } from '../s3/contracts'
+
 export const MAX_ARGV = 64
 export const MAX_ARG_CHARS = 100_000
 export const MAX_FILE_PATH = 1024
 export const MAX_FILE_TEXT = 2_000_000
+/** Bridge hard cap is 32 MiB; package tool path uses the same bound. */
+export const MAX_FILE_BYTES = 32 * 1024 * 1024
 export const MAX_WRITE_FILES = 20
 export const MAX_READ_PATHS = 50
+export const MAX_LIST_FILES = 500
 export const DEFAULT_EXEC_TIMEOUT_MS = 30_000
 export const MAX_EXEC_TIMEOUT_MS = 600_000
 
@@ -20,10 +25,24 @@ export const cloudflareSandboxAuthSchema = z.object({
 		.string()
 		.min(1)
 		.describe('Sandbox bridge Worker origin, for example https://sandbox-bridge.example.workers.dev'),
-	api_key: z.string().min(1).describe('Bridge SANDBOX_API_KEY Bearer token')
+	api_key: z.string().min(1).describe('Bridge SANDBOX_API_KEY Bearer token'),
+	storage: s3AuthSchema
+		.optional()
+		.describe('Optional S3-compatible storage for importArtifact / exportArtifact (ArtifactRef)')
 })
 
 export type CloudflareSandboxAuth = z.infer<typeof cloudflareSandboxAuthSchema>
+
+/** Object-store ArtifactRef for sandbox import/export. */
+export const sandboxObjectArtifactRefSchema = z.object({
+	store: z.literal('object').describe('Object storage owned by bound sandbox storage auth'),
+	key: z.string().min(1).describe('Object key'),
+	media_type: z.string().min(1).optional().describe('MIME or format hint when known'),
+	filename: z.string().min(1).optional().describe('Original or display file name'),
+	byte_length: z.int().min(0).optional().describe('Size in bytes when known')
+})
+
+export type SandboxObjectArtifactRef = z.infer<typeof sandboxObjectArtifactRefSchema>
 
 const sandboxId = z.string().min(1).max(200).describe('Sandbox id returned by create')
 
@@ -81,44 +100,86 @@ export const execOutputSchema = z.object({
 	error_code: z.string().optional().describe('Bridge error code when present')
 })
 
-export const writeFileInputSchema = z.object({
-	sandbox_id: sandboxId,
-	path: z.string().min(1).max(MAX_FILE_PATH).describe('Path under workspace (with or without /workspace/ prefix)'),
-	text: z.string().max(MAX_FILE_TEXT).describe('Utf-8 file contents'),
-	session_id: z.string().min(1).max(200).optional().describe('Optional Session-Id header')
-})
+const filePathField = z
+	.string()
+	.min(1)
+	.max(MAX_FILE_PATH)
+	.describe('Path under workspace (with or without /workspace/ prefix)')
+
+const sessionIdField = z.string().min(1).max(200).optional().describe('Optional Session-Id header')
+
+const writeFileBodyFields = {
+	text: z.string().max(MAX_FILE_TEXT).optional().describe('Utf-8 file contents (omit when body_base64 is set)'),
+	body_base64: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Base64 file bytes for binary content (omit when text is set; max 32 MiB decoded)')
+}
+
+function refineExactlyOneBody(
+	val: { text?: string | undefined; body_base64?: string | undefined },
+	ctx: z.RefinementCtx
+): void {
+	const hasText = val.text !== undefined
+	const hasB64 = val.body_base64 !== undefined
+	if (hasText === hasB64) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'Provide exactly one of text or body_base64'
+		})
+	}
+}
+
+export const writeFileInputSchema = z
+	.object({
+		sandbox_id: sandboxId,
+		path: filePathField,
+		...writeFileBodyFields,
+		session_id: sessionIdField
+	})
+	.superRefine(refineExactlyOneBody)
 
 export const writeFileOutputSchema = z.object({
 	sandbox_id: z.string(),
 	path: z.string(),
-	ok: z.literal(true)
+	ok: z.literal(true),
+	byte_length: z.number().int().nonnegative().optional().describe('Decoded byte length written when known')
 })
 
 export const readFileInputSchema = z.object({
 	sandbox_id: sandboxId,
-	path: z.string().min(1).max(MAX_FILE_PATH).describe('Path under workspace (with or without /workspace/ prefix)'),
-	session_id: z.string().min(1).max(200).optional().describe('Optional Session-Id header')
+	path: filePathField,
+	encoding: z
+		.enum(['utf8', 'base64'])
+		.optional()
+		.describe('Response encoding (default utf8 for text; use base64 for binary)'),
+	session_id: sessionIdField
 })
 
 export const readFileOutputSchema = z.object({
 	sandbox_id: z.string(),
 	path: z.string(),
-	text: z.string().describe('Utf-8 file contents')
+	text: z.string().optional().describe('Utf-8 contents when encoding is utf8 (default)'),
+	body_base64: z.string().optional().describe('Base64 contents when encoding is base64'),
+	byte_length: z.number().int().nonnegative().optional().describe('Decoded byte length')
 })
 
 export const writeFilesInputSchema = z.object({
 	sandbox_id: sandboxId,
 	files: z
 		.array(
-			z.object({
-				path: z.string().min(1).max(MAX_FILE_PATH).describe('Path under workspace'),
-				text: z.string().max(MAX_FILE_TEXT).describe('Utf-8 file contents')
-			})
+			z
+				.object({
+					path: z.string().min(1).max(MAX_FILE_PATH).describe('Path under workspace'),
+					...writeFileBodyFields
+				})
+				.superRefine(refineExactlyOneBody)
 		)
 		.min(1)
 		.max(MAX_WRITE_FILES)
-		.describe('Files to write under workspace'),
-	session_id: z.string().min(1).max(200).optional().describe('Optional bridge session id (Session-Id header)')
+		.describe('Files to write under workspace (text or body_base64 each)'),
+	session_id: sessionIdField
 })
 
 export const writeFilesOutputSchema = z.object({
@@ -134,7 +195,8 @@ export const readFilesInputSchema = z.object({
 		.min(1)
 		.max(MAX_READ_PATHS)
 		.describe('Paths to read under workspace'),
-	session_id: z.string().min(1).max(200).optional().describe('Optional bridge session id (Session-Id header)')
+	encoding: z.enum(['utf8', 'base64']).optional().describe('Response encoding for all files (default utf8)'),
+	session_id: sessionIdField
 })
 
 export const readFilesOutputSchema = z.object({
@@ -142,9 +204,66 @@ export const readFilesOutputSchema = z.object({
 	files: z.array(
 		z.object({
 			path: z.string(),
-			text: z.string()
+			text: z.string().optional(),
+			body_base64: z.string().optional(),
+			byte_length: z.number().int().nonnegative().optional()
 		})
 	)
+})
+
+export const listFilesInputSchema = z.object({
+	sandbox_id: sandboxId,
+	directory_path: z.string().max(MAX_FILE_PATH).optional().describe('Directory to list (default /workspace)'),
+	session_id: sessionIdField
+})
+
+export const listFilesOutputSchema = z.object({
+	sandbox_id: z.string(),
+	paths: z.array(z.string()).describe('Absolute or workspace-relative file paths found'),
+	raw: z.unknown().optional().describe('Provider listing payload when available')
+})
+
+export const removeFilesInputSchema = z.object({
+	sandbox_id: sandboxId,
+	paths: z
+		.array(z.string().min(1).max(MAX_FILE_PATH))
+		.min(1)
+		.max(MAX_READ_PATHS)
+		.describe('Paths to remove under workspace'),
+	session_id: sessionIdField
+})
+
+export const removeFilesOutputSchema = z.object({
+	sandbox_id: z.string(),
+	paths: z.array(z.string()),
+	ok: z.literal(true)
+})
+
+export const importArtifactInputSchema = z.object({
+	sandbox_id: sandboxId,
+	path: filePathField,
+	source: sandboxObjectArtifactRefSchema.describe('Object-store ArtifactRef to copy into the sandbox'),
+	session_id: sessionIdField
+})
+
+export const importArtifactOutputSchema = z.object({
+	sandbox_id: z.string(),
+	path: z.string(),
+	ok: z.literal(true),
+	byte_length: z.number().int().nonnegative()
+})
+
+export const exportArtifactInputSchema = z.object({
+	sandbox_id: sandboxId,
+	path: filePathField,
+	destination_key: z.string().min(1).describe('Object key to write under bound storage'),
+	session_id: sessionIdField
+})
+
+export const exportArtifactOutputSchema = z.object({
+	sandbox_id: z.string(),
+	path: z.string(),
+	artifact: sandboxObjectArtifactRefSchema
 })
 
 export const createBridgeSessionOutputSchema = z.object({
@@ -199,6 +318,14 @@ export type WriteFilesInput = z.infer<typeof writeFilesInputSchema>
 export type WriteFilesOutput = z.infer<typeof writeFilesOutputSchema>
 export type ReadFilesInput = z.infer<typeof readFilesInputSchema>
 export type ReadFilesOutput = z.infer<typeof readFilesOutputSchema>
+export type ListFilesInput = z.infer<typeof listFilesInputSchema>
+export type ListFilesOutput = z.infer<typeof listFilesOutputSchema>
+export type RemoveFilesInput = z.infer<typeof removeFilesInputSchema>
+export type RemoveFilesOutput = z.infer<typeof removeFilesOutputSchema>
+export type ImportArtifactInput = z.infer<typeof importArtifactInputSchema>
+export type ImportArtifactOutput = z.infer<typeof importArtifactOutputSchema>
+export type ExportArtifactInput = z.infer<typeof exportArtifactInputSchema>
+export type ExportArtifactOutput = z.infer<typeof exportArtifactOutputSchema>
 export type CreateBridgeSessionOutput = z.infer<typeof createBridgeSessionOutputSchema>
 export type DeleteBridgeSessionInput = z.infer<typeof deleteBridgeSessionInputSchema>
 export type DeleteBridgeSessionOutput = z.infer<typeof deleteBridgeSessionOutputSchema>

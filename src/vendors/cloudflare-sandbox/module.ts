@@ -12,11 +12,19 @@ import {
 	execInputSchema,
 	execOutputSchema,
 	executeCodeInputSchema,
+	exportArtifactInputSchema,
+	exportArtifactOutputSchema,
 	healthOutputSchema,
+	importArtifactInputSchema,
+	importArtifactOutputSchema,
+	listFilesInputSchema,
+	listFilesOutputSchema,
 	readFileInputSchema,
 	readFileOutputSchema,
 	readFilesInputSchema,
 	readFilesOutputSchema,
+	removeFilesInputSchema,
+	removeFilesOutputSchema,
 	runningOutputSchema,
 	sandboxIdInputSchema,
 	writeFileInputSchema,
@@ -105,7 +113,8 @@ export const cloudflareSandboxExecuteCodeTool = defineTool({
 export const cloudflareSandboxWriteFileTool = defineTool({
 	id: `${id}-write-file`,
 	name: 'cloudflareSandboxWriteFile',
-	description: 'Write a utf-8 file under the sandbox workspace.',
+	description:
+		'Write a file under the sandbox workspace. Provide text (utf-8) or body_base64 (binary). Max 32 MiB decoded.',
 	inputSchema: writeFileInputSchema,
 	outputSchema: writeFileOutputSchema,
 	sideEffect: 'write',
@@ -117,7 +126,7 @@ export const cloudflareSandboxWriteFileTool = defineTool({
 export const cloudflareSandboxReadFileTool = defineTool({
 	id: `${id}-read-file`,
 	name: 'cloudflareSandboxReadFile',
-	description: 'Read a utf-8 file from the sandbox workspace.',
+	description: 'Read a file from the sandbox workspace. Default encoding utf8 (text); use base64 for binary content.',
 	inputSchema: readFileInputSchema,
 	outputSchema: readFileOutputSchema,
 	sideEffect: 'read',
@@ -129,7 +138,7 @@ export const cloudflareSandboxReadFileTool = defineTool({
 export const cloudflareSandboxWriteFilesTool = defineTool({
 	id: `${id}-write-files`,
 	name: 'cloudflareSandboxWriteFiles',
-	description: 'Write multiple utf-8 files under the sandbox workspace.',
+	description: 'Write multiple files under the sandbox workspace (text or body_base64 per file).',
 	inputSchema: writeFilesInputSchema,
 	outputSchema: writeFilesOutputSchema,
 	sideEffect: 'write',
@@ -141,13 +150,63 @@ export const cloudflareSandboxWriteFilesTool = defineTool({
 export const cloudflareSandboxReadFilesTool = defineTool({
 	id: `${id}-read-files`,
 	name: 'cloudflareSandboxReadFiles',
-	description: 'Read multiple utf-8 files from the sandbox workspace.',
+	description: 'Read multiple files from the sandbox workspace (utf8 or base64 encoding).',
 	inputSchema: readFilesInputSchema,
 	outputSchema: readFilesOutputSchema,
 	sideEffect: 'read',
 	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => CloudflareSandboxClient.fromContext(ctx).readFiles(input)
+})
+
+export const cloudflareSandboxListFilesTool = defineTool({
+	id: `${id}-list-files`,
+	name: 'cloudflareSandboxListFiles',
+	description: 'List files under a sandbox workspace directory (default /workspace).',
+	inputSchema: listFilesInputSchema,
+	outputSchema: listFilesOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	network: true,
+	execute: async (input, ctx) => CloudflareSandboxClient.fromContext(ctx).listFiles(input)
+})
+
+export const cloudflareSandboxRemoveFilesTool = defineTool({
+	id: `${id}-remove-files`,
+	name: 'cloudflareSandboxRemoveFiles',
+	description: 'Remove files from the sandbox workspace by path.',
+	inputSchema: removeFilesInputSchema,
+	outputSchema: removeFilesOutputSchema,
+	sideEffect: 'delete',
+	runtime: 'both',
+	network: true,
+	execute: async (input, ctx) => CloudflareSandboxClient.fromContext(ctx).removeFiles(input)
+})
+
+export const cloudflareSandboxImportArtifactTool = defineTool({
+	id: `${id}-import-artifact`,
+	name: 'cloudflareSandboxImportArtifact',
+	description:
+		'Copy an object-store ArtifactRef into a sandbox workspace path. Requires bound storage credentials on sandbox auth.',
+	inputSchema: importArtifactInputSchema,
+	outputSchema: importArtifactOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	network: true,
+	execute: async (input, ctx) => CloudflareSandboxClient.fromContext(ctx).importArtifact(input)
+})
+
+export const cloudflareSandboxExportArtifactTool = defineTool({
+	id: `${id}-export-artifact`,
+	name: 'cloudflareSandboxExportArtifact',
+	description:
+		'Copy a sandbox workspace file to object storage and return an ArtifactRef. Requires bound storage credentials on sandbox auth.',
+	inputSchema: exportArtifactInputSchema,
+	outputSchema: exportArtifactOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	network: true,
+	execute: async (input, ctx) => CloudflareSandboxClient.fromContext(ctx).exportArtifact(input)
 })
 
 export const cloudflareSandboxCreateSessionTool = defineTool({
@@ -179,7 +238,7 @@ export const cloudflareSandboxModule = defineModule({
 	id,
 	title: 'Cloudflare Sandbox',
 	description:
-		'Cloudflare Sandbox bridge: create isolated containers, run commands, execute code, and read or write workspace files.',
+		'Cloudflare Sandbox bridge: create isolated containers, run commands, execute code, read/write binary workspace files, and import/export object-store artifacts.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: cloudflareSandboxAuthSchema },
 	tools: [
@@ -193,6 +252,10 @@ export const cloudflareSandboxModule = defineModule({
 		cloudflareSandboxReadFileTool,
 		cloudflareSandboxWriteFilesTool,
 		cloudflareSandboxReadFilesTool,
+		cloudflareSandboxListFilesTool,
+		cloudflareSandboxRemoveFilesTool,
+		cloudflareSandboxImportArtifactTool,
+		cloudflareSandboxExportArtifactTool,
 		cloudflareSandboxCreateSessionTool,
 		cloudflareSandboxDeleteSessionTool
 	]

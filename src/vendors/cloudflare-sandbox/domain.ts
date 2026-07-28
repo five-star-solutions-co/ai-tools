@@ -5,6 +5,8 @@
 import { isPlainObject, isString } from 'es-toolkit'
 
 import { ToolError } from '../../core/errors'
+import { base64ToBytes, utf8ToBytes } from '../../shared/bytes'
+import { MAX_FILE_BYTES } from './contracts'
 
 /** Normalize a host path to the bridge URL segment under /file/… (no leading slash). */
 export function workspaceFileKey(path: string): string {
@@ -23,6 +25,51 @@ export function workspaceFileKey(path: string): string {
 		})
 	}
 	return under
+}
+
+/** Absolute workspace path for shell list/rm (leading slash). */
+export function workspaceAbsolutePath(path: string): string {
+	const key = workspaceFileKey(path)
+	return `/${key}`
+}
+
+/** Shell-safe single-quoted string. */
+export function shellQuote(value: string): string {
+	return `'${value.replaceAll("'", `'\\''`)}'`
+}
+
+/**
+ * Resolve write-file body to raw bytes (text UTF-8 or base64).
+ * Enforces MAX_FILE_BYTES (bridge limit).
+ */
+export function resolveWriteFileBytes(input: {
+	text?: string | undefined
+	body_base64?: string | undefined
+}): Uint8Array {
+	if (input.body_base64 !== undefined && input.text !== undefined) {
+		throw new ToolError('Provide exactly one of text or body_base64', { code: 'bad_input' })
+	}
+	if (input.body_base64 !== undefined) {
+		const bytes = base64ToBytes(input.body_base64)
+		if (bytes.byteLength > MAX_FILE_BYTES) {
+			throw new ToolError('Sandbox file exceeds max byte limit', {
+				code: 'too_large',
+				details: { max_bytes: MAX_FILE_BYTES, content_length: bytes.byteLength }
+			})
+		}
+		return bytes
+	}
+	if (input.text !== undefined) {
+		const bytes = utf8ToBytes(input.text)
+		if (bytes.byteLength > MAX_FILE_BYTES) {
+			throw new ToolError('Sandbox file exceeds max byte limit', {
+				code: 'too_large',
+				details: { max_bytes: MAX_FILE_BYTES, content_length: bytes.byteLength }
+			})
+		}
+		return bytes
+	}
+	throw new ToolError('Provide exactly one of text or body_base64', { code: 'bad_input' })
 }
 
 export type ParsedExecStream = {
