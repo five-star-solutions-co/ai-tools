@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { S3Client } from '../../../src/vendors/s3'
+import { uniqueId } from '../env'
 import { objectKey, s3AuthFromEnv } from '../helpers'
 
 const auth = s3AuthFromEnv()
@@ -48,6 +49,65 @@ run('live vendor s3', () => {
 		await client.delete({ key: copyKey })
 		await client.delete({ key: bytesKey })
 		await client.delete({ key: rangeKey })
+	})
+
+	test('key_prefix: logical keys on API, wire keys under prefix', async () => {
+		const keyPrefix = `ai-tools-s3-pfx/${uniqueId('pfx')}/`
+		const scoped = new S3Client({ ...auth, key_prefix: keyPrefix })
+		const unscoped = new S3Client(auth)
+		const logical = `docs/${uniqueId('k')}.txt`
+		const copyLogical = `docs/${uniqueId('c')}.txt`
+		const wire = `${keyPrefix}${logical}`
+		const copyWire = `${keyPrefix}${copyLogical}`
+
+		const put = await scoped.put({
+			key: logical,
+			body: 'prefixed s3 it',
+			body_encoding: 'utf8',
+			content_type: 'text/plain'
+		})
+		expect(put.key).toBe(logical)
+
+		const headPublic = await scoped.head({ key: logical })
+		expect(headPublic).toMatchObject({ key: logical, exists: true })
+
+		// Physical object lives under key_prefix (unscoped client uses absolute wire keys).
+		const headWire = await unscoped.head({ key: wire })
+		expect(headWire.exists).toBe(true)
+
+		const listed = await scoped.list({ prefix: 'docs/', limit: 100 })
+		expect(listed.keys).toContain(logical)
+		expect(listed.keys.every((k) => !k.startsWith(keyPrefix))).toBe(true)
+
+		const got = await scoped.get({ key: logical, encoding: 'utf8' })
+		expect(got.key).toBe(logical)
+		expect(got.body).toBe('prefixed s3 it')
+
+		// Already-prefixed input is accepted (migration); public key is stripped.
+		const gotAgain = await scoped.get({ key: wire, encoding: 'utf8' })
+		expect(gotAgain.key).toBe(logical)
+		expect(gotAgain.body).toBe('prefixed s3 it')
+
+		const copied = await scoped.copy({ source_key: logical, destination_key: copyLogical })
+		expect(copied.source_key).toBe(logical)
+		expect(copied.destination_key).toBe(copyLogical)
+		expect((await unscoped.head({ key: copyWire })).exists).toBe(true)
+
+		const bytesLogical = `raw/${uniqueId('b')}.bin`
+		await scoped.putBytes(bytesLogical, new TextEncoder().encode('xyz'), 'application/octet-stream')
+		const raw = await scoped.getBytes(bytesLogical)
+		expect(new TextDecoder().decode(raw)).toBe('xyz')
+		expect((await unscoped.head({ key: `${keyPrefix}${bytesLogical}` })).exists).toBe(true)
+
+		const signed = await scoped.createSignedUrl({ key: logical, method: 'GET', expires_in: 120 })
+		expect(signed.url).toContain('http')
+		const signedRes = await fetch(signed.url)
+		expect(signedRes.ok).toBe(true)
+
+		await scoped.delete({ key: logical })
+		await scoped.delete({ key: copyLogical })
+		await scoped.delete({ key: bytesLogical })
+		expect((await unscoped.head({ key: wire })).exists).toBe(false)
 	})
 
 	test('createSignedUrl get', async () => {

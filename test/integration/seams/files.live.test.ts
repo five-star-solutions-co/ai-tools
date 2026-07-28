@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { FilesClient } from '../../../src/modules/files'
+import { S3Client } from '../../../src/vendors/s3'
 import { uniqueId } from '../env'
 import { s3AuthFromEnv } from '../helpers'
 
@@ -68,6 +69,41 @@ run('live seam files', () => {
 
 			await client.delete({ path })
 			await client.delete({ path: movePath }).catch(() => undefined)
+		},
+		{ timeout: 60_000 }
+	)
+
+	test(
+		'storage.key_prefix + root_prefix stack on the wire',
+		async () => {
+			const keyPrefix = `ai-tools-files-pfx/${uniqueId('org')}/`
+			const rootPrefix = 'workspace/'
+			const files = FilesClient.fromAuth({
+				root_prefix: rootPrefix,
+				storage: { ...s3, key_prefix: keyPrefix }
+			})
+			const unscoped = new S3Client(s3)
+			const path = `notes/${uniqueId('n')}.txt`
+			const wire = `${keyPrefix}${rootPrefix}${path}`
+
+			await files.put({
+				path,
+				body: 'stacked prefixes',
+				body_encoding: 'utf8',
+				content_type: 'text/plain'
+			})
+			const got = await files.get({ path, encoding: 'utf8' })
+			expect(got.path).toBe(path)
+			expect(got.body).toBe('stacked prefixes')
+
+			const listed = await files.list({ path: 'notes', limit: 50 })
+			expect(listed.items.some((item) => item.path === path && item.kind === 'file')).toBe(true)
+
+			const headWire = await unscoped.head({ key: wire })
+			expect(headWire.exists).toBe(true)
+
+			await files.delete({ path })
+			expect((await unscoped.head({ key: wire })).exists).toBe(false)
 		},
 		{ timeout: 60_000 }
 	)
