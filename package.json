@@ -10,6 +10,7 @@
 	},
 	"files": [
 		"dist",
+		"logos",
 		"LICENSE",
 		"README.md",
 		"CHANGELOG.md"
@@ -228,7 +229,9 @@
 		"./woocommerce": {
 			"types": "./dist/vendors/woocommerce/index.d.ts",
 			"default": "./dist/vendors/woocommerce/index.js"
-		}
+		},
+		"./logos/*": "./logos/*",
+		"./logos/pack-logos.json": "./logos/pack-logos.json"
 	},
 	"publishConfig": {
 		"access": "public",

@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
+
 import type { DiscoveredModule, SurfaceRuntime } from './discover'
 import { BRAIN_PACKAGES, NEVER_BUNDLE } from './brain'
 
@@ -21,6 +24,11 @@ export type ModuleManifest = {
 		nodeFormats: NodeFormat[]
 		moduleId?: string
 		moduleIdSource?: string
+		/**
+		 * Package-relative SVG path (e.g. `logos/amazon.svg`).
+		 * Many packs share one file via `logos/pack-logos.json`.
+		 */
+		logo?: string
 	}>
 }
 
@@ -61,6 +69,10 @@ export function renderPackageExports(modules: readonly DiscoveredModule[]): Reco
 		}
 	}
 
+	// Static pack logos (unique SVGs + pack-logos.json alias map).
+	exports['./logos/*'] = './logos/*'
+	exports['./logos/pack-logos.json'] = './logos/pack-logos.json'
+
 	return exports
 }
 
@@ -97,7 +109,35 @@ ${neverBundle}
 `
 }
 
-export function renderModuleManifest(modules: readonly DiscoveredModule[]): ModuleManifest {
+/**
+ * `logos/pack-logos.json` maps pack key → logo id (basename without `.svg`).
+ * One SVG file is reused by many packs (e.g. amazon → s3, sqs, bedrock, …).
+ */
+function loadPackLogoMap(repoRoot: string): Record<string, string> {
+	const mapPath = path.join(repoRoot, 'logos/pack-logos.json')
+	if (!existsSync(mapPath)) return {}
+	const raw: unknown = JSON.parse(readFileSync(mapPath, 'utf8'))
+	if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+	const out: Record<string, string> = {}
+	for (const [key, value] of Object.entries(raw)) {
+		if (typeof value === 'string' && value.length > 0) out[key] = value
+	}
+	return out
+}
+
+function logoPathFor(key: string, packMap: Record<string, string>, repoRoot: string): string | undefined {
+	const id = packMap[key] ?? key
+	const relative = `logos/${id}.svg`
+	if (!existsSync(path.join(repoRoot, relative))) return undefined
+	return relative
+}
+
+export function renderModuleManifest(
+	modules: readonly DiscoveredModule[],
+	options: { repoRoot?: string } = {}
+): ModuleManifest {
+	const repoRoot = options.repoRoot ?? process.cwd()
+	const packMap = loadPackLogoMap(repoRoot)
 	return {
 		generatedAt: new Date().toISOString(),
 		generator: 'scripts/codegen',
@@ -108,17 +148,21 @@ export function renderModuleManifest(modules: readonly DiscoveredModule[]): Modu
 			runtime: b.runtime,
 			nodeFormats: nodeFormatsFor(b.exportKey, b.runtime)
 		})),
-		modules: modules.map((m) => ({
-			key: m.key,
-			lane: m.lane,
-			entry: m.entryRelative,
-			entryKey: m.entryKey,
-			exportNames: m.exportNames,
-			runtime: m.runtime,
-			nodeFormats: nodeFormatsFor(m.key, m.runtime),
-			...(m.moduleId === undefined ? {} : { moduleId: m.moduleId }),
-			...(m.moduleIdSource === undefined ? {} : { moduleIdSource: m.moduleIdSource })
-		}))
+		modules: modules.map((m) => {
+			const logo = logoPathFor(m.key, packMap, repoRoot)
+			return {
+				key: m.key,
+				lane: m.lane,
+				entry: m.entryRelative,
+				entryKey: m.entryKey,
+				exportNames: m.exportNames,
+				runtime: m.runtime,
+				nodeFormats: nodeFormatsFor(m.key, m.runtime),
+				...(m.moduleId === undefined ? {} : { moduleId: m.moduleId }),
+				...(m.moduleIdSource === undefined ? {} : { moduleIdSource: m.moduleIdSource }),
+				...(logo === undefined ? {} : { logo })
+			}
+		})
 	}
 }
 

@@ -1,0 +1,4 @@
+Module monochrome icons are from Lucide (https://lucide.dev),
+package lucide-static@0.469.0, ISC License.
+
+They are not hand-authored. Vendor logos remain separate brand assets.

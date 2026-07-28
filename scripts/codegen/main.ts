@@ -50,7 +50,7 @@ export async function runCodegen(options: { checkOnly?: boolean } = {}): Promise
 		{ relative: 'tsdown.config.ts', content: renderTsdownConfig(modules) },
 		{
 			relative: 'generated/module-manifest.json',
-			content: `${JSON.stringify(renderModuleManifest(modules), null, '\t')}\n`
+			content: `${JSON.stringify(renderModuleManifest(modules, { repoRoot }), null, '\t')}\n`
 		},
 		{ relative: 'src/generated/module-keys.ts', content: renderGeneratedModulesTs(modules) }
 	]

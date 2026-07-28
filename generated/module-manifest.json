@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-27T15:23:38.384Z",
+	"generatedAt": "2026-07-28T01:38:32.906Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -124,7 +124,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "amazon-sp-api",
-			"moduleIdSource": "src/vendors/amazon-sp-api/module.ts"
+			"moduleIdSource": "src/vendors/amazon-sp-api/module.ts",
+			"logo": "logos/amazon.svg"
 		},
 		{
 			"key": "artifacts",
@@ -167,7 +168,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "artifacts",
-			"moduleIdSource": "src/modules/artifacts/module.ts"
+			"moduleIdSource": "src/modules/artifacts/module.ts",
+			"logo": "logos/artifacts.svg"
 		},
 		{
 			"key": "bedrock-agentcore-browser",
@@ -193,7 +195,8 @@
 				"browserStreamSchema"
 			],
 			"runtime": "both",
-			"nodeFormats": ["esm", "cjs"]
+			"nodeFormats": ["esm", "cjs"],
+			"logo": "logos/amazon.svg"
 		},
 		{
 			"key": "bedrock-agentcore-code-interpreter",
@@ -250,7 +253,8 @@
 				"writeFilesInputSchema"
 			],
 			"runtime": "both",
-			"nodeFormats": ["esm", "cjs"]
+			"nodeFormats": ["esm", "cjs"],
+			"logo": "logos/amazon.svg"
 		},
 		{
 			"key": "browser",
@@ -285,7 +289,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "browser",
-			"moduleIdSource": "src/modules/browser/module.ts"
+			"moduleIdSource": "src/modules/browser/module.ts",
+			"logo": "logos/browser.svg"
 		},
 		{
 			"key": "calendar",
@@ -312,7 +317,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "calendar",
-			"moduleIdSource": "src/modules/calendar/module.ts"
+			"moduleIdSource": "src/modules/calendar/module.ts",
+			"logo": "logos/calendar.svg"
 		},
 		{
 			"key": "cloudflare-browser",
@@ -355,7 +361,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "cloudflare-browser",
-			"moduleIdSource": "src/vendors/cloudflare-browser/module.ts"
+			"moduleIdSource": "src/vendors/cloudflare-browser/module.ts",
+			"logo": "logos/cloudflare-browser.svg"
 		},
 		{
 			"key": "cloudflare-email",
@@ -387,7 +394,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "cloudflare-email",
-			"moduleIdSource": "src/vendors/cloudflare-email/module.ts"
+			"moduleIdSource": "src/vendors/cloudflare-email/module.ts",
+			"logo": "logos/cloudflare-email.svg"
 		},
 		{
 			"key": "cloudflare-sandbox",
@@ -464,7 +472,8 @@
 				"writeFilesOutputSchema"
 			],
 			"runtime": "both",
-			"nodeFormats": ["esm", "cjs"]
+			"nodeFormats": ["esm", "cjs"],
+			"logo": "logos/cloudflare.svg"
 		},
 		{
 			"key": "code-sandbox",
@@ -524,7 +533,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "code-sandbox",
-			"moduleIdSource": "src/modules/code-sandbox/module.ts"
+			"moduleIdSource": "src/modules/code-sandbox/module.ts",
+			"logo": "logos/code-sandbox.svg"
 		},
 		{
 			"key": "content-type",
@@ -540,7 +550,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "content-type",
-			"moduleIdSource": "src/modules/content-type/module.ts"
+			"moduleIdSource": "src/modules/content-type/module.ts",
+			"logo": "logos/content-type.svg"
 		},
 		{
 			"key": "crypto",
@@ -577,7 +588,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "crypto",
-			"moduleIdSource": "src/modules/crypto/module.ts"
+			"moduleIdSource": "src/modules/crypto/module.ts",
+			"logo": "logos/crypto.svg"
 		},
 		{
 			"key": "document",
@@ -637,7 +649,8 @@
 			"runtime": "node",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "document",
-			"moduleIdSource": "src/modules/document/module.ts"
+			"moduleIdSource": "src/modules/document/module.ts",
+			"logo": "logos/document.svg"
 		},
 		{
 			"key": "document-extract",
@@ -667,7 +680,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "document-extract",
-			"moduleIdSource": "src/modules/document-extract/module.ts"
+			"moduleIdSource": "src/modules/document-extract/module.ts",
+			"logo": "logos/document-extract.svg"
 		},
 		{
 			"key": "document-render",
@@ -698,7 +712,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "document-render",
-			"moduleIdSource": "src/modules/document-render/module.ts"
+			"moduleIdSource": "src/modules/document-render/module.ts",
+			"logo": "logos/document-render.svg"
 		},
 		{
 			"key": "email",
@@ -729,7 +744,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "email",
-			"moduleIdSource": "src/modules/email/module.ts"
+			"moduleIdSource": "src/modules/email/module.ts",
+			"logo": "logos/email.svg"
 		},
 		{
 			"key": "email-message",
@@ -740,7 +756,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "email-message",
-			"moduleIdSource": "src/modules/email-message/module.ts"
+			"moduleIdSource": "src/modules/email-message/module.ts",
+			"logo": "logos/email-message.svg"
 		},
 		{
 			"key": "eventbridge-scheduler",
@@ -788,7 +805,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "eventbridge-scheduler",
-			"moduleIdSource": "src/vendors/eventbridge-scheduler/module.ts"
+			"moduleIdSource": "src/vendors/eventbridge-scheduler/module.ts",
+			"logo": "logos/amazon.svg"
 		},
 		{
 			"key": "file-convert",
@@ -813,7 +831,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "file-convert",
-			"moduleIdSource": "src/modules/file-convert/module.ts"
+			"moduleIdSource": "src/modules/file-convert/module.ts",
+			"logo": "logos/file-convert.svg"
 		},
 		{
 			"key": "files",
@@ -849,7 +868,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "files",
-			"moduleIdSource": "src/modules/files/module.ts"
+			"moduleIdSource": "src/modules/files/module.ts",
+			"logo": "logos/files.svg"
 		},
 		{
 			"key": "gotenberg",
@@ -890,7 +910,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "gotenberg",
-			"moduleIdSource": "src/vendors/gotenberg/module.ts"
+			"moduleIdSource": "src/vendors/gotenberg/module.ts",
+			"logo": "logos/gotenberg.svg"
 		},
 		{
 			"key": "image",
@@ -929,7 +950,8 @@
 			"runtime": "node",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "image",
-			"moduleIdSource": "src/modules/image/module.ts"
+			"moduleIdSource": "src/modules/image/module.ts",
+			"logo": "logos/image.svg"
 		},
 		{
 			"key": "imessage",
@@ -988,7 +1010,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "imessage",
-			"moduleIdSource": "src/vendors/imessage/module.ts"
+			"moduleIdSource": "src/vendors/imessage/module.ts",
+			"logo": "logos/imessage.svg"
 		},
 		{
 			"key": "katana",
@@ -1162,7 +1185,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "katana",
-			"moduleIdSource": "src/vendors/katana/module.ts"
+			"moduleIdSource": "src/vendors/katana/module.ts",
+			"logo": "logos/katana.svg"
 		},
 		{
 			"key": "mastra-vector",
@@ -1203,7 +1227,8 @@
 			"runtime": "node",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "mastra-vector",
-			"moduleIdSource": "src/vendors/mastra-vector/module.ts"
+			"moduleIdSource": "src/vendors/mastra-vector/module.ts",
+			"logo": "logos/mastra.svg"
 		},
 		{
 			"key": "messaging",
@@ -1276,7 +1301,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "messaging",
-			"moduleIdSource": "src/modules/messaging/module.ts"
+			"moduleIdSource": "src/modules/messaging/module.ts",
+			"logo": "logos/messaging.svg"
 		},
 		{
 			"key": "pdf",
@@ -1318,7 +1344,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "pdf",
-			"moduleIdSource": "src/modules/pdf/module.ts"
+			"moduleIdSource": "src/modules/pdf/module.ts",
+			"logo": "logos/pdf.svg"
 		},
 		{
 			"key": "pinecone",
@@ -1359,7 +1386,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "pinecone",
-			"moduleIdSource": "src/vendors/pinecone/module.ts"
+			"moduleIdSource": "src/vendors/pinecone/module.ts",
+			"logo": "logos/pinecone.svg"
 		},
 		{
 			"key": "presentation",
@@ -1394,7 +1422,8 @@
 			"runtime": "node",
 			"nodeFormats": ["esm"],
 			"moduleId": "presentation",
-			"moduleIdSource": "src/modules/presentation/module.ts"
+			"moduleIdSource": "src/modules/presentation/module.ts",
+			"logo": "logos/presentation.svg"
 		},
 		{
 			"key": "qdrant",
@@ -1435,7 +1464,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "qdrant",
-			"moduleIdSource": "src/vendors/qdrant/module.ts"
+			"moduleIdSource": "src/vendors/qdrant/module.ts",
+			"logo": "logos/qdrant.svg"
 		},
 		{
 			"key": "queue",
@@ -1478,7 +1508,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "queue",
-			"moduleIdSource": "src/modules/queue/module.ts"
+			"moduleIdSource": "src/modules/queue/module.ts",
+			"logo": "logos/queue.svg"
 		},
 		{
 			"key": "rag",
@@ -1521,7 +1552,8 @@
 			"runtime": "node",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "rag",
-			"moduleIdSource": "src/modules/rag/module.ts"
+			"moduleIdSource": "src/modules/rag/module.ts",
+			"logo": "logos/rag.svg"
 		},
 		{
 			"key": "resend",
@@ -1553,7 +1585,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "resend",
-			"moduleIdSource": "src/vendors/resend/module.ts"
+			"moduleIdSource": "src/vendors/resend/module.ts",
+			"logo": "logos/resend.svg"
 		},
 		{
 			"key": "s3",
@@ -1631,7 +1664,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "s3",
-			"moduleIdSource": "src/vendors/s3/module.ts"
+			"moduleIdSource": "src/vendors/s3/module.ts",
+			"logo": "logos/amazon.svg"
 		},
 		{
 			"key": "scheduler",
@@ -1679,7 +1713,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "scheduler",
-			"moduleIdSource": "src/modules/scheduler/module.ts"
+			"moduleIdSource": "src/modules/scheduler/module.ts",
+			"logo": "logos/scheduler.svg"
 		},
 		{
 			"key": "skills",
@@ -1725,7 +1760,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "skills",
-			"moduleIdSource": "src/modules/skills/module.ts"
+			"moduleIdSource": "src/modules/skills/module.ts",
+			"logo": "logos/skills.svg"
 		},
 		{
 			"key": "slack",
@@ -1797,7 +1833,8 @@
 			"runtime": "node",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "slack",
-			"moduleIdSource": "src/vendors/slack/module.ts"
+			"moduleIdSource": "src/vendors/slack/module.ts",
+			"logo": "logos/slack.svg"
 		},
 		{
 			"key": "sqs",
@@ -1838,7 +1875,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "sqs",
-			"moduleIdSource": "src/vendors/sqs/module.ts"
+			"moduleIdSource": "src/vendors/sqs/module.ts",
+			"logo": "logos/amazon.svg"
 		},
 		{
 			"key": "supabase-vector",
@@ -1879,7 +1917,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "supabase-vector",
-			"moduleIdSource": "src/vendors/supabase-vector/module.ts"
+			"moduleIdSource": "src/vendors/supabase-vector/module.ts",
+			"logo": "logos/supabase.svg"
 		},
 		{
 			"key": "tasks",
@@ -1930,7 +1969,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "tasks",
-			"moduleIdSource": "src/modules/tasks/module.ts"
+			"moduleIdSource": "src/modules/tasks/module.ts",
+			"logo": "logos/tasks.svg"
 		},
 		{
 			"key": "teams",
@@ -1995,7 +2035,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "teams",
-			"moduleIdSource": "src/vendors/teams/module.ts"
+			"moduleIdSource": "src/vendors/teams/module.ts",
+			"logo": "logos/teams.svg"
 		},
 		{
 			"key": "telegram",
@@ -2064,7 +2105,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "telegram",
-			"moduleIdSource": "src/vendors/telegram/module.ts"
+			"moduleIdSource": "src/vendors/telegram/module.ts",
+			"logo": "logos/telegram.svg"
 		},
 		{
 			"key": "textract",
@@ -2099,7 +2141,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "textract",
-			"moduleIdSource": "src/vendors/textract/module.ts"
+			"moduleIdSource": "src/vendors/textract/module.ts",
+			"logo": "logos/textract.svg"
 		},
 		{
 			"key": "vector-store",
@@ -2148,7 +2191,8 @@
 			"runtime": "node",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "vector-store",
-			"moduleIdSource": "src/modules/vector-store/module.ts"
+			"moduleIdSource": "src/modules/vector-store/module.ts",
+			"logo": "logos/vector-store.svg"
 		},
 		{
 			"key": "web-fetch",
@@ -2169,7 +2213,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "web-fetch",
-			"moduleIdSource": "src/modules/web-fetch/module.ts"
+			"moduleIdSource": "src/modules/web-fetch/module.ts",
+			"logo": "logos/web-fetch.svg"
 		},
 		{
 			"key": "woocommerce",
@@ -2338,7 +2383,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "woocommerce",
-			"moduleIdSource": "src/vendors/woocommerce/module.ts"
+			"moduleIdSource": "src/vendors/woocommerce/module.ts",
+			"logo": "logos/woocommerce.svg"
 		}
 	]
 }
