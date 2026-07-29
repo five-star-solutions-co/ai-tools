@@ -69,4 +69,57 @@ describe('cloudflare-browser', () => {
 		})
 		expect(requests).toHaveLength(3)
 	})
+
+	test('render payloads use the Cloudflare top-level option contract', async () => {
+		const bodies: Record<string, unknown>[] = []
+		const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+			const request = input instanceof Request ? input : new Request(input, init)
+			if (request.method === 'POST') {
+				const body = await request.json()
+				if (typeof body === 'object' && body !== null) bodies.push(body)
+				return new Response(
+					request.url.endsWith('/pdf')
+						? new Uint8Array([0x25, 0x50, 0x44, 0x46])
+						: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+					{ status: 200 }
+				)
+			}
+			if (request.method === 'PUT') return new Response(null, { status: 200 })
+			return new Response('unexpected request', { status: 500 })
+		}
+		const client = new CloudflareBrowserClient(
+			{
+				account_id: 'account',
+				api_token: 'token',
+				storage: {
+					access_key_id: 'access',
+					bucket: 'artifacts',
+					endpoint: 'https://storage.example.com',
+					region: 'auto',
+					secret_access_key: 'secret'
+				}
+			},
+			{ fetch }
+		)
+
+		await client.renderPdf({ source: { url: 'https://example.com' } })
+		await client.renderScreenshot({ source: { url: 'https://example.com' } })
+
+		expect(bodies[0]).toMatchObject({
+			printBackground: true,
+			preferCSSPageSize: true,
+			setJavaScriptEnabled: true,
+			url: 'https://example.com'
+		})
+		expect(bodies[0]).not.toHaveProperty('pdfOptions')
+		expect(bodies[0]).not.toHaveProperty('rejectResourceTypes')
+		expect(bodies[1]).toMatchObject({
+			fullPage: true,
+			setJavaScriptEnabled: true,
+			type: 'png',
+			url: 'https://example.com'
+		})
+		expect(bodies[1]).not.toHaveProperty('screenshotOptions')
+		expect(bodies[1]).not.toHaveProperty('rejectResourceTypes')
+	})
 })

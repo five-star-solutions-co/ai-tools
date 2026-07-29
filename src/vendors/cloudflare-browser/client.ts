@@ -25,7 +25,7 @@ import {
 	cloudflareBrowserRenderOutputSchema,
 	cloudflareBrowserSessionOutputSchema
 } from './contracts'
-import { assertBinaryPrefix, blockedBrowserResourceTypes, defaultRenderKey, sourceBody, titleFromHtml } from './domain'
+import { assertBinaryPrefix, defaultRenderKey, sourceBody, titleFromHtml } from './domain'
 
 export type CloudflareBrowserClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -132,20 +132,14 @@ export class CloudflareBrowserClient {
 	): Promise<CloudflareBrowserRenderOutput> {
 		const body: Record<string, unknown> = {
 			...sourceBody(input.source),
-			setJavaScriptEnabled: false,
-			rejectResourceTypes: [...blockedBrowserResourceTypes]
+			setJavaScriptEnabled: true
 		}
 		if (kind === 'pdf') {
-			body['pdfOptions'] = {
-				preferCSSPageSize: true,
-				printBackground: true
-			}
+			body['preferCSSPageSize'] = true
+			body['printBackground'] = true
 		} else {
-			body['screenshotOptions'] = {
-				encoding: 'binary',
-				fullPage: true,
-				type: 'png'
-			}
+			body['fullPage'] = true
+			body['type'] = 'png'
 			if ('viewport' in input && input.viewport) {
 				const viewport: Record<string, unknown> = {
 					width: input.viewport.width,
