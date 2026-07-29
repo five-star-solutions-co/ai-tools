@@ -54,7 +54,7 @@ describe('cloudflare-email', () => {
 		expect(cloudflareEmailSendBatchTool.id).toBe('cloudflare-email-send-batch')
 	})
 
-	test('client send: URL, auth header, body shape (replyTo camelCase)', async () => {
+	test('client send: URL, auth header, and Cloudflare named-address wire shape', async () => {
 		const restore = mockFetch((url, init) => {
 			expect(url).toBe('https://api.cloudflare.com/client/v4/accounts/acc_123/email/sending/send')
 			expect(init?.method).toBe('POST')
@@ -62,11 +62,13 @@ describe('cloudflare-email', () => {
 			expect(headers.get('Authorization')).toBe('Bearer tok_secret')
 			expect(headers.get('Content-Type')).toContain('application/json')
 			const body = bodyFromInit(init)
-			expect(body['to']).toEqual(['hello@example.com'])
-			expect(body['from']).toEqual({ email: 'from@example.com', name: 'From' })
+			expect(body['to']).toEqual([{ address: 'hello@example.com', name: 'Hello' }])
+			expect(body['from']).toEqual({ address: 'from@example.com', name: 'From' })
+			expect(body['cc']).toEqual([{ address: 'cc@example.com', name: 'CC' }])
+			expect(body['bcc']).toEqual([{ address: 'bcc@example.com', name: 'BCC' }])
 			expect(body['subject']).toBe('Hi')
 			expect(body['text']).toBe('Body')
-			expect(body['replyTo']).toEqual('reply@example.com')
+			expect(body['replyTo']).toEqual({ address: 'reply@example.com', name: 'Reply' })
 			expect(body['reply_to']).toBeUndefined()
 			expect(body['attachments']).toEqual([
 				{
@@ -82,11 +84,13 @@ describe('cloudflare-email', () => {
 		try {
 			const client = new CloudflareEmailClient(auth)
 			const result = await client.send({
-				to: 'hello@example.com',
+				to: { email: 'hello@example.com', name: 'Hello' },
 				from: { email: 'from@example.com', name: 'From' },
+				cc: { email: 'cc@example.com', name: 'CC' },
+				bcc: { email: 'bcc@example.com', name: 'BCC' },
 				subject: 'Hi',
 				text: 'Body',
-				reply_to: 'reply@example.com',
+				reply_to: { email: 'reply@example.com', name: 'Reply' },
 				attachments: [{ content: 'dGVzdA==', filename: 'a.txt', type: 'text/plain', disposition: 'attachment' }]
 			})
 			expect(result).toEqual({ success: true, accepted: ['hello@example.com'] })

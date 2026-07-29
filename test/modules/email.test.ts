@@ -106,7 +106,7 @@ describe('email', () => {
 			const body = bodyFromInit(init)
 			expect(body['replyTo']).toEqual('reply@example.com')
 			expect(body['reply_to']).toBeUndefined()
-			expect(body['from']).toEqual({ email: 'orbit@domain.com', name: 'Orbit' })
+			expect(body['from']).toEqual({ address: 'orbit@domain.com', name: 'Orbit' })
 			return new Response(
 				JSON.stringify({
 					success: true,

@@ -14,15 +14,15 @@ export function addressList(value: NamedAddress | NamedAddress[] | undefined): s
 	return castArray(value).map(addressToString)
 }
 
-/** Object form for APIs that accept string | { email, name } (e.g. Cloudflare). */
-export function addressObject(item: NamedAddress): string | { email: string; name?: string } {
+/** Cloudflare wire form for APIs that accept string | { address, name }. */
+export function addressObject(item: NamedAddress): string | { address: string; name?: string } {
 	if (isString(item)) return item
-	return { email: item.email, ...(item.name && { name: item.name }) }
+	return { address: item.email, ...(item.name && { name: item.name }) }
 }
 
 export function addressObjectList(
 	value: NamedAddress | NamedAddress[] | undefined
-): Array<string | { email: string; name?: string }> | undefined {
+): Array<string | { address: string; name?: string }> | undefined {
 	if (isNil(value)) return undefined
 	return castArray(value).map(addressObject)
 }
