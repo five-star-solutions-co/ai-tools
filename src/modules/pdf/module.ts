@@ -28,7 +28,8 @@ export const pdfInspectTool = defineTool({
 export const pdfMergeTool = defineTool({
 	id: 'pdf-merge',
 	name: 'mergePdfs',
-	description: 'Concatenate two or more PDF artifacts in order and write one PDF artifact.',
+	description:
+		'Concatenate two or more existing PDF ArtifactRefs in order and return one final PDF ArtifactRef. Use for combining PDFs, not for creating a PDF from HTML or an office document.',
 	inputSchema: pdfMergeInputSchema,
 	outputSchema: pdfWriteOutputSchema,
 	sideEffect: 'write',
@@ -40,7 +41,8 @@ export const pdfMergeTool = defineTool({
 export const pdfExtractPagesTool = defineTool({
 	id: 'pdf-extract-pages',
 	name: 'extractPdfPages',
-	description: 'Copy selected one-based pages from a PDF artifact into one new PDF in the requested order.',
+	description:
+		'Copy selected one-based pages from an existing PDF ArtifactRef into a new PDF and return its ArtifactRef. Use when the requested output is one PDF containing a chosen page sequence.',
 	inputSchema: pdfExtractPagesInputSchema,
 	outputSchema: pdfWriteOutputSchema,
 	sideEffect: 'write',
@@ -52,7 +54,8 @@ export const pdfExtractPagesTool = defineTool({
 export const pdfSplitTool = defineTool({
 	id: 'pdf-split',
 	name: 'splitPdf',
-	description: 'Split a PDF artifact into one output PDF artifact per page.',
+	description:
+		'Split an existing PDF ArtifactRef into one output PDF ArtifactRef per page. Use only when separate page files are required; use pdf-extract-pages for one combined subset.',
 	inputSchema: pdfSplitInputSchema,
 	outputSchema: pdfSplitOutputSchema,
 	sideEffect: 'write',
@@ -64,7 +67,8 @@ export const pdfSplitTool = defineTool({
 export const pdfRotateTool = defineTool({
 	id: 'pdf-rotate',
 	name: 'rotatePdfPages',
-	description: 'Rotate selected pages in a PDF artifact clockwise, or rotate every page when no page list is supplied.',
+	description:
+		'Rotate selected pages in an existing PDF ArtifactRef clockwise, or every page when no page list is supplied, and return a new PDF ArtifactRef.',
 	inputSchema: pdfRotateInputSchema,
 	outputSchema: pdfWriteOutputSchema,
 	sideEffect: 'write',

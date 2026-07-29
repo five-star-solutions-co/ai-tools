@@ -43,7 +43,7 @@ export const filesListTool = defineTool({
 	id: 'files-list',
 	name: 'listFiles',
 	description:
-		'List files and folders under a relative path in the bound workspace root. Paths are relative to the host root prefix. Returns names, kinds, sizes when known, and pagination fields. Does not return file body bytes.',
+		'List files and folders under a relative path in the bound workspace root. Returns names, kinds, sizes when known, and pagination fields. Does not return file body bytes.',
 	inputSchema: filesListInputSchema,
 	outputSchema: filesListOutputSchema,
 	sideEffect: 'read',
@@ -235,7 +235,7 @@ export const filesModule = defineModule({
 	id: 'files',
 	title: 'Files',
 	description:
-		'Manage files under a host-bound object storage root prefix. Paths are relative to that root. List, search, stat, get, get-range, read-lines, create-artifact, put, delete, copy, move, mkdir, and multipart stay inside the root; host maps tenant to prefix and storage credentials.',
+		'Manage durable workspace files by relative path: list, search by name, inspect metadata, read bounded content, create ArtifactRefs, write, copy, move, delete, create folders, and use multipart upload. This is distinct from temporary sandbox files.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: filesAuthSchema },
 	tools: [

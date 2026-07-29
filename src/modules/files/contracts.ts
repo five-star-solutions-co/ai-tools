@@ -214,8 +214,8 @@ export const filesMultipartUploadPartOutputSchema = z.object({
 })
 
 export const filesMultipartPartSchema = z.object({
-	part_number: z.int().min(1).max(10_000),
-	etag: z.string().min(1)
+	part_number: z.int().min(1).max(10_000).describe('Uploaded part number from files-multipart-upload-part'),
+	etag: z.string().min(1).describe('ETag returned by files-multipart-upload-part')
 })
 
 export const filesMultipartCompleteInputSchema = z.object({

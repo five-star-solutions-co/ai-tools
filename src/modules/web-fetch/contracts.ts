@@ -20,7 +20,7 @@ export type WebFetchAuth = z.infer<typeof webFetchAuthSchema>
 
 const sharedFields = {
 	url: z.url().describe('Absolute http(s) URL on an allowlisted origin'),
-	headers: z.record(z.string(), z.string()).optional().describe('Extra headers (no credentials)'),
+	headers: z.record(z.string(), z.string()).optional().describe('Additional non-protected request headers'),
 	query: z
 		.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
 		.optional()
@@ -39,9 +39,7 @@ export const webFetchRequestInputSchema = z.object({
 	body: z
 		.unknown()
 		.optional()
-		.describe(
-			'Request body. Objects and arrays are sent as JSON with Content-Type set by ofetch; strings are raw text. Omit for DELETE when unused'
-		)
+		.describe('Request body. Objects and arrays are JSON-encoded; strings are sent as raw text. Omit when unused')
 })
 
 export const webFetchRequestOutputSchema = z.object({

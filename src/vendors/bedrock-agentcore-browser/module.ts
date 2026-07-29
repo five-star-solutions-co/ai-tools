@@ -47,7 +47,7 @@ export const bedrockAgentCoreBrowserModule = defineModule({
 	id,
 	title: 'Bedrock AgentCore Browser',
 	description:
-		'Amazon Bedrock AgentCore Browser: start/stop/get sessions and stream metadata. Interactive automation uses automation/live-view streams (host or Playwright), not faked click tools.',
+		'Amazon Bedrock AgentCore Browser session lifecycle and stream metadata. These tools start, inspect, and stop sessions; page interaction occurs through the returned automation stream.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: bedrockAgentCoreBrowserAuthSchema },
 	tools: [

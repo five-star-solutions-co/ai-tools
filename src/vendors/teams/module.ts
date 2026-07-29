@@ -131,7 +131,7 @@ export const teamsAnswerCallbackTool = defineTool({
 export const teamsGetBotTool = defineTool({
 	id: 'teams-get-bot',
 	name: 'teamsGetBot',
-	description: 'Return the bound bot identity (bot_id, username, display_name) from host-bound auth.',
+	description: 'Return the current Microsoft Teams bot identity, including bot_id, username, and display_name.',
 	inputSchema: emptyInputSchema,
 	outputSchema: teamsGetBotOutputSchema,
 	sideEffect: 'read',
@@ -143,7 +143,7 @@ export const teamsModule = defineModule({
 	id: 'teams',
 	title: 'Microsoft Teams',
 	description:
-		'Microsoft Teams / Bot Framework vendor pack: text, media, typing, reactions (no-op), file download, invoke callbacks, bot identity. Host binds app credentials. Per-conversation service_url required for connector calls. Not a multi-provider messaging seam.',
+		'Microsoft Teams tools for text, media, typing, file download, invoke callbacks, and bot identity. Conversation actions require service_url from the active conversation; reaction actions report unsupported behavior.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: teamsAuthSchema },
 	tools: [

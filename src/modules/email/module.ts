@@ -38,7 +38,8 @@ export const emailSendBatchTool = defineTool({
 export const emailModule = defineModule({
 	id: 'email',
 	title: 'Email',
-	description: 'Send transactional email via the host-bound email provider.',
+	description:
+		'Send transactional email from the configured sender. The model supplies recipients and content, never the sender identity.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: emailAuthSchema },
 	tools: [emailSendTool, emailSendBatchTool]

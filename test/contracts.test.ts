@@ -52,6 +52,29 @@ describe('contracts', () => {
 		expect(validateTool(bad).issues.some((i) => i.code === 'empty_field_description')).toBe(true)
 	})
 
+	test('rejects missing descriptions in nested object and array fields', () => {
+		const bad = defineTool({
+			id: 'nested-field-desc',
+			name: 'nestedFieldDesc',
+			description: 'Tool with nested inputs for recursive contract testing.',
+			inputSchema: z.object({
+				items: z
+					.array(
+						z.object({
+							name: z.string().describe('Item name'),
+							value: z.string()
+						})
+					)
+					.describe('Items to process')
+			}),
+			outputSchema: z.object({ ok: z.boolean() }),
+			execute: async () => ({ ok: true })
+		})
+		const result = validateTool(bad)
+		expect(result.ok).toBe(false)
+		expect(result.issues.some((i) => i.code === 'empty_field_description' && i.path.includes('value'))).toBe(true)
+	})
+
 	test('seam modules reject vendor brand names in model-facing copy', () => {
 		const tool = defineTool({
 			id: 'messaging-read',

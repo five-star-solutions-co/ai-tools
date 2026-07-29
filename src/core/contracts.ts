@@ -1,4 +1,5 @@
 import { flatMap, isPlainObject, isString } from 'es-toolkit'
+import { isArray } from 'es-toolkit/compat'
 import { toJSONSchema } from 'zod'
 
 import { moduleSeamKeys } from '../generated/module-keys'
@@ -84,23 +85,42 @@ function fieldDescribes(
 	issues: ContractIssue[],
 	options: CheckModelCopyOptions = {}
 ): void {
-	const properties = toJSONSchema(schema).properties
-	if (!isPlainObject(properties)) return
+	checkFieldDescriptions(toJSONSchema(schema), `${path}.input`, issues, options)
+}
 
-	for (const [key, value] of Object.entries(properties)) {
-		if (!isPlainObject(value)) continue
-		const description = value['description']
-		if (!isString(description) || description.trim().length === 0) {
-			issues.push(
-				issue(
-					`${path}.input.${key}`,
-					'empty_field_description',
-					`Input field "${key}" is missing a .describe() for the model`
+function checkFieldDescriptions(
+	schema: unknown,
+	path: string,
+	issues: ContractIssue[],
+	options: CheckModelCopyOptions
+): void {
+	if (!isPlainObject(schema)) return
+	const properties = schema['properties']
+	if (isPlainObject(properties)) {
+		for (const [key, value] of Object.entries(properties)) {
+			if (!isPlainObject(value)) continue
+			const fieldPath = `${path}.${key}`
+			const description = value['description']
+			if (!isString(description) || description.trim().length === 0) {
+				issues.push(
+					issue(fieldPath, 'empty_field_description', `Input field "${key}" is missing a .describe() for the model`)
 				)
-			)
+			} else {
+				checkModelCopy(fieldPath, description, issues, options)
+			}
+			checkFieldDescriptions(value, fieldPath, issues, options)
+		}
+	}
+
+	for (const [key, value] of Object.entries(schema)) {
+		if (key === 'properties') continue
+		if (isArray(value)) {
+			for (const [index, item] of value.entries()) {
+				checkFieldDescriptions(item, `${path}.${key}[${index}]`, issues, options)
+			}
 			continue
 		}
-		checkModelCopy(`${path}.input.${key}`, description, issues, options)
+		checkFieldDescriptions(value, `${path}.${key}`, issues, options)
 	}
 }
 

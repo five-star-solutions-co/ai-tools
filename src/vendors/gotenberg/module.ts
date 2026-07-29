@@ -65,7 +65,7 @@ export const gotenbergModule = defineModule({
 	id: 'gotenberg',
 	title: 'Gotenberg',
 	description:
-		'Self-hosted Gotenberg: Chromium HTML/URL render to PDF or PNG, and LibreOffice office-to-PDF convert. Outputs land in bound object storage as ArtifactRefs.',
+		'Gotenberg tools for HTML or URL rendering and office-document-to-PDF conversion. Each successful output is a final ArtifactRef; use the specific render or convert action matching the source format.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: gotenbergAuthSchema },
 	tools: [gotenbergRenderPdfTool, gotenbergRenderScreenshotTool, gotenbergConvertTool, gotenbergConvertBatchTool]

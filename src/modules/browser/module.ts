@@ -121,7 +121,7 @@ export const browserScreenshotTool = defineTool({
 	id: 'browser-screenshot',
 	name: 'browserScreenshot',
 	description:
-		'Capture a PNG screenshot to object storage (ArtifactRef). Some providers require url and bound storage credentials.',
+		'Capture a PNG screenshot and return its ArtifactRef. Use for a visual record of the current page or a one-shot URL. For HTML supplied as content or print-ready output, use the document render tools.',
 	inputSchema: browserScreenshotInputSchema,
 	outputSchema: browserScreenshotOutputSchema,
 	sideEffect: 'write',

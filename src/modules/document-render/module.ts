@@ -19,7 +19,7 @@ export const documentRenderPdfTool = defineTool({
 	id: 'document-render-pdf',
 	name: 'renderDocumentPdf',
 	description:
-		'Render HTML or a URL to a PDF via the bound browser/print provider. Writes the PDF to object storage and returns an ArtifactRef. Prefer for print layouts and HTML invoices; use file-convert for office format conversion.',
+		'Create a PDF from HTML or a URL with a browser print engine and return the final ArtifactRef. Use for web layouts, reports, and invoices. Use file-convert for an existing office document; do not use a general code sandbox to print HTML.',
 	inputSchema: renderPdfInputSchema,
 	outputSchema: renderOutputSchema,
 	sideEffect: 'write',
@@ -31,7 +31,7 @@ export const documentRenderScreenshotTool = defineTool({
 	id: 'document-render-screenshot',
 	name: 'renderDocumentScreenshot',
 	description:
-		'Capture a PNG screenshot of HTML or a URL via the bound browser provider. Writes the image to object storage and returns an ArtifactRef.',
+		'Create a PNG screenshot ArtifactRef from HTML or a URL. Use when the requested deliverable is a rendered page image, not when interactive browsing or a source image transform is required.',
 	inputSchema: renderScreenshotInputSchema,
 	outputSchema: renderOutputSchema,
 	sideEffect: 'write',
@@ -42,7 +42,8 @@ export const documentRenderScreenshotTool = defineTool({
 export const documentRenderPdfBatchTool = defineTool({
 	id: 'document-render-pdf-batch',
 	name: 'renderDocumentPdfBatch',
-	description: 'Render up to 10 HTML/URL sources to PDF. Per-item success or error without aborting the batch.',
+	description:
+		'Create PDF ArtifactRefs from up to 10 HTML or URL sources. Use only when multiple independent browser-printed PDFs are required. Returns per-item success or error without aborting the batch.',
 	inputSchema: renderPdfBatchInputSchema,
 	outputSchema: renderPdfBatchOutputSchema,
 	sideEffect: 'write',
@@ -56,7 +57,8 @@ export const documentRenderPdfBatchTool = defineTool({
 export const documentRenderScreenshotBatchTool = defineTool({
 	id: 'document-render-screenshot-batch',
 	name: 'renderDocumentScreenshotBatch',
-	description: 'Capture up to 10 HTML/URL screenshots as PNG. Per-item success or error without aborting the batch.',
+	description:
+		'Create PNG screenshot ArtifactRefs from up to 10 HTML or URL sources. Use only when multiple independent page images are required. Returns per-item success or error without aborting the batch.',
 	inputSchema: renderScreenshotBatchInputSchema,
 	outputSchema: renderScreenshotBatchOutputSchema,
 	sideEffect: 'write',
@@ -71,7 +73,7 @@ export const documentRenderModule = defineModule({
 	id: 'document-render',
 	title: 'Document Render',
 	description:
-		'HTML/URL to PDF or screenshot via the host-bound provider. Distinct from file-convert (format conversion).',
+		'Create final PDF or PNG ArtifactRefs from HTML or URLs with a browser renderer. Use file conversion for existing office documents.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: documentRenderAuthSchema },
 	tools: [

@@ -15,7 +15,7 @@ export const fileConvertTool = defineTool({
 	id: 'file-convert',
 	name: 'convertFile',
 	description:
-		'Convert an office document ArtifactRef to PDF (path office-to-pdf: docx, pptx, xlsx, odt, …). Not for HTML print layouts — use document render for those. Writes PDF to object storage.',
+		'Convert an existing office document ArtifactRef such as DOCX, PPTX, XLSX, or ODT to PDF and return the final PDF ArtifactRef. Use only when the format must change. For HTML or URL print layouts, use document-render-pdf.',
 	inputSchema: convertInputSchema,
 	outputSchema: convertOutputSchema,
 	sideEffect: 'write',
@@ -27,7 +27,7 @@ export const fileConvertBatchTool = defineTool({
 	id: 'file-convert-batch',
 	name: 'convertFiles',
 	description:
-		'Convert up to 10 office document ArtifactRefs to PDF. Per-item success or error without aborting the batch.',
+		'Convert up to 10 existing office document ArtifactRefs to final PDF ArtifactRefs. Use only when multiple independent files must change format. Returns per-item success or error without aborting the batch.',
 	inputSchema: convertBatchInputSchema,
 	outputSchema: convertBatchOutputSchema,
 	sideEffect: 'write',
@@ -39,7 +39,7 @@ export const fileConvertModule = defineModule({
 	id: 'file-convert',
 	title: 'File Convert',
 	description:
-		'Office document to PDF conversion via the host-bound provider (LibreOffice). Distinct from HTML/URL render.',
+		'Convert existing office documents to PDF. This changes file format only; it does not create document content or print HTML and URLs.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: fileConvertAuthSchema },
 	tools: [fileConvertTool, fileConvertBatchTool]

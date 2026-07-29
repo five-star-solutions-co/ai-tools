@@ -129,7 +129,7 @@ export const slackAnswerCallbackTool = defineTool({
 export const slackGetBotTool = defineTool({
 	id: 'slack-get-bot',
 	name: 'slackGetBot',
-	description: 'Return the bound bot identity (bot_id, username, display_name) via auth.test.',
+	description: 'Return the current Slack bot identity, including bot_id, username, and display_name.',
 	inputSchema: emptyInputSchema,
 	outputSchema: slackGetBotOutputSchema,
 	sideEffect: 'read',

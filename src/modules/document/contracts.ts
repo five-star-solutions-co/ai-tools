@@ -78,7 +78,9 @@ export const documentPdfPageImagesSchema = z.object({
 })
 
 export const documentReadInputSchema = z.object({
-	source: documentSourceSchema.describe('Document to read'),
+	source: documentSourceSchema.describe(
+		'Document to read. For an ArtifactRef, pass { artifact: <ArtifactRef> }; do not pass the reference directly.'
+	),
 	format: documentFormatSchema.optional().describe('Format override when filename/media_type is missing'),
 	pdf_page_images: documentPdfPageImagesSchema
 		.optional()
@@ -110,8 +112,12 @@ export const documentBuildOutputSchema = z.object({
 })
 
 export const documentBuildSpreadsheetInputSchema = z.object({
-	sheets: z.array(documentTableSchema).min(1).max(MAX_SHEETS).describe('Worksheets to create'),
-	output_key: z.string().min(1).describe('Object key for the .xlsx artifact'),
+	sheets: z
+		.array(documentTableSchema)
+		.min(1)
+		.max(MAX_SHEETS)
+		.describe('Worksheets to create, with each rows field containing a row-major two-dimensional cell array'),
+	output_key: z.string().min(1).describe('Durable object key for the final .xlsx artifact'),
 	filename: z.string().min(1).optional().describe('Display filename (defaults to workbook.xlsx)')
 })
 
@@ -129,7 +135,9 @@ export const documentTextReplacementSchema = z.object({
 })
 
 export const documentEditTextInputSchema = z.object({
-	source: documentSourceSchema.describe('Existing txt, md, json, or html document'),
+	source: documentSourceSchema.describe(
+		'Existing txt, md, json, or html document. For an ArtifactRef, pass { artifact: <ArtifactRef> }; do not pass the reference directly.'
+	),
 	format: z.enum(['txt', 'md', 'json', 'html']).optional().describe('Format override when it cannot be detected'),
 	replacements: z
 		.array(documentTextReplacementSchema)
@@ -141,7 +149,9 @@ export const documentEditTextInputSchema = z.object({
 })
 
 export const documentEditDocumentInputSchema = z.object({
-	source: documentSourceSchema.describe('Existing docx document'),
+	source: documentSourceSchema.describe(
+		'Existing docx document. For an ArtifactRef, pass { artifact: <ArtifactRef> }; do not pass the reference directly.'
+	),
 	replacements: z
 		.array(documentTextReplacementSchema)
 		.min(1)
@@ -152,7 +162,9 @@ export const documentEditDocumentInputSchema = z.object({
 })
 
 export const documentEditSpreadsheetInputSchema = z.object({
-	source: documentSourceSchema.describe('Existing spreadsheet (xlsx or csv)'),
+	source: documentSourceSchema.describe(
+		'Existing xlsx or csv spreadsheet. For an ArtifactRef, pass { artifact: <ArtifactRef> }; do not pass the reference directly.'
+	),
 	patches: z
 		.array(
 			z.object({
@@ -164,8 +176,8 @@ export const documentEditSpreadsheetInputSchema = z.object({
 		)
 		.min(1)
 		.max(2_000)
-		.describe('Cell updates to apply'),
-	output_key: z.string().min(1).describe('Object key for the written spreadsheet'),
+		.describe('Cell updates to apply using 1-based row and column positions'),
+	output_key: z.string().min(1).describe('Durable object key for the edited spreadsheet artifact'),
 	filename: z.string().min(1).optional().describe('Display filename')
 })
 

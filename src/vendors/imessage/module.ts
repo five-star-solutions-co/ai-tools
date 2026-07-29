@@ -20,7 +20,7 @@ export const imessageSendTextTool = defineTool({
 	id: 'imessage-send-text',
 	name: 'imessageSendText',
 	description:
-		'Send a text message to an iMessage space via the bound proxy. chat_id is the Spectrum space id. Returns message_id when available.',
+		'Send a text message to an iMessage space. chat_id is the Spectrum space id. Returns message_id when available for later edits, reactions, or unsend.',
 	inputSchema: imessageSendTextInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'send',
@@ -31,7 +31,7 @@ export const imessageSendTextTool = defineTool({
 export const imessageEditTextTool = defineTool({
 	id: 'imessage-edit-text',
 	name: 'imessageEditText',
-	description: 'Edit a previously sent iMessage text message via the bound proxy.',
+	description: 'Edit the text of a previously sent iMessage. Requires the target space and message id.',
 	inputSchema: imessageEditTextInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'write',
@@ -42,7 +42,7 @@ export const imessageEditTextTool = defineTool({
 export const imessageSendChatActionTool = defineTool({
 	id: 'imessage-send-chat-action',
 	name: 'imessageSendChatAction',
-	description: 'Show a typing indicator on an iMessage space via the bound proxy.',
+	description: 'Show a typing indicator in an iMessage space while a response is being prepared.',
 	inputSchema: imessageSendChatActionInputSchema,
 	outputSchema: imessageOkOutputSchema,
 	sideEffect: 'none',
@@ -57,7 +57,7 @@ export const imessageSetReactionTool = defineTool({
 	id: 'imessage-set-reaction',
 	name: 'imessageSetReaction',
 	description:
-		'React to an iMessage with an emoji or tapback via the bound proxy. Returns reaction message_id — store it to clear later.',
+		'React to an iMessage with an emoji or tapback. Returns the reaction message_id, which is required to clear the reaction later.',
 	inputSchema: imessageSetReactionInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'write',
@@ -83,7 +83,7 @@ export const imessageClearReactionTool = defineTool({
 export const imessageUnsendTool = defineTool({
 	id: 'imessage-unsend',
 	name: 'imessageUnsend',
-	description: 'Unsend a previously sent iMessage via the bound proxy.',
+	description: 'Unsend a previously sent iMessage using its space and message ids.',
 	inputSchema: imessageUnsendInputSchema,
 	outputSchema: imessageOkOutputSchema,
 	sideEffect: 'delete',
@@ -97,7 +97,7 @@ export const imessageUnsendTool = defineTool({
 export const imessageReadTool = defineTool({
 	id: 'imessage-read',
 	name: 'imessageRead',
-	description: 'Mark an iMessage conversation read up to a message id via the bound proxy.',
+	description: 'Mark an iMessage conversation as read through a specific message id.',
 	inputSchema: imessageReadInputSchema,
 	outputSchema: imessageOkOutputSchema,
 	sideEffect: 'write',
@@ -111,7 +111,7 @@ export const imessageReadTool = defineTool({
 export const imessageSendMediaTool = defineTool({
 	id: 'imessage-send-media',
 	name: 'imessageSendMedia',
-	description: 'Send a photo or document attachment to an iMessage space via the bound proxy (Spectrum attachment).',
+	description: 'Send one photo or document attachment to an iMessage space from the supplied media payload.',
 	inputSchema: imessageSendMediaInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'send',
@@ -123,7 +123,7 @@ export const imessageDownloadFileTool = defineTool({
 	id: 'imessage-download-file',
 	name: 'imessageDownloadFile',
 	description:
-		'Download attachment/voice bytes for a Spectrum message id in a space via the bound proxy. Requires chat_id (space id) and file_id.',
+		'Download attachment or voice-message bytes for an iMessage in a Spectrum space. Requires chat_id, message_id, and file_id from the source message.',
 	inputSchema: imessageDownloadFileInputSchema,
 	outputSchema: imessageDownloadFileOutputSchema,
 	sideEffect: 'none',
@@ -135,7 +135,7 @@ export const imessageModule = defineModule({
 	id: 'imessage',
 	title: 'iMessage',
 	description:
-		'iMessage outbound via hosted photon-rest-proxy: send/edit text, media, typing, reactions, clear reaction, unsend, read, download. Host binds proxy base URL and Spectrum project credentials. Inbound uses Photon native webhooks on the host.',
+		'iMessage tools for sending and editing text or media, typing indicators, reactions, unsend, read state, and attachment download.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: imessageAuthSchema },
 	tools: [

@@ -39,7 +39,8 @@ const emptyInputSchema = z.object({})
 export const cloudflareSandboxHealthTool = defineTool({
 	id: `${id}-health`,
 	name: 'cloudflareSandboxHealth',
-	description: 'Check that the bound Cloudflare Sandbox bridge is reachable.',
+	description:
+		'Check whether the Cloudflare Sandbox bridge is reachable. Use only for explicit availability diagnostics; ordinary sandbox work should begin with cloudflare-sandbox-create.',
 	inputSchema: emptyInputSchema,
 	outputSchema: healthOutputSchema,
 	sideEffect: 'read',
@@ -51,7 +52,8 @@ export const cloudflareSandboxHealthTool = defineTool({
 export const cloudflareSandboxCreateTool = defineTool({
 	id: `${id}-create`,
 	name: 'cloudflareSandboxCreate',
-	description: 'Create an isolated sandbox container and return its sandbox_id for later exec and file tools.',
+	description:
+		'Create an isolated Cloudflare sandbox and return sandbox_id. Use only when arbitrary code, commands, or temporary files are required and no purpose-built tool covers the task. Do not create a sandbox to build or edit supported deliverables.',
 	inputSchema: emptyInputSchema,
 	outputSchema: createSandboxOutputSchema,
 	sideEffect: 'write',
@@ -63,7 +65,8 @@ export const cloudflareSandboxCreateTool = defineTool({
 export const cloudflareSandboxDestroyTool = defineTool({
 	id: `${id}-destroy`,
 	name: 'cloudflareSandboxDestroy',
-	description: 'Destroy a sandbox container by sandbox_id and free its resources.',
+	description:
+		'Destroy a Cloudflare sandbox by sandbox_id and release its temporary files and resources. Call after the sandbox workflow is complete and any required output file has been exported.',
 	inputSchema: sandboxIdInputSchema,
 	outputSchema: destroySandboxOutputSchema,
 	sideEffect: 'write',
@@ -75,7 +78,8 @@ export const cloudflareSandboxDestroyTool = defineTool({
 export const cloudflareSandboxRunningTool = defineTool({
 	id: `${id}-running`,
 	name: 'cloudflareSandboxRunning',
-	description: 'Check whether a sandbox container is currently running.',
+	description:
+		'Check whether a Cloudflare sandbox is currently running. Use before continuing work on an existing sandbox_id; this does not execute code or inspect files.',
 	inputSchema: sandboxIdInputSchema,
 	outputSchema: runningOutputSchema,
 	sideEffect: 'read',
@@ -88,7 +92,7 @@ export const cloudflareSandboxExecTool = defineTool({
 	id: `${id}-exec`,
 	name: 'cloudflareSandboxExec',
 	description:
-		'Run a command in a sandbox as an argv array (not a shell string). Returns stdout, stderr, and exit_code.',
+		'Run a command in a Cloudflare sandbox as an argv array and return stdout, stderr, and exit_code. Use as a fallback for command-line work with no dedicated tool. Do not replace purpose-built document, spreadsheet, presentation, PDF, image, or render tools.',
 	inputSchema: execInputSchema,
 	outputSchema: execOutputSchema,
 	sideEffect: 'write',
@@ -101,7 +105,7 @@ export const cloudflareSandboxExecuteCodeTool = defineTool({
 	id: `${id}-execute-code`,
 	name: 'cloudflareSandboxExecuteCode',
 	description:
-		'Execute source code in a sandbox (python, javascript, or shell). Uses the container runtime (for example python3 -c).',
+		'Execute Python, JavaScript, or shell source in a Cloudflare sandbox. Use as a fallback for computation or automation with no dedicated tool. Do not generate or edit supported documents, spreadsheets, presentations, PDFs, or images here when a purpose-built tool is available.',
 	inputSchema: executeCodeInputSchema,
 	outputSchema: execOutputSchema,
 	sideEffect: 'write',
@@ -114,7 +118,7 @@ export const cloudflareSandboxWriteFileTool = defineTool({
 	id: `${id}-write-file`,
 	name: 'cloudflareSandboxWriteFile',
 	description:
-		'Write a file under the sandbox workspace. Provide text (utf-8) or body_base64 (binary). Max 32 MiB decoded.',
+		'Write one temporary file under the Cloudflare sandbox workspace from UTF-8 text or base64 bytes, up to 32 MiB decoded. Use for sandbox intermediates. This is not durable delivery; export a genuinely sandbox-produced final file with cloudflare-sandbox-export-artifact.',
 	inputSchema: writeFileInputSchema,
 	outputSchema: writeFileOutputSchema,
 	sideEffect: 'write',
@@ -126,7 +130,8 @@ export const cloudflareSandboxWriteFileTool = defineTool({
 export const cloudflareSandboxReadFileTool = defineTool({
 	id: `${id}-read-file`,
 	name: 'cloudflareSandboxReadFile',
-	description: 'Read a file from the sandbox workspace. Default encoding utf8 (text); use base64 for binary content.',
+	description:
+		'Read one temporary file from the Cloudflare sandbox workspace as UTF-8 or base64. Use for sandbox intermediates; use format-aware readers for supported ArtifactRefs.',
 	inputSchema: readFileInputSchema,
 	outputSchema: readFileOutputSchema,
 	sideEffect: 'read',
@@ -138,7 +143,8 @@ export const cloudflareSandboxReadFileTool = defineTool({
 export const cloudflareSandboxWriteFilesTool = defineTool({
 	id: `${id}-write-files`,
 	name: 'cloudflareSandboxWriteFiles',
-	description: 'Write multiple files under the sandbox workspace (text or body_base64 per file).',
+	description:
+		'Write multiple temporary files under the Cloudflare sandbox workspace from text or base64. Use for sandbox intermediates, not final document generation. Export only a final file that the sandbox genuinely had to produce.',
 	inputSchema: writeFilesInputSchema,
 	outputSchema: writeFilesOutputSchema,
 	sideEffect: 'write',
@@ -150,7 +156,8 @@ export const cloudflareSandboxWriteFilesTool = defineTool({
 export const cloudflareSandboxReadFilesTool = defineTool({
 	id: `${id}-read-files`,
 	name: 'cloudflareSandboxReadFiles',
-	description: 'Read multiple files from the sandbox workspace (utf8 or base64 encoding).',
+	description:
+		'Read multiple temporary files from the Cloudflare sandbox workspace as UTF-8 or base64. Use only within an active sandbox workflow; use format-aware readers for supported ArtifactRefs.',
 	inputSchema: readFilesInputSchema,
 	outputSchema: readFilesOutputSchema,
 	sideEffect: 'read',
@@ -162,7 +169,8 @@ export const cloudflareSandboxReadFilesTool = defineTool({
 export const cloudflareSandboxListFilesTool = defineTool({
 	id: `${id}-list-files`,
 	name: 'cloudflareSandboxListFiles',
-	description: 'List files under a sandbox workspace directory (default /workspace).',
+	description:
+		'List temporary files under a Cloudflare sandbox directory, defaulting to /workspace. Use to locate sandbox intermediates, not durable workspace files or ArtifactRefs.',
 	inputSchema: listFilesInputSchema,
 	outputSchema: listFilesOutputSchema,
 	sideEffect: 'read',
@@ -174,7 +182,8 @@ export const cloudflareSandboxListFilesTool = defineTool({
 export const cloudflareSandboxRemoveFilesTool = defineTool({
 	id: `${id}-remove-files`,
 	name: 'cloudflareSandboxRemoveFiles',
-	description: 'Remove files from the sandbox workspace by path.',
+	description:
+		'Remove temporary files from the Cloudflare sandbox workspace by path. Use only for sandbox cleanup; this does not delete durable workspace files or ArtifactRefs.',
 	inputSchema: removeFilesInputSchema,
 	outputSchema: removeFilesOutputSchema,
 	sideEffect: 'delete',
@@ -187,7 +196,7 @@ export const cloudflareSandboxImportArtifactTool = defineTool({
 	id: `${id}-import-artifact`,
 	name: 'cloudflareSandboxImportArtifact',
 	description:
-		'Copy an object-store ArtifactRef into a sandbox workspace path. Requires bound storage credentials on sandbox auth.',
+		'Copy an existing object-store ArtifactRef into a Cloudflare sandbox workspace. Use only when arbitrary sandbox computation must consume that file. Do not import a supported document merely to read or edit it with general code.',
 	inputSchema: importArtifactInputSchema,
 	outputSchema: importArtifactOutputSchema,
 	sideEffect: 'write',
@@ -200,7 +209,7 @@ export const cloudflareSandboxExportArtifactTool = defineTool({
 	id: `${id}-export-artifact`,
 	name: 'cloudflareSandboxExportArtifact',
 	description:
-		'Copy a sandbox workspace file to object storage and return an ArtifactRef. Requires bound storage credentials on sandbox auth.',
+		'Persist a final file that was genuinely created inside the Cloudflare sandbox and return its ArtifactRef for delivery. Use only after sandbox work. Do not call for files returned by document, presentation, PDF, image, render, or conversion tools; those ArtifactRefs are already final.',
 	inputSchema: exportArtifactInputSchema,
 	outputSchema: exportArtifactOutputSchema,
 	sideEffect: 'write',
@@ -213,7 +222,7 @@ export const cloudflareSandboxCreateSessionTool = defineTool({
 	id: `${id}-create-session`,
 	name: 'cloudflareSandboxCreateSession',
 	description:
-		'Create an isolated execution session inside a sandbox (separate cwd/env). Pass session_id on later exec/file calls.',
+		'Create an isolated execution session inside an existing Cloudflare sandbox and return session_id. Use only when separate working directories or runtime state are needed; pass the id to later command and file calls.',
 	inputSchema: sandboxIdInputSchema,
 	outputSchema: createBridgeSessionOutputSchema,
 	sideEffect: 'write',
@@ -225,7 +234,8 @@ export const cloudflareSandboxCreateSessionTool = defineTool({
 export const cloudflareSandboxDeleteSessionTool = defineTool({
 	id: `${id}-delete-session`,
 	name: 'cloudflareSandboxDeleteSession',
-	description: 'Delete an isolated execution session inside a sandbox.',
+	description:
+		'Delete an isolated execution session inside a Cloudflare sandbox. Use after session-specific work is complete; this does not destroy the parent sandbox.',
 	inputSchema: deleteBridgeSessionInputSchema,
 	outputSchema: deleteBridgeSessionOutputSchema,
 	sideEffect: 'write',
@@ -238,7 +248,7 @@ export const cloudflareSandboxModule = defineModule({
 	id,
 	title: 'Cloudflare Sandbox',
 	description:
-		'Cloudflare Sandbox bridge: create isolated containers, run commands, execute code, read/write binary workspace files, and import/export object-store artifacts.',
+		'General-purpose Cloudflare execution fallback for arbitrary code, commands, and temporary files. Prefer purpose-built document, spreadsheet, presentation, PDF, image, render, and conversion tools. Export only files the sandbox genuinely produced.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: cloudflareSandboxAuthSchema },
 	tools: [

@@ -37,7 +37,8 @@ export const cloudflareBrowserRenderScreenshotTool = defineTool({
 export const cloudflareBrowserStartSessionTool = defineTool({
 	id: 'cloudflare-browser-start-session',
 	name: 'cloudflareBrowserStartSession',
-	description: 'Start a Cloudflare Browser Run session and return its Chrome DevTools WebSocket endpoint.',
+	description:
+		'Start a Cloudflare Browser Run session for interactive browser control and return its connection metadata. This creates a session; it does not navigate or render content.',
 	inputSchema: cloudflareBrowserStartSessionInputSchema,
 	outputSchema: cloudflareBrowserSessionOutputSchema,
 	sideEffect: 'write',
@@ -49,7 +50,8 @@ export const cloudflareBrowserStartSessionTool = defineTool({
 export const cloudflareBrowserGetSessionTool = defineTool({
 	id: 'cloudflare-browser-get-session',
 	name: 'cloudflareBrowserGetSession',
-	description: 'Get Cloudflare Browser Run session status and current DevTools endpoints.',
+	description:
+		'Get the status and connection metadata for an existing Cloudflare Browser Run session. Use this to reconnect or check whether the session is still available.',
 	inputSchema: cloudflareBrowserSessionIdInputSchema,
 	outputSchema: cloudflareBrowserSessionOutputSchema,
 	sideEffect: 'read',

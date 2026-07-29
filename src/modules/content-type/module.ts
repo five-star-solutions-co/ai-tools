@@ -33,7 +33,7 @@ export const contentTypeGetTool = defineTool({
 	id: 'content-type-get',
 	name: 'getContentType',
 	description:
-		'Look up the content type for a file path, filename, or extension using the mime package (mime-db). Returns null when the extension is unknown.',
+		'Look up the media type for a file path, filename, or extension. Use when another tool requires a media type and only the name or extension is known. Returns null for an unknown extension.',
 	inputSchema: getTypeInput,
 	outputSchema: getTypeOutput,
 	sideEffect: 'none',
@@ -48,7 +48,7 @@ export const contentTypeExtensionTool = defineTool({
 	id: 'content-type-extension',
 	name: 'getContentTypeExtension',
 	description:
-		'Look up the preferred file extension for a content type using the mime package. Charset parameters are ignored. Returns null when unknown.',
+		'Look up the preferred file extension for a media type. Use when naming an output whose media type is known. Charset parameters are ignored; returns null when unknown.',
 	inputSchema: getExtensionInput,
 	outputSchema: getExtensionOutput,
 	sideEffect: 'none',
@@ -78,8 +78,7 @@ export const contentTypeExtensionsTool = defineTool({
 export const contentTypeModule = defineModule({
 	id: 'content-type',
 	title: 'Content Type',
-	description:
-		'Content type ↔ extension lookup via the mime package (mime-db). Distinct from email-message parse/build.',
+	description: 'Look up media types from extensions and extensions from media types. This does not inspect file bytes.',
 	runtime: 'both',
 	auth: { type: 'none' },
 	tools: [contentTypeGetTool, contentTypeExtensionTool, contentTypeExtensionsTool]

@@ -17,7 +17,7 @@ export const ragIngestTool = defineTool({
 	id: 'rag-ingest',
 	name: 'ragIngest',
 	description:
-		'Chunk text, embed via the host-bound embed route, and upsert vectors. Returns chunk ids for later delete. Stores chunk text in metadata for retrieve.',
+		'Chunk text with the requested overlap, create embeddings, and store the vectors for later semantic retrieval. Returns chunk ids for deletion and preserves chunk text in metadata.',
 	inputSchema: ragIngestInputSchema,
 	outputSchema: ragIngestOutputSchema,
 	sideEffect: 'write',
@@ -52,7 +52,7 @@ export const ragModule = defineModule({
 	id: 'rag',
 	title: 'RAG',
 	description:
-		'Retrieve-augmented generation helpers: chunk, embed (host route), store, retrieve, delete. Host binds embed credentials and vector-store credentials. Does not own classification or access policy.',
+		'Ingest text by chunking, embedding, and storing it; retrieve related chunks for a natural-language query; or delete previously ingested chunks. Use for semantic retrieval, not ordinary file reading.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: ragAuthSchema },
 	tools: [ragIngestTool, ragRetrieveTool, ragDeleteTool]

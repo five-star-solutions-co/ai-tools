@@ -21,7 +21,8 @@ const id = 'bedrock-agentcore-code-interpreter'
 export const bedrockAgentCoreCodeInterpreterStartSessionTool = defineTool({
 	id: `${id}-start-session`,
 	name: 'bedrockAgentCoreCodeInterpreterStartSession',
-	description: 'Start a Bedrock AgentCore code interpreter session. Returns session_id for later execute/file tools.',
+	description:
+		'Start a Bedrock AgentCore code interpreter session and return session_id. Use only when arbitrary code, commands, or temporary files are required and no purpose-built tool covers the task. Do not start it to build or edit supported deliverables.',
 	inputSchema: startSessionInputSchema,
 	outputSchema: sessionOutputSchema,
 	sideEffect: 'write',
@@ -32,7 +33,8 @@ export const bedrockAgentCoreCodeInterpreterStartSessionTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterStopSessionTool = defineTool({
 	id: `${id}-stop-session`,
 	name: 'bedrockAgentCoreCodeInterpreterStopSession',
-	description: 'Stop a Bedrock AgentCore code interpreter session by session_id.',
+	description:
+		'Stop a Bedrock AgentCore code interpreter session by session_id and release temporary resources. Call after interpreter work is complete.',
 	inputSchema: sessionIdInputSchema,
 	outputSchema: sessionOutputSchema,
 	sideEffect: 'write',
@@ -43,7 +45,8 @@ export const bedrockAgentCoreCodeInterpreterStopSessionTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterGetSessionTool = defineTool({
 	id: `${id}-get-session`,
 	name: 'bedrockAgentCoreCodeInterpreterGetSession',
-	description: 'Get status/metadata for a Bedrock AgentCore code interpreter session.',
+	description:
+		'Get status and metadata for a Bedrock AgentCore code interpreter session. Use before continuing work on an existing session; this does not execute code.',
 	inputSchema: sessionIdInputSchema,
 	outputSchema: sessionOutputSchema,
 	sideEffect: 'read',
@@ -54,7 +57,8 @@ export const bedrockAgentCoreCodeInterpreterGetSessionTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterExecuteCodeTool = defineTool({
 	id: `${id}-execute-code`,
 	name: 'bedrockAgentCoreCodeInterpreterExecuteCode',
-	description: 'Execute code in an active Bedrock AgentCore code interpreter session (default language python).',
+	description:
+		'Execute code in an active Bedrock AgentCore session. Use as a fallback for computation or automation with no dedicated tool. Do not replace purpose-built document, spreadsheet, presentation, PDF, image, render, or conversion tools.',
 	inputSchema: executeCodeInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'write',
@@ -65,7 +69,8 @@ export const bedrockAgentCoreCodeInterpreterExecuteCodeTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterExecuteCommandTool = defineTool({
 	id: `${id}-execute-command`,
 	name: 'bedrockAgentCoreCodeInterpreterExecuteCommand',
-	description: 'Run a shell command in an active Bedrock AgentCore code interpreter session.',
+	description:
+		'Run a shell command in an active Bedrock AgentCore session. Use as a fallback for command-line work with no dedicated tool. Do not generate supported deliverables with command-line libraries when a purpose-built tool exists.',
 	inputSchema: executeCommandInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'write',
@@ -76,7 +81,8 @@ export const bedrockAgentCoreCodeInterpreterExecuteCommandTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterStartCommandTool = defineTool({
 	id: `${id}-start-command`,
 	name: 'bedrockAgentCoreCodeInterpreterStartCommand',
-	description: 'Start a long-running command in the code interpreter session; poll with get-task.',
+	description:
+		'Start a long-running command in an active Bedrock AgentCore session and return a task id. Use only for fallback command work that exceeds one call; poll with get-task.',
 	inputSchema: startCommandInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'write',
@@ -87,7 +93,8 @@ export const bedrockAgentCoreCodeInterpreterStartCommandTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterGetTaskTool = defineTool({
 	id: `${id}-get-task`,
 	name: 'bedrockAgentCoreCodeInterpreterGetTask',
-	description: 'Get status/result of an async command task in a code interpreter session.',
+	description:
+		'Get the status or result of an asynchronous Bedrock AgentCore command task. Use only with a task id returned by start-command; this does not start new work.',
 	inputSchema: taskIdInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'read',
@@ -98,7 +105,8 @@ export const bedrockAgentCoreCodeInterpreterGetTaskTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterStopTaskTool = defineTool({
 	id: `${id}-stop-task`,
 	name: 'bedrockAgentCoreCodeInterpreterStopTask',
-	description: 'Stop an async command task in a code interpreter session.',
+	description:
+		'Stop an asynchronous Bedrock AgentCore command task. Use only with a task id returned by start-command when the running work should be cancelled.',
 	inputSchema: taskIdInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'write',
@@ -109,7 +117,8 @@ export const bedrockAgentCoreCodeInterpreterStopTaskTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterListFilesTool = defineTool({
 	id: `${id}-list-files`,
 	name: 'bedrockAgentCoreCodeInterpreterListFiles',
-	description: 'List files in a code interpreter session directory.',
+	description:
+		'List temporary files in a Bedrock AgentCore session directory. Use to locate interpreter intermediates, not durable workspace files or ArtifactRefs.',
 	inputSchema: listFilesInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'read',
@@ -120,7 +129,8 @@ export const bedrockAgentCoreCodeInterpreterListFilesTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterReadFilesTool = defineTool({
 	id: `${id}-read-files`,
 	name: 'bedrockAgentCoreCodeInterpreterReadFiles',
-	description: 'Read files from a code interpreter session by path.',
+	description:
+		'Read temporary files from a Bedrock AgentCore session by path. Use only within the interpreter workflow; use format-aware readers for supported ArtifactRefs.',
 	inputSchema: readFilesInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'read',
@@ -131,7 +141,8 @@ export const bedrockAgentCoreCodeInterpreterReadFilesTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterWriteFilesTool = defineTool({
 	id: `${id}-write-files`,
 	name: 'bedrockAgentCoreCodeInterpreterWriteFiles',
-	description: 'Write text files into a code interpreter session.',
+	description:
+		'Write temporary text files into a Bedrock AgentCore session for intermediate computation. Do not use this as a final document builder or durable artifact store.',
 	inputSchema: writeFilesInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'write',
@@ -142,7 +153,8 @@ export const bedrockAgentCoreCodeInterpreterWriteFilesTool = defineTool({
 export const bedrockAgentCoreCodeInterpreterRemoveFilesTool = defineTool({
 	id: `${id}-remove-files`,
 	name: 'bedrockAgentCoreCodeInterpreterRemoveFiles',
-	description: 'Remove files from a code interpreter session by path.',
+	description:
+		'Remove temporary files from a Bedrock AgentCore session by path. Use only for interpreter cleanup; this does not delete durable workspace files or ArtifactRefs.',
 	inputSchema: removeFilesInputSchema,
 	outputSchema: invokeResultSchema,
 	sideEffect: 'write',
@@ -154,7 +166,7 @@ export const bedrockAgentCoreCodeInterpreterModule = defineModule({
 	id,
 	title: 'Bedrock AgentCore Code Interpreter',
 	description:
-		'Amazon Bedrock AgentCore Code Interpreter: start/stop/get sessions, execute code and commands, manage session files.',
+		'General-purpose Bedrock AgentCore execution fallback for arbitrary code, commands, and temporary files when no purpose-built tool covers the task.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: bedrockAgentCoreCodeInterpreterAuthSchema },
 	tools: [

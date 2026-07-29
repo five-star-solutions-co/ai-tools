@@ -140,7 +140,7 @@ export const telegramAnswerCallbackTool = defineTool({
 export const telegramGetBotTool = defineTool({
 	id: 'telegram-get-bot',
 	name: 'telegramGetBot',
-	description: 'Return the bound bot identity (bot_id, username, display_name) via getMe.',
+	description: 'Return the active Telegram bot identity, including bot_id, username, and display_name.',
 	inputSchema: emptyInputSchema,
 	outputSchema: telegramGetBotOutputSchema,
 	sideEffect: 'read',
@@ -152,7 +152,7 @@ export const telegramModule = defineModule({
 	id: 'telegram',
 	title: 'Telegram',
 	description:
-		'Telegram Bot API vendor pack: text, media, media groups, chat actions, reactions, file download, callbacks, bot identity. Host binds bot_token. Expand with more Bot API methods over time. Not a multi-provider messaging seam.',
+		'Telegram Bot API tools for text, media, media groups, chat actions, reactions, file download, callbacks, and bot identity.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: telegramAuthSchema },
 	tools: [

@@ -89,7 +89,7 @@ export const s3CopyObjectTool = defineTool({
 	id: 's3-copy-object',
 	name: 's3CopyObject',
 	description:
-		'Copy one S3 object to a new key. Optional source_bucket when copying across buckets the credentials can access.',
+		'Copy one S3 object to a new key. Set source_bucket only for an allowed cross-bucket copy; otherwise the configured bucket is used.',
 	inputSchema: copyObjectInputSchema,
 	outputSchema: copyObjectOutputSchema,
 	sideEffect: 'write',
@@ -159,7 +159,7 @@ export const s3Module = defineModule({
 	id: 's3',
 	title: 'S3 / S3-compatible',
 	description:
-		'S3-compatible object storage vendor pack (AWS S3, R2 S3 endpoint, MinIO, and similar) via SigV4. List, get, put, delete, head, copy, signed URLs, and multipart upload.',
+		'Store and retrieve objects with S3-compatible storage. Use for object listing, reads, writes, metadata, copies, deletion, signed URLs, and multipart uploads.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: s3AuthSchema },
 	tools: [

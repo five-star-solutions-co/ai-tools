@@ -145,7 +145,7 @@ export const uploadPartOutputSchema = z.object({
 })
 
 export const multipartUploadedPartSchema = z.object({
-	part_number: z.int().min(1).max(10_000),
+	part_number: z.int().min(1).max(10_000).describe('Uploaded part number from s3-upload-part'),
 	etag: z.string().min(1).describe('ETag returned by uploadPart (with or without surrounding quotes)')
 })
 

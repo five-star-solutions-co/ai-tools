@@ -35,7 +35,7 @@ export const amazonSpApiListOrdersInputSchema = z.object({
 		.array(z.string().min(1))
 		.min(1)
 		.optional()
-		.describe('Marketplace ids (defaults to auth.marketplace_ids)'),
+		.describe('Marketplace ids; omit to use the configured defaults'),
 	created_after: z.string().min(1).optional().describe('ISO 8601; orders created after'),
 	created_before: z.string().min(1).optional().describe('ISO 8601; orders created before'),
 	last_updated_after: z.string().min(1).optional().describe('ISO 8601; orders updated after'),
@@ -104,7 +104,7 @@ export const amazonSpApiSearchOrdersInputSchema = z.object({
 		.array(z.string().min(1))
 		.min(1)
 		.optional()
-		.describe('Marketplace ids (defaults to auth.marketplace_ids)'),
+		.describe('Marketplace ids; omit to use the configured defaults'),
 	max_results: z.int().min(1).max(100).optional().describe('Page size (1-100, default 100)'),
 	cursor: z.string().min(1).optional().describe('paginationToken from a prior page'),
 	max_pages: z
@@ -130,7 +130,7 @@ export const amazonSpApiSearchOrdersOutputSchema = z.object({
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
 export const amazonSpApiListInventorySummariesInputSchema = z.object({
-	marketplace_id: z.string().min(1).optional().describe('Marketplace id (defaults to first auth.marketplace_ids)'),
+	marketplace_id: z.string().min(1).optional().describe('Marketplace id; omit to use the first configured default'),
 	seller_skus: z.array(z.string().min(1)).max(50).optional().describe('Optional seller SKU filter (max 50)'),
 	start_date_time: z.string().min(1).optional().describe('ISO 8601; summaries changed after'),
 	cursor: z.string().min(1).optional().describe('nextToken from a prior page')
@@ -159,7 +159,7 @@ export const amazonSpApiCreateReportInputSchema = z.object({
 		.array(z.string().min(1))
 		.min(1)
 		.optional()
-		.describe('Marketplace ids (defaults to auth.marketplace_ids)'),
+		.describe('Marketplace ids; omit to use the configured defaults'),
 	data_start_time: z.string().min(1).optional().describe('ISO 8601 report data start'),
 	data_end_time: z.string().min(1).optional().describe('ISO 8601 report data end'),
 	report_options: z.record(z.string(), z.string()).optional().describe('Optional report-type-specific options map')
@@ -198,7 +198,7 @@ export const amazonSpApiListReportsInputSchema = z.object({
 		.array(z.string().min(1))
 		.min(1)
 		.optional()
-		.describe('Marketplace ids filter (defaults to auth.marketplace_ids when set)'),
+		.describe('Marketplace ids filter; omit to use configured defaults when available'),
 	page_size: z.int().min(1).max(100).optional().describe('Page size (1-100)'),
 	created_since: z.string().min(1).optional().describe('ISO 8601; reports created after'),
 	created_until: z.string().min(1).optional().describe('ISO 8601; reports created before'),
@@ -265,7 +265,7 @@ export const amazonSpApiSearchCatalogItemsInputSchema = z.object({
 		.array(z.string().min(1))
 		.min(1)
 		.optional()
-		.describe('Marketplace ids (defaults to auth.marketplace_ids)'),
+		.describe('Marketplace ids; omit to use the configured defaults'),
 	included_data: z
 		.array(z.string().min(1))
 		.optional()

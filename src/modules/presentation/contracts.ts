@@ -46,7 +46,9 @@ export const presentationReplacementSchema = z.object({
 })
 
 export const presentationReadInputSchema = z.object({
-	source: presentationSourceSchema.describe('PPTX presentation to read')
+	source: presentationSourceSchema.describe(
+		'PPTX presentation to read. For an ArtifactRef, pass { artifact: <ArtifactRef> }; do not pass the reference directly.'
+	)
 })
 
 export const presentationReadOutputSchema = z.object({
@@ -67,7 +69,9 @@ export const presentationBuildInputSchema = z.object({
 })
 
 export const presentationEditInputSchema = z.object({
-	source: presentationSourceSchema.describe('Existing PPTX presentation'),
+	source: presentationSourceSchema.describe(
+		'Existing PPTX presentation. For an ArtifactRef, pass { artifact: <ArtifactRef> }; do not pass the reference directly.'
+	),
 	replacements: z
 		.array(presentationReplacementSchema)
 		.min(1)

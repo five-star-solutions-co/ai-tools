@@ -17,7 +17,7 @@ export const vectorStoreUpsertTool = defineTool({
 	id: 'vector-store-upsert',
 	name: 'upsertVectors',
 	description:
-		'Upsert embedding vectors into the bound vector store. Provide stable ids, values, and optional flat metadata. Use collection when the host did not set a default.',
+		'Upsert embedding vectors into the bound vector store. Provide stable ids, values, and optional flat metadata. Specify collection only when no default collection is configured.',
 	inputSchema: upsertVectorsInputSchema,
 	outputSchema: upsertVectorsOutputSchema,
 	sideEffect: 'write',
@@ -51,7 +51,8 @@ export const vectorStoreDeleteTool = defineTool({
 export const vectorStoreModule = defineModule({
 	id: 'vector-store',
 	title: 'Vector Store',
-	description: 'Upsert, query, and delete embedding vectors in the host-bound vector store.',
+	description:
+		'Upsert, query, and delete embedding vectors in the configured store. Use for vector operations, not text embedding or document chunking.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: vectorStoreAuthSchema },
 	tools: [vectorStoreUpsertTool, vectorStoreQueryTool, vectorStoreDeleteTool]

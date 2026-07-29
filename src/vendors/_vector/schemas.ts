@@ -28,12 +28,12 @@ export const vectorMatchSchema = z.object({
 })
 
 export const upsertVectorsInputSchema = z.object({
-	collection: z.string().min(1).optional().describe('Collection / table / index name when not defaulted on host auth'),
+	collection: z.string().min(1).optional().describe('Collection, table, or index name when no default is configured'),
 	namespace: z
 		.string()
 		.min(1)
 		.optional()
-		.describe('Optional namespace when the store supports it; ignored when auth locks default_namespace'),
+		.describe('Optional namespace when supported; a configured fixed namespace takes precedence'),
 	vectors: z.array(vectorPointSchema).min(1).max(MAX_VECTOR_BATCH).describe(`1–${MAX_VECTOR_BATCH} vectors to upsert`)
 })
 
@@ -43,12 +43,12 @@ export const upsertVectorsOutputSchema = z.object({
 })
 
 export const queryVectorsInputSchema = z.object({
-	collection: z.string().min(1).optional().describe('Collection / table / index name when not defaulted on host auth'),
+	collection: z.string().min(1).optional().describe('Collection, table, or index name when no default is configured'),
 	namespace: z
 		.string()
 		.min(1)
 		.optional()
-		.describe('Optional namespace when the store supports it; ignored when auth locks default_namespace'),
+		.describe('Optional namespace when supported; a configured fixed namespace takes precedence'),
 	vector: z.array(z.number()).min(1).max(MAX_VECTOR_DIMENSIONS).describe('Query embedding'),
 	top_k: z
 		.number()
@@ -73,7 +73,7 @@ export const queryVectorsOutputSchema = z.object({
 })
 
 export const deleteVectorsInputSchema = z.object({
-	collection: z.string().min(1).optional().describe('Collection / table / index name when not defaulted on host auth'),
+	collection: z.string().min(1).optional().describe('Collection, table, or index name when no default is configured'),
 	namespace: z.string().min(1).optional().describe('Optional namespace when the store supports it'),
 	ids: z.array(z.string().min(1)).min(1).max(MAX_VECTOR_BATCH).describe(`1–${MAX_VECTOR_BATCH} point ids to delete`)
 })

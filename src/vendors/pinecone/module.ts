@@ -13,7 +13,8 @@ import {
 export const pineconeUpsertTool = defineTool({
 	id: 'pinecone-upsert',
 	name: 'pineconeUpsert',
-	description: 'Upsert vectors into the bound Pinecone index. Optional namespace from auth or input.',
+	description:
+		'Upsert vectors into the configured Pinecone index. Use the optional namespace only when data must be isolated within the index.',
 	inputSchema: upsertVectorsInputSchema,
 	outputSchema: upsertVectorsOutputSchema,
 	sideEffect: 'write',

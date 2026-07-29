@@ -17,7 +17,7 @@ export const tasksCreateTool = defineTool({
 	id: 'tasks-create',
 	name: 'createTask',
 	description:
-		'Create a reusable task definition in the bound host backend. Returns an opaque task_ref that can be scheduled or invoked by the host.',
+		'Create a reusable task definition in the bound task catalog. Returns an opaque task_ref for later lookup, scheduling, or invocation; this tool does not run the task.',
 	inputSchema: tasksCreateInputSchema,
 	outputSchema: tasksCreateOutputSchema,
 	sideEffect: 'write',
@@ -28,7 +28,8 @@ export const tasksCreateTool = defineTool({
 export const tasksGetTool = defineTool({
 	id: 'tasks-get',
 	name: 'getTask',
-	description: 'Load one task definition by its opaque task_ref from the bound host backend.',
+	description:
+		'Load one task definition from the bound task catalog by its opaque task_ref. This does not run the task.',
 	inputSchema: tasksGetInputSchema,
 	outputSchema: tasksGetOutputSchema,
 	sideEffect: 'read',
@@ -39,7 +40,7 @@ export const tasksGetTool = defineTool({
 export const tasksListTool = defineTool({
 	id: 'tasks-list',
 	name: 'listTasks',
-	description: 'List task definitions from the bound host backend with optional text, tag, and pagination filters.',
+	description: 'List task definitions from the bound task catalog with optional text, tag, and pagination filters.',
 	inputSchema: tasksListInputSchema,
 	outputSchema: tasksListOutputSchema,
 	sideEffect: 'read',
@@ -61,7 +62,8 @@ export const tasksUpdateTool = defineTool({
 export const tasksDeleteTool = defineTool({
 	id: 'tasks-delete',
 	name: 'deleteTask',
-	description: 'Delete one task definition by task_ref from the bound host backend.',
+	description:
+		'Delete one task definition from the bound task catalog by task_ref. This does not stop an already-running task.',
 	inputSchema: tasksGetInputSchema,
 	outputSchema: tasksDeleteOutputSchema,
 	sideEffect: 'delete',
@@ -72,7 +74,8 @@ export const tasksDeleteTool = defineTool({
 export const tasksModule = defineModule({
 	id: 'tasks',
 	title: 'Tasks',
-	description: 'Create, inspect, list, update, and delete reusable task definitions through a host backend.',
+	description:
+		'Create, inspect, list, update, and delete reusable task definitions. These tools define tasks; they do not run them.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: tasksAuthSchema },
 	tools: [tasksCreateTool, tasksGetTool, tasksListTool, tasksUpdateTool, tasksDeleteTool]

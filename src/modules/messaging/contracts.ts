@@ -163,7 +163,7 @@ const messagingMediaBodyFields = {
 		.describe('File body as base64. Omit when source is set. Prefer source for large files.'),
 	source: messagingObjectArtifactRefSchema
 		.optional()
-		.describe('Object-store ArtifactRef (store must be object). Prefer for large files. Requires bound storage auth.'),
+		.describe('Object-store ArtifactRef for the media file. Prefer this over body_base64 for large files'),
 	file_name: z
 		.string()
 		.min(1)
@@ -249,9 +249,7 @@ export const messagingDownloadFileInputSchema = z.object({
 		.string()
 		.min(1)
 		.optional()
-		.describe(
-			'When set, write bytes to bound object storage and return artifact (no body_base64). Requires storage auth.'
-		),
+		.describe('When set, persist downloaded bytes at this object key and return an ArtifactRef instead of body_base64'),
 	service_url: serviceUrlOptional
 })
 

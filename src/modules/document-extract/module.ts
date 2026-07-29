@@ -52,7 +52,7 @@ export const documentExtractModule = defineModule({
 	id: 'document-extract',
 	title: 'Document Extract',
 	description:
-		'Extract text from documents in object storage via the host-bound provider. Supports inline, artifact, and chunks output modes. Polls inside extract; use status tool with job_id if the wait budget expires.',
+		'Extract text from scanned or extraction-dependent documents. Choose inline text, a text ArtifactRef, or retrieval chunks. Extraction polls within the initial call; use the status tool only when a job_id is returned as pending.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: documentExtractAuthSchema },
 	tools: [documentExtractTextTool, documentExtractStatusTool, documentExtractTextBatchTool]

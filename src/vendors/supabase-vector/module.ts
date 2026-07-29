@@ -13,7 +13,8 @@ import {
 export const supabaseVectorUpsertTool = defineTool({
 	id: 'supabase-vector-upsert',
 	name: 'supabaseVectorUpsert',
-	description: 'Upsert embedding rows into a Supabase PostgREST table (pgvector). Host must grant table write access.',
+	description:
+		'Upsert embedding vectors into the configured Supabase pgvector table. Provide stable ids, vector values, and optional flat metadata.',
 	inputSchema: upsertVectorsInputSchema,
 	outputSchema: upsertVectorsOutputSchema,
 	sideEffect: 'write',
@@ -24,7 +25,8 @@ export const supabaseVectorUpsertTool = defineTool({
 export const supabaseVectorQueryTool = defineTool({
 	id: 'supabase-vector-query',
 	name: 'supabaseVectorQuery',
-	description: 'Nearest-neighbor query via host-owned match RPC (default match_vectors) over Supabase PostgREST.',
+	description:
+		'Run a nearest-neighbor query against the configured Supabase pgvector table. Returns the closest rows up to the requested top_k and optional score threshold.',
 	inputSchema: queryVectorsInputSchema,
 	outputSchema: queryVectorsOutputSchema,
 	sideEffect: 'read',
@@ -35,7 +37,7 @@ export const supabaseVectorQueryTool = defineTool({
 export const supabaseVectorDeleteTool = defineTool({
 	id: 'supabase-vector-delete',
 	name: 'supabaseVectorDelete',
-	description: 'Delete embedding rows by id from a Supabase PostgREST table.',
+	description: 'Delete embedding vectors by id from the configured Supabase pgvector table.',
 	inputSchema: deleteVectorsInputSchema,
 	outputSchema: deleteVectorsOutputSchema,
 	sideEffect: 'delete',
@@ -46,8 +48,7 @@ export const supabaseVectorDeleteTool = defineTool({
 export const supabaseVectorModule = defineModule({
 	id: 'supabase-vector',
 	title: 'Supabase Vector',
-	description:
-		'Supabase Postgres + pgvector via PostgREST: upsert, match RPC query, delete. Host owns table schema and match_vectors RPC.',
+	description: 'Supabase Postgres and pgvector tools to upsert vectors, query nearest matches, and delete vectors.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: supabaseVectorAuthSchema },
 	tools: [supabaseVectorUpsertTool, supabaseVectorQueryTool, supabaseVectorDeleteTool]

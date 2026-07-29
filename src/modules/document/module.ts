@@ -16,7 +16,8 @@ import {
 export const documentReadTool = defineTool({
 	id: 'document-read',
 	name: 'readDocument',
-	description: 'Read text, metadata, tables, pages, or image dimensions from a supported document artifact.',
+	description:
+		'Read an existing supported artifact for understanding, including text, metadata, tables, PDF pages, or image dimensions. Use before answering about or editing a user-supplied file. This does not create a new deliverable.',
 	inputSchema: documentReadInputSchema,
 	outputSchema: documentReadOutputSchema,
 	sideEffect: 'read',
@@ -28,7 +29,8 @@ export const documentReadTool = defineTool({
 export const documentBuildTextTool = defineTool({
 	id: 'document-build-text',
 	name: 'buildTextDocument',
-	description: 'Build a TXT, Markdown, JSON, CSV, or HTML artifact from text content.',
+	description:
+		'Create a new TXT, Markdown, JSON, CSV, or HTML deliverable from complete text content. Prefer this purpose-built tool over writing the file in a general code sandbox. Returns the final ArtifactRef; no export or edit step is needed.',
 	inputSchema: documentBuildTextInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
@@ -40,7 +42,8 @@ export const documentBuildTextTool = defineTool({
 export const documentBuildSpreadsheetTool = defineTool({
 	id: 'document-build-spreadsheet',
 	name: 'buildSpreadsheet',
-	description: 'Build an XLSX artifact from one or more row-major worksheets.',
+	description:
+		'Create a new XLSX workbook from structured, row-major worksheets. Use whenever the user asks to build a spreadsheet or workbook from data. Prefer this over generating XLSX in a general code sandbox. Returns the final ArtifactRef; use document-edit-spreadsheet only for an existing spreadsheet.',
 	inputSchema: documentBuildSpreadsheetInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
@@ -52,7 +55,8 @@ export const documentBuildSpreadsheetTool = defineTool({
 export const documentBuildDocumentTool = defineTool({
 	id: 'document-build-document',
 	name: 'buildDocument',
-	description: 'Build a DOCX artifact from titled sections and paragraphs.',
+	description:
+		'Create a new DOCX deliverable from titled sections and paragraphs. Prefer this purpose-built builder over generating DOCX in a general code sandbox. Returns the final ArtifactRef; use document-edit-document only for an existing DOCX.',
 	inputSchema: documentBuildDocumentInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
@@ -64,7 +68,8 @@ export const documentBuildDocumentTool = defineTool({
 export const documentEditTextTool = defineTool({
 	id: 'document-edit-text',
 	name: 'editTextDocument',
-	description: 'Apply exact text replacements to a TXT, Markdown, JSON, or HTML artifact.',
+	description:
+		'Edit an existing TXT, Markdown, JSON, or HTML ArtifactRef with ordered exact-text replacements and return a new ArtifactRef. Use only when changing a supplied file. For a new deliverable, use document-build-text; do not call this merely to make a built artifact deliverable.',
 	inputSchema: documentEditTextInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
@@ -76,7 +81,8 @@ export const documentEditTextTool = defineTool({
 export const documentEditDocumentTool = defineTool({
 	id: 'document-edit-document',
 	name: 'editDocument',
-	description: 'Apply layout-preserving text replacements to a DOCX artifact.',
+	description:
+		'Edit an existing DOCX ArtifactRef with layout-preserving text replacements and return a new ArtifactRef. Use only when changing a supplied DOCX. For a new document, use document-build-document; do not call this merely to make a built artifact deliverable.',
 	inputSchema: documentEditDocumentInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
@@ -88,7 +94,8 @@ export const documentEditDocumentTool = defineTool({
 export const documentEditSpreadsheetTool = defineTool({
 	id: 'document-edit-spreadsheet',
 	name: 'editSpreadsheet',
-	description: 'Apply cell updates to an XLSX or CSV artifact.',
+	description:
+		'Edit cells in an existing XLSX or CSV ArtifactRef and return a new ArtifactRef. Use only when changing a supplied spreadsheet and provide explicit sheet, row, and column patches. For a new workbook, use document-build-spreadsheet; do not call this merely to make a built artifact deliverable.',
 	inputSchema: documentEditSpreadsheetInputSchema,
 	outputSchema: documentBuildOutputSchema,
 	sideEffect: 'write',
@@ -100,7 +107,8 @@ export const documentEditSpreadsheetTool = defineTool({
 export const documentModule = defineModule({
 	id: 'document',
 	title: 'Document',
-	description: 'Read, build, and edit text, PDF, DOCX, spreadsheet, and image artifacts.',
+	description:
+		'Purpose-built document tools for reading existing files, creating final text, DOCX, and XLSX deliverables, and editing supplied files. Prefer these tools over general sandbox file generation.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: documentAuthSchema },
 	tools: [

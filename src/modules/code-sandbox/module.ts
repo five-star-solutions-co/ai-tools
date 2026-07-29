@@ -21,7 +21,8 @@ import {
 export const codeSandboxStartSessionTool = defineTool({
 	id: 'code-sandbox-start-session',
 	name: 'startCodeSandboxSession',
-	description: 'Start an isolated code sandbox session on the bound provider and return a session_id.',
+	description:
+		'Start an isolated sandbox session and return session_id. Use only when the task requires arbitrary code, shell commands, or temporary files that no purpose-built tool covers. Do not start a sandbox to build or edit supported documents, spreadsheets, presentations, PDFs, or images.',
 	inputSchema: codeSandboxStartSessionInputSchema,
 	outputSchema: codeSandboxSessionOutputSchema,
 	sideEffect: 'write',
@@ -33,7 +34,8 @@ export const codeSandboxStartSessionTool = defineTool({
 export const codeSandboxGetSessionTool = defineTool({
 	id: 'code-sandbox-get-session',
 	name: 'getCodeSandboxSession',
-	description: 'Get status for a code sandbox session on the bound provider.',
+	description:
+		'Get status for a sandbox session created by code-sandbox-start-session. Use when execution may still be running or session availability must be checked; this does not execute work.',
 	inputSchema: codeSandboxSessionIdInputSchema,
 	outputSchema: codeSandboxSessionOutputSchema,
 	sideEffect: 'read',
@@ -45,7 +47,8 @@ export const codeSandboxGetSessionTool = defineTool({
 export const codeSandboxStopSessionTool = defineTool({
 	id: 'code-sandbox-stop-session',
 	name: 'stopCodeSandboxSession',
-	description: 'Stop a code sandbox session on the bound provider and release resources.',
+	description:
+		'Stop a sandbox session created by code-sandbox-start-session and release its temporary resources. Call after sandbox work is complete when the session is no longer needed.',
 	inputSchema: codeSandboxSessionIdInputSchema,
 	outputSchema: codeSandboxSessionOutputSchema,
 	sideEffect: 'write',
@@ -57,7 +60,8 @@ export const codeSandboxStopSessionTool = defineTool({
 export const codeSandboxExecuteCodeTool = defineTool({
 	id: 'code-sandbox-execute-code',
 	name: 'executeCodeInSandbox',
-	description: 'Execute source code in an active code sandbox session (default language python when supported).',
+	description:
+		'Execute source code in an active sandbox session. Use as a fallback for computation or automation that no purpose-built tool covers. Do not use to build or edit supported documents, spreadsheets, presentations, PDFs, or images.',
 	inputSchema: codeSandboxExecuteCodeInputSchema,
 	outputSchema: codeSandboxExecResultSchema,
 	sideEffect: 'write',
@@ -69,7 +73,8 @@ export const codeSandboxExecuteCodeTool = defineTool({
 export const codeSandboxExecuteCommandTool = defineTool({
 	id: 'code-sandbox-execute-command',
 	name: 'executeCommandInSandbox',
-	description: 'Run a shell command in an active code sandbox session.',
+	description:
+		'Run a shell command in an active sandbox session. Use as a fallback for command-line work that no purpose-built tool covers. Do not use command-line libraries to replace dedicated document, spreadsheet, presentation, PDF, or image tools.',
 	inputSchema: codeSandboxExecuteCommandInputSchema,
 	outputSchema: codeSandboxExecResultSchema,
 	sideEffect: 'write',
@@ -81,7 +86,8 @@ export const codeSandboxExecuteCommandTool = defineTool({
 export const codeSandboxWriteFilesTool = defineTool({
 	id: 'code-sandbox-write-files',
 	name: 'writeSandboxFiles',
-	description: 'Write one or more utf-8 files into the sandbox filesystem.',
+	description:
+		'Write one or more UTF-8 files into an active sandbox session for intermediate computation. Sandbox files are temporary and this tool does not return ArtifactRefs. Use a purpose-built builder for final deliverables.',
 	inputSchema: codeSandboxWriteFilesInputSchema,
 	outputSchema: codeSandboxWriteFilesOutputSchema,
 	sideEffect: 'write',
@@ -93,7 +99,8 @@ export const codeSandboxWriteFilesTool = defineTool({
 export const codeSandboxReadFilesTool = defineTool({
 	id: 'code-sandbox-read-files',
 	name: 'readSandboxFiles',
-	description: 'Read one or more utf-8 files from the sandbox filesystem.',
+	description:
+		'Read one or more UTF-8 files from an active sandbox session. Use only for files produced or imported during the same sandbox workflow; use a format-aware reader for supported user artifacts.',
 	inputSchema: codeSandboxReadFilesInputSchema,
 	outputSchema: codeSandboxReadFilesOutputSchema,
 	sideEffect: 'read',
@@ -105,7 +112,8 @@ export const codeSandboxReadFilesTool = defineTool({
 export const codeSandboxListFilesTool = defineTool({
 	id: 'code-sandbox-list-files',
 	name: 'listSandboxFiles',
-	description: 'List files in a sandbox directory when the bound provider supports listing.',
+	description:
+		'List temporary files in an active sandbox directory when supported. Use to locate sandbox intermediates, not to discover files in the durable workspace or artifact store.',
 	inputSchema: codeSandboxListFilesInputSchema,
 	outputSchema: codeSandboxListFilesOutputSchema,
 	sideEffect: 'read',
@@ -117,7 +125,8 @@ export const codeSandboxListFilesTool = defineTool({
 export const codeSandboxRemoveFilesTool = defineTool({
 	id: 'code-sandbox-remove-files',
 	name: 'removeSandboxFiles',
-	description: 'Remove files from the sandbox filesystem.',
+	description:
+		'Remove temporary files from an active sandbox session. Use only for sandbox cleanup; this does not delete durable workspace files or ArtifactRefs.',
 	inputSchema: codeSandboxRemoveFilesInputSchema,
 	outputSchema: codeSandboxRemoveFilesOutputSchema,
 	sideEffect: 'write',
@@ -130,7 +139,7 @@ export const codeSandboxModule = defineModule({
 	id: 'code-sandbox',
 	title: 'Code Sandbox',
 	description:
-		'Start isolated sandbox sessions, execute code or shell commands, and read or write files through the bound provider.',
+		'General-purpose fallback for arbitrary code, commands, and temporary files when no dedicated tool covers the task. Do not use it instead of purpose-built document, spreadsheet, presentation, PDF, image, or render tools.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: codeSandboxAuthSchema },
 	tools: [

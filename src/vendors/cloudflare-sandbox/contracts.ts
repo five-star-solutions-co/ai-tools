@@ -35,7 +35,7 @@ export type CloudflareSandboxAuth = z.infer<typeof cloudflareSandboxAuthSchema>
 
 /** Object-store ArtifactRef for sandbox import/export. */
 export const sandboxObjectArtifactRefSchema = z.object({
-	store: z.literal('object').describe('Object storage owned by bound sandbox storage auth'),
+	store: z.literal('object').describe('Object store containing the artifact'),
 	key: z.string().min(1).describe('Object key'),
 	media_type: z.string().min(1).optional().describe('MIME or format hint when known'),
 	filename: z.string().min(1).optional().describe('Original or display file name'),
@@ -87,7 +87,7 @@ export const execInputSchema = z.object({
 		.min(1)
 		.max(200)
 		.optional()
-		.describe('Optional bridge session id (Session-Id header) for isolated cwd/env')
+		.describe('Optional bridge session id for isolated working directory and runtime state')
 })
 
 export const execOutputSchema = z.object({
@@ -300,7 +300,7 @@ export const executeCodeInputSchema = z.object({
 		.min(1)
 		.max(200)
 		.optional()
-		.describe('Optional bridge session id (Session-Id header) for isolated cwd/env')
+		.describe('Optional bridge session id for isolated working directory and runtime state')
 })
 
 export type SandboxIdInput = z.infer<typeof sandboxIdInputSchema>

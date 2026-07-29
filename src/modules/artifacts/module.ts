@@ -14,7 +14,7 @@ export const artifactsCreateTool = defineTool({
 	id: 'artifacts-create',
 	name: 'createArtifact',
 	description:
-		'Create a small artifact in the bound artifact store from UTF-8 or base64 content and return its ArtifactRef.',
+		'Persist small, already-serialized UTF-8 or base64 content and return its ArtifactRef. Use for raw bytes or text when no structured builder is required. Do not use this to invent DOCX, XLSX, PPTX, PDF, or image formats.',
 	inputSchema: artifactsCreateInputSchema,
 	outputSchema: artifactsCreateOutputSchema,
 	sideEffect: 'write',
@@ -26,7 +26,7 @@ export const artifactsReadRangeTool = defineTool({
 	id: 'artifacts-read-range',
 	name: 'readArtifactRange',
 	description:
-		'Read an explicit inclusive byte range from an existing artifact. Returns only the requested bounded bytes as base64.',
+		'Read an explicit inclusive byte range from an existing ArtifactRef as base64. Use for bounded binary inspection or chunked transfer, not for understanding a supported document when a format-aware reader is available.',
 	inputSchema: artifactsReadRangeInputSchema,
 	outputSchema: artifactsReadRangeOutputSchema,
 	sideEffect: 'read',
@@ -49,7 +49,8 @@ export const artifactsReadLinesTool = defineTool({
 export const artifactsModule = defineModule({
 	id: 'artifacts',
 	title: 'Artifacts',
-	description: 'Create artifacts and read bounded byte or text ranges from the bound artifact store.',
+	description:
+		'Persist small serialized content and inspect bounded byte or text ranges. ArtifactRef is the handoff between tools; structured document creation belongs to purpose-built builders.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: artifactsAuthSchema },
 	tools: [artifactsCreateTool, artifactsReadRangeTool, artifactsReadLinesTool]

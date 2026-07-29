@@ -28,7 +28,7 @@ export const imageResizeTool = defineTool({
 	id: 'image-resize',
 	name: 'resizeImage',
 	description:
-		'Resize an image artifact to a target width, height, or bounding box while preserving its encoded format.',
+		'Resize an existing image ArtifactRef to a target width, height, or bounding box while preserving its format. Returns a final image ArtifactRef; use for exact resize requirements rather than general code or document tools.',
 	inputSchema: imageResizeInputSchema,
 	outputSchema: imageTransformOutputSchema,
 	sideEffect: 'write',
@@ -40,7 +40,8 @@ export const imageResizeTool = defineTool({
 export const imageCropTool = defineTool({
 	id: 'image-crop',
 	name: 'cropImage',
-	description: 'Crop a rectangular pixel region from an image artifact and write a new image artifact.',
+	description:
+		'Crop a rectangular pixel region from an existing image ArtifactRef and return a new image ArtifactRef. Use when the crop coordinates are known.',
 	inputSchema: imageCropInputSchema,
 	outputSchema: imageTransformOutputSchema,
 	sideEffect: 'write',
@@ -52,7 +53,8 @@ export const imageCropTool = defineTool({
 export const imageThumbnailTool = defineTool({
 	id: 'image-thumbnail',
 	name: 'createImageThumbnail',
-	description: 'Create a bounded thumbnail that fits within the requested dimensions without enlarging smaller images.',
+	description:
+		'Create a thumbnail ArtifactRef that fits within the requested dimensions without enlarging smaller images. Use for previews; use image-resize when exact output dimensions matter.',
 	inputSchema: imageThumbnailInputSchema,
 	outputSchema: imageTransformOutputSchema,
 	sideEffect: 'write',
@@ -64,7 +66,8 @@ export const imageThumbnailTool = defineTool({
 export const imageConvertTool = defineTool({
 	id: 'image-convert',
 	name: 'convertImage',
-	description: 'Re-encode an image artifact as JPEG, PNG, WebP, AVIF, TIFF, or GIF.',
+	description:
+		'Re-encode an existing image ArtifactRef as JPEG, PNG, WebP, AVIF, TIFF, or GIF and return a new ArtifactRef. Use only when the required output image format differs from the source.',
 	inputSchema: imageConvertInputSchema,
 	outputSchema: imageTransformOutputSchema,
 	sideEffect: 'write',

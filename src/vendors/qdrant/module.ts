@@ -13,7 +13,7 @@ import {
 export const qdrantUpsertTool = defineTool({
 	id: 'qdrant-upsert',
 	name: 'qdrantUpsert',
-	description: 'Upsert points into a Qdrant collection. Uses default_collection from auth when collection is omitted.',
+	description: 'Upsert points into a Qdrant collection. Omit collection only when a default collection is configured.',
 	inputSchema: upsertVectorsInputSchema,
 	outputSchema: upsertVectorsOutputSchema,
 	sideEffect: 'write',

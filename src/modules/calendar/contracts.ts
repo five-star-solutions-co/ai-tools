@@ -12,8 +12,8 @@ export const calendarEventSchema = z
 		start: calendarDateTimeSchema.describe('Event start'),
 		end: calendarDateTimeSchema.describe('Exclusive event end'),
 		all_day: z.boolean().optional().describe('Whether start and end are dates rather than timestamps'),
-		description: z.string().max(20_000).optional(),
-		location: z.string().max(2_000).optional(),
+		description: z.string().max(20_000).optional().describe('Event description or notes'),
+		location: z.string().max(2_000).optional().describe('Event location'),
 		organizer: z.string().max(2_000).optional().describe('Organizer URI, commonly a mailto URI')
 	})
 	.superRefine((event, ctx) => {

@@ -14,7 +14,7 @@ export const webFetchGetTool = defineTool({
 	id: 'web-fetch-get',
 	name: 'httpGet',
 	description:
-		'HTTP GET or HEAD against an absolute allowlisted URL. Use to read host-approved APIs. Returns status, headers, and ofetch-parsed body (JSON object when the response is JSON). No request body. Credential headers cannot be set from tool arguments.',
+		'Send HTTP GET or HEAD to an absolute allowlisted URL. Use to read an approved API when no purpose-built tool exists. Returns status, headers, and a parsed JSON or text body. No request body; protected headers cannot be supplied in arguments.',
 	inputSchema: webFetchGetInputSchema,
 	outputSchema: webFetchRequestOutputSchema,
 	sideEffect: 'read',
@@ -26,7 +26,7 @@ export const webFetchRequestTool = defineTool({
 	id: 'web-fetch-request',
 	name: 'httpRequest',
 	description:
-		'HTTP POST, PUT, PATCH, or DELETE against an absolute allowlisted URL. Use for host-approved write/delete APIs and webhooks. Body accepts a string or object (objects/arrays are JSON-encoded automatically). Returns status, headers, and ofetch-parsed body. Credential headers cannot be set from tool arguments.',
+		'Send HTTP POST, PUT, PATCH, or DELETE to an absolute allowlisted URL. Use for an approved API or webhook only when no purpose-built tool exists. Objects and arrays are JSON-encoded; returns status, headers, and a parsed body. Protected headers cannot be supplied in arguments.',
 	inputSchema: webFetchRequestInputSchema,
 	outputSchema: webFetchRequestOutputSchema,
 	sideEffect: 'write',
@@ -38,7 +38,7 @@ export const webFetchModule = defineModule({
 	id: 'web-fetch',
 	title: 'Web Fetch',
 	description:
-		'Allowlisted HTTP client (ofetch). Hosts bind origins and optional default headers; models call URLs without setting credentials. GET/HEAD are read; POST/PUT/PATCH/DELETE are write.',
+		'Fallback HTTP access to allowlisted absolute URLs. Use GET or HEAD for reads and POST, PUT, PATCH, or DELETE for writes only when no purpose-built tool covers the API.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: webFetchAuthSchema },
 	tools: [webFetchGetTool, webFetchRequestTool]
