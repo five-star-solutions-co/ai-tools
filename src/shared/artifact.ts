@@ -1,3 +1,4 @@
+import { isPlainObject } from 'es-toolkit'
 import { z } from 'zod'
 
 /** Durable blob handle — bytes never pass through the LLM. */
@@ -12,3 +13,37 @@ export const artifactRefSchema = z.object({
 })
 
 export type ArtifactRef = z.infer<typeof artifactRefSchema>
+
+/** Find unique ArtifactRefs in a structured tool output, in depth-first order. */
+export function findArtifactRefs(output: unknown): ArtifactRef[] {
+	const artifacts: ArtifactRef[] = []
+	const identities = new Set<string>()
+	const visited = new WeakSet<object>()
+
+	const visit = (value: unknown): void => {
+		if (Array.isArray(value)) {
+			if (visited.has(value)) return
+			visited.add(value)
+			for (const item of value) visit(item)
+			return
+		}
+		if (!isPlainObject(value)) return
+		if (visited.has(value)) return
+		visited.add(value)
+
+		const parsed = artifactRefSchema.safeParse(value)
+		if (parsed.success) {
+			const identity = JSON.stringify([parsed.data.store, parsed.data.key])
+			if (!identities.has(identity)) {
+				identities.add(identity)
+				artifacts.push(parsed.data)
+			}
+			return
+		}
+
+		for (const item of Object.values(value)) visit(item)
+	}
+
+	visit(output)
+	return artifacts
+}

@@ -1,5 +1,7 @@
 import type { z } from 'zod'
 
+import type { ArtifactRef } from '../shared/artifact'
+
 export type ToolRuntime = 'both' | 'edge' | 'node'
 
 export type ToolSideEffect = 'delete' | 'none' | 'read' | 'send' | 'write'
@@ -35,8 +37,15 @@ export type ToolHookEvent = {
 	ctx: ToolContext
 }
 
+export type ArtifactHookEvent = ToolHookEvent & {
+	artifact: ArtifactRef
+	output: unknown
+}
+
 export type ToolHooks = {
 	beforeExecute?: (event: ToolHookEvent) => void | Promise<void>
+	/** Runs once per unique ArtifactRef found in a successfully validated output. */
+	onArtifact?: (event: ArtifactHookEvent) => void | Promise<void>
 	/** Runs after successful output validation. */
 	afterExecute?: (event: ToolHookEvent & { output: unknown }) => void | Promise<void>
 	onError?: (event: ToolHookEvent & { error: unknown }) => void | Promise<void>

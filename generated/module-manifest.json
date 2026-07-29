@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-28T20:39:11.756Z",
+	"generatedAt": "2026-07-29T01:50:01.164Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -147,8 +147,12 @@
 			"entry": "src/modules/artifacts/index.ts",
 			"entryKey": "modules/artifacts/index",
 			"exportNames": [
+				"ArtifactRef",
+				"ArtifactResolveInput",
+				"ArtifactResolverOps",
 				"ArtifactsAuth",
 				"ArtifactsClient",
+				"ArtifactsClientOps",
 				"ArtifactsCreateInput",
 				"ArtifactsCreateOutput",
 				"ArtifactsOps",
@@ -164,6 +168,9 @@
 				"ObjectArtifactsAuth",
 				"ObjectArtifactsProvider",
 				"ObjectArtifactsProviderOptions",
+				"ResolvedArtifact",
+				"artifactRefSchema",
+				"artifactResolveInputSchema",
 				"artifactsAuthSchema",
 				"artifactsBackendSchema",
 				"artifactsCreateInputSchema",
@@ -176,8 +183,10 @@
 				"artifactsReadRangeInputSchema",
 				"artifactsReadRangeOutputSchema",
 				"artifactsReadRangeTool",
+				"findArtifactRefs",
 				"hostArtifactsAuthSchema",
-				"objectArtifactsAuthSchema"
+				"objectArtifactsAuthSchema",
+				"resolvedArtifactSchema"
 			],
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],

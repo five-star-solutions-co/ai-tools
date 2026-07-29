@@ -37,7 +37,7 @@ Make hosts able to:
 
 1. Bind credentials **per invocation** (org, account, session) without putting secrets on model inputs.  
 2. Pass **runtime context** (signal, host ids, progress, artifact sink handles) through adapters — not only `AbortSignal`.  
-3. Inject **generic hooks** (before / after / onError) for host policy and audit — package does not implement policy.  
+3. Inject **generic hooks** (before / onArtifact / after / onError) for host policy, artifact capture, and audit. The package does not implement delivery policy.  
 4. Optionally **register** many tools and **discover / load on demand** so every agent turn does not attach hundreds of full schemas.  
 
 Non-goals stay those in [package-surface-architecture.md](./package-surface-architecture.md) and AGENTS.md.
@@ -114,7 +114,7 @@ Host may instead implement “load on demand” by expanding the Mastra/AI SDK t
 | Static auth bind | **Shipped** | `withAuth(module, creds)` |
 | Dynamic auth / context | **Shipped (H-01)** | `bindModule(module, { resolveAuth, resolveContext?, hooks? })` |
 | Adapter context | **Shipped (H-02)** | Adapter options: `context` + `createContext` (Mastra, AI SDK, TanStack, MCP, Cloudflare) |
-| Hooks | **Shipped (H-03)** | `withHooks` / `withHooksTool` / hooks on `bindModule` |
+| Hooks | **Shipped (H-03)** | `withHooks` / `withHooksTool` / hooks on `bindModule`, including structured-output `onArtifact` |
 | Metadata | **Shipped (H-04)** | Additive `ToolMeta` hints + catalog fields |
 | Catalog discovery tools | **Not shipped** | Registry search / `catalog-*` tools (H-05) — tabled |
 | Execute path | **Shipped** | `runTool` — validate I/O, host auth, no secrets on model inputs |
@@ -127,6 +127,8 @@ Host may instead implement “load on demand” by expanding the Mastra/AI SDK t
 | --- | --- | --- |
 | Tool schemas, execute, errors | Yes | — |
 | Provider HTTP / SigV4 clients | Yes | — |
+| ArtifactRef validation, output discovery, bounded byte resolution | Yes | Storage binding + resolution limit |
+| Channel attachment destination, upload, audit, and policy | — | Yes |
 | Secret storage / vaults | — | Yes |
 | Org tenancy / RLS / PHI | — | Yes |
 | Agent allowlists / which tools enabled | — | Yes |

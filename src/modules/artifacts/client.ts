@@ -1,13 +1,16 @@
+import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
 import type {
+	ArtifactResolveInput,
 	ArtifactsAuth,
+	ArtifactsClientOps,
 	ArtifactsCreateInput,
-	ArtifactsOps,
 	ArtifactsReadLinesInput,
-	ArtifactsReadRangeInput
+	ArtifactsReadRangeInput,
+	ResolvedArtifact
 } from './contracts'
-import { artifactsAuthSchema } from './contracts'
+import { artifactResolveInputSchema, artifactsAuthSchema, resolvedArtifactSchema } from './contracts'
 import { HostArtifactsProvider } from './providers/host'
 import { ObjectArtifactsProvider } from './providers/object'
 
@@ -18,7 +21,7 @@ function transportOptions(ctx: ToolContext) {
 	}
 }
 
-function providerFor(auth: ArtifactsAuth, ctx: ToolContext): ArtifactsOps {
+function providerFor(auth: ArtifactsAuth, ctx: ToolContext): ArtifactsClientOps {
 	switch (auth.provider) {
 		case 'object':
 			return new ObjectArtifactsProvider(auth, transportOptions(ctx))
@@ -27,10 +30,10 @@ function providerFor(auth: ArtifactsAuth, ctx: ToolContext): ArtifactsOps {
 	}
 }
 
-export class ArtifactsClient implements ArtifactsOps {
-	readonly #ops: ArtifactsOps
+export class ArtifactsClient implements ArtifactsClientOps {
+	readonly #ops: ArtifactsClientOps
 
-	constructor(ops: ArtifactsOps) {
+	constructor(ops: ArtifactsClientOps) {
 		this.#ops = ops
 	}
 
@@ -53,5 +56,23 @@ export class ArtifactsClient implements ArtifactsOps {
 
 	readLines(input: ArtifactsReadLinesInput) {
 		return this.#ops.readLines(input)
+	}
+
+	async resolve(input: ArtifactResolveInput): Promise<ResolvedArtifact> {
+		const parsedInput = artifactResolveInputSchema.parse(input)
+		const output = resolvedArtifactSchema.parse(await this.#ops.resolve(parsedInput))
+		if (output.bytes.byteLength > parsedInput.max_bytes) {
+			throw new ToolError('Artifact exceeds resolution limit', {
+				code: 'too_large',
+				details: { max_bytes: parsedInput.max_bytes, content_length: output.bytes.byteLength }
+			})
+		}
+		return {
+			artifact: {
+				...output.artifact,
+				byte_length: output.bytes.byteLength
+			},
+			bytes: output.bytes
+		}
 	}
 }

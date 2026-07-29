@@ -1,14 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 import { isPlainObject } from 'es-toolkit'
 
-import { runTool, validateModule } from '../../src/core'
+import { isToolError, runTool, validateModule } from '../../src/core'
 import {
+	ArtifactsClient,
 	artifactsCreateTool,
 	artifactsModule,
 	artifactsReadLinesTool,
 	artifactsReadRangeTool
 } from '../../src/modules/artifacts'
-import type { ArtifactsOps } from '../../src/modules/artifacts'
+import type { ArtifactsClientOps, ArtifactsOps } from '../../src/modules/artifacts'
 
 function asRecord(value: unknown): Record<string, unknown> {
 	if (!isPlainObject(value)) throw new Error('expected object')
@@ -129,6 +130,38 @@ describe('artifacts', () => {
 		expect(result.total_lines).toBe(4)
 	})
 
+	test('object provider resolves bounded bytes and storage metadata for host delivery', async () => {
+		const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+			const request = asRequest(input, init)
+			if (request.method === 'HEAD') {
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-length': '5', 'content-type': 'text/plain' }
+				})
+			}
+			expect(request.method).toBe('GET')
+			return new Response('hello', {
+				status: 206,
+				headers: { 'content-range': 'bytes 0-4/5', 'content-type': 'text/plain' }
+			})
+		}
+		const client = ArtifactsClient.fromAuth({ provider: 'object', storage }, { fetch })
+
+		const resolved = await client.resolve({
+			source: { store: 'object', key: 'hello.txt', filename: 'hello.txt' },
+			max_bytes: 10
+		})
+
+		expect(new TextDecoder().decode(resolved.bytes)).toBe('hello')
+		expect(resolved.artifact).toEqual({
+			store: 'object',
+			key: 'hello.txt',
+			filename: 'hello.txt',
+			media_type: 'text/plain',
+			byte_length: 5
+		})
+	})
+
 	test('host provider delegates all artifact verbs and validates refs', async () => {
 		const backend: ArtifactsOps = {
 			create: async (input) => ({
@@ -172,5 +205,66 @@ describe('artifacts', () => {
 		)
 		expect(lines.text).toBe('line')
 		expect(asRecord(lines.source)['store']).toBe('host')
+	})
+
+	test('host provider resolves bytes through the bounded client contract', async () => {
+		let resolveCalls = 0
+		const backend: ArtifactsClientOps = {
+			create: async (input) => ({
+				artifact: { store: 'host', key: input.key }
+			}),
+			readRange: async (input) => ({
+				source: input.source,
+				body_base64: '',
+				start_byte: input.start_byte,
+				end_byte: input.end_byte
+			}),
+			readLines: async (input) => ({
+				source: input.source,
+				text: '',
+				start_line: input.start_line,
+				end_line: input.start_line,
+				total_lines: 0
+			}),
+			resolve: async (input) => {
+				resolveCalls += 1
+				return {
+					artifact: {
+						...input.source,
+						media_type: 'application/octet-stream',
+						filename: 'payload.bin'
+					},
+					bytes: new Uint8Array([1, 2, 3])
+				}
+			}
+		}
+		const client = ArtifactsClient.fromAuth({ provider: 'host', backend })
+
+		const resolved = await client.resolve({
+			source: { store: 'host', key: 'turn/payload' },
+			max_bytes: 3
+		})
+
+		expect(resolveCalls).toBe(1)
+		expect(resolved.bytes).toEqual(new Uint8Array([1, 2, 3]))
+		expect(resolved.artifact).toEqual({
+			store: 'host',
+			key: 'turn/payload',
+			media_type: 'application/octet-stream',
+			filename: 'payload.bin',
+			byte_length: 3
+		})
+
+		let errorCode: string | undefined
+		try {
+			await client.resolve({
+				source: { store: 'host', key: 'turn/large', byte_length: 4 },
+				max_bytes: 3
+			})
+		} catch (error) {
+			if (isToolError(error)) errorCode = error.code
+		}
+		expect(errorCode).toBe('too_large')
+		expect(resolveCalls).toBe(1)
 	})
 })

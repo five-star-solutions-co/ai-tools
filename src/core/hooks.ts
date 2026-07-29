@@ -2,7 +2,7 @@
 
 import type { ModuleDefinition, ToolDefinition, ToolHooks, ToolHookToolRef } from './types'
 
-export type { ToolHookEvent, ToolHooks, ToolHookToolRef } from './types'
+export type { ArtifactHookEvent, ToolHookEvent, ToolHooks, ToolHookToolRef } from './types'
 
 export function withHooksTool<TInput, TOutput>(
 	tool: ToolDefinition<TInput, TOutput>,

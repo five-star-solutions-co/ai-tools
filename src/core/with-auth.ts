@@ -2,6 +2,7 @@ import type { ToolSelection } from './filter-tools'
 import { filterModuleTools } from './filter-tools'
 import { toolRef } from './hooks'
 import { ToolError } from './errors'
+import { findArtifactRefs } from '../shared/artifact'
 import type { AuthDefinition, ModuleDefinition, ToolContext, ToolDefinition, ToolExecution, ToolMeta } from './types'
 
 function assertAuth<TAuth>(auth: AuthDefinition<TAuth>, value: unknown): TAuth | undefined {
@@ -77,7 +78,7 @@ type RunnableTool<TInput, TOutput> = {
 	execute: (input: unknown, ctx: ToolContext) => Promise<unknown>
 }
 
-/** Validate in → execute → validate out once → afterExecute. */
+/** Validate in → execute → validate out once → artifact callbacks → afterExecute. */
 export async function runTool<TInput, TOutput>(
 	tool: RunnableTool<TInput, TOutput>,
 	input: TInput,
@@ -117,6 +118,11 @@ export async function runTool<TInput, TOutput>(
 			})
 		}
 
+		if (hooks?.onArtifact) {
+			for (const artifact of findArtifactRefs(parsedOut.data)) {
+				await hooks.onArtifact({ ...event, output: parsedOut.data, artifact })
+			}
+		}
 		if (hooks?.afterExecute) await hooks.afterExecute({ ...event, output: parsedOut.data })
 		return parsedOut.data
 	} catch (error) {

@@ -58,7 +58,7 @@ import {
 - `withAuthTool(tool, credentials)` → static bound tool
 - `bindModule(module, { resolveAuth, resolveContext?, hooks? })` → per-invocation auth/context
 - `bindTool(tool, moduleAuth, options)` → single-tool dynamic bind
-- `withHooks(module, hooks)` / `withHooksTool(tool, hooks)` → before/after/onError pipes
+- `withHooks(module, hooks)` / `withHooksTool(tool, hooks)` → before/onArtifact/after/onError pipes
 - `listTools(moduleOrTools)` → flat tool list
 
 ## Execution
@@ -67,9 +67,11 @@ import {
 await runTool(tool, input, ctx?)
 ```
 
-Validates input, resolves bound context, runs before/after/error hooks around the
-leaf execute, then validates output against `outputSchema`. Every hook phase sees
-the same resolved context.
+Validates input, resolves bound context, executes the leaf, and validates output
+against `outputSchema`. It then calls `onArtifact` once for each unique
+`ArtifactRef` found in the structured output, followed by `afterExecute`. Errors
+from execution, validation, artifact capture, or after hooks reach `onError`.
+Every hook phase sees the same resolved context.
 
 ## Contracts
 

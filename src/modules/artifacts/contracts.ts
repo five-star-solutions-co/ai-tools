@@ -3,6 +3,7 @@
  * Host-mapped and object-store backends share the same model-facing verbs.
  */
 
+import { isFunction } from 'es-toolkit'
 import { z } from 'zod'
 
 import { artifactRefSchema } from '../../shared/artifact'
@@ -76,12 +77,24 @@ export const artifactsReadLinesOutputSchema = z.object({
 	total_lines: z.int().min(0)
 })
 
+export const artifactResolveInputSchema = z.object({
+	source: artifactRefSchema,
+	max_bytes: z.int().min(0)
+})
+
+export const resolvedArtifactSchema = z.object({
+	artifact: artifactRefSchema,
+	bytes: z.custom<Uint8Array>((value) => value instanceof Uint8Array, 'bytes must be a Uint8Array')
+})
+
 export type ArtifactsCreateInput = z.infer<typeof artifactsCreateInputSchema>
 export type ArtifactsCreateOutput = z.infer<typeof artifactsCreateOutputSchema>
 export type ArtifactsReadRangeInput = z.infer<typeof artifactsReadRangeInputSchema>
 export type ArtifactsReadRangeOutput = z.infer<typeof artifactsReadRangeOutputSchema>
 export type ArtifactsReadLinesInput = z.infer<typeof artifactsReadLinesInputSchema>
 export type ArtifactsReadLinesOutput = z.infer<typeof artifactsReadLinesOutputSchema>
+export type ArtifactResolveInput = z.infer<typeof artifactResolveInputSchema>
+export type ResolvedArtifact = z.infer<typeof resolvedArtifactSchema>
 
 export type ArtifactsOps = {
 	create(input: ArtifactsCreateInput): Promise<ArtifactsCreateOutput>
@@ -89,13 +102,17 @@ export type ArtifactsOps = {
 	readLines(input: ArtifactsReadLinesInput): Promise<ArtifactsReadLinesOutput>
 }
 
+export type ArtifactResolverOps = {
+	resolve(input: ArtifactResolveInput): Promise<ResolvedArtifact>
+}
+
+export type ArtifactsClientOps = ArtifactsOps & ArtifactResolverOps
+
 export const artifactsBackendSchema = z.object({
-	create: z.custom<ArtifactsOps['create']>((value) => typeof value === 'function', 'create must be a function'),
-	readRange: z.custom<ArtifactsOps['readRange']>(
-		(value) => typeof value === 'function',
-		'readRange must be a function'
-	),
-	readLines: z.custom<ArtifactsOps['readLines']>((value) => typeof value === 'function', 'readLines must be a function')
+	create: z.custom<ArtifactsOps['create']>(isFunction, 'create must be a function'),
+	readRange: z.custom<ArtifactsOps['readRange']>(isFunction, 'readRange must be a function'),
+	readLines: z.custom<ArtifactsOps['readLines']>(isFunction, 'readLines must be a function'),
+	resolve: z.custom<ArtifactResolverOps['resolve']>(isFunction, 'resolve must be a function').optional()
 })
 
 export const objectArtifactsAuthSchema = z.object({

@@ -44,6 +44,9 @@ const bound = bindModule(emailModule, {
     beforeExecute: async ({ tool, ctx }) => {
       // host audit / allowlist (throw ToolError to deny)
     },
+    onArtifact: async ({ tool, artifact, output, ctx }) => {
+      // capture a schema-valid ArtifactRef; channel delivery remains host-owned
+    },
     afterExecute: async ({ tool, output }) => {},
     onError: async ({ tool, error }) => {},
   },
