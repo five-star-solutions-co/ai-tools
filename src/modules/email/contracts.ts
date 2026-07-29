@@ -19,13 +19,19 @@ import type { NamedAddress, ResendSendInput } from '../../vendors/resend'
 export { attachmentSchema, MAX_BATCH_EMAILS, MAX_EMAIL_BYTES, namedAddressSchema }
 export type { NamedAddress }
 
-/** Host auth: vendor credentials + provider discriminator. */
+export const emailSenderSchema = namedAddressSchema.describe(
+	'Verified sender locked to this provider binding. Model inputs cannot override it'
+)
+
+/** Host auth: vendor credentials, provider discriminator, and locked sender. */
 export const resendEmailAuthSchema = resendAuthSchema.extend({
-	provider: z.literal('resend')
+	provider: z.literal('resend'),
+	sender: emailSenderSchema
 })
 
 export const cloudflareEmailSeamAuthSchema = cloudflareEmailVendorAuthSchema.extend({
-	provider: z.literal('cloudflare')
+	provider: z.literal('cloudflare'),
+	sender: emailSenderSchema
 })
 
 export type ResendEmailAuth = z.infer<typeof resendEmailAuthSchema>
@@ -35,9 +41,16 @@ export const emailAuthSchema = z.discriminatedUnion('provider', [resendEmailAuth
 
 export type EmailAuth = z.infer<typeof emailAuthSchema>
 
-/** Same send body both vendors accept — reuse Resend schema. */
-export const emailSendInputSchema = resendSendInputSchema
-export type EmailSendInput = ResendSendInput
+const { from: _from, headers: _headers, ...emailSendInputShape } = resendSendInputSchema.shape
+
+/** Provider-neutral model input. Sender and raw headers remain host/vendor-only. */
+export const emailSendInputSchema = z
+	.object(emailSendInputShape)
+	.refine((input) => Boolean(input.html?.trim() || input.text?.trim()), {
+		message: 'Provide html and/or text body'
+	})
+export type EmailSendInput = z.infer<typeof emailSendInputSchema>
+export type EmailProviderSendInput = ResendSendInput
 
 /**
  * Unified result; each provider fills what it has.
@@ -64,4 +77,9 @@ export type EmailSendBatchOutput = z.infer<typeof emailSendBatchOutputSchema>
 export type EmailOps = {
 	send: (input: EmailSendInput) => Promise<EmailSendOutput>
 	sendBatch: (input: EmailSendBatchInput) => Promise<EmailSendBatchOutput>
+}
+
+/** Internal seam provider surface after EmailClient injects the locked sender. */
+export type EmailProviderOps = {
+	send: (input: EmailProviderSendInput) => Promise<EmailSendOutput>
 }

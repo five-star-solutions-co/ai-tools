@@ -17,12 +17,17 @@ import { withAuth } from '@harryy/ai-tools/core'
 import { emailModule } from '@harryy/ai-tools/email'
 import { createMastraTools } from '@harryy/ai-tools/mastra'
 
-const bound = withAuth(emailModule, { provider: 'resend', api_key: '…' })
+const bound = withAuth(emailModule, {
+  provider: 'resend',
+  api_key: '…',
+  sender: { email: 'orbit@domain.com', name: 'Orbit' },
+})
 // or
 withAuth(emailModule, {
   provider: 'cloudflare',
   account_id: '…',
   api_token: '…',
+  sender: { email: 'orbit@domain.com', name: 'Orbit' },
 })
 
 const tools = createMastraTools(bound)
@@ -37,4 +42,13 @@ For host DX without the seam, use the vendor clients directly: [ResendClient](..
 | `email-send` | `send` |
 | `email-send-batch` | `send` |
 
-Same body shape as Resend send (named addresses, html/text, optional attachments). Max 5 MiB; batch max 20.
+The model supplies recipients, subject, html/text, reply-to, and optional
+attachments. `from` and raw headers are not model inputs. The required
+auth-bound `sender` is injected by `EmailClient` and cannot be overridden.
+
+Seam delivery errors use the provider-neutral message
+`Email delivery was rejected`. The original provider error remains attached as
+the internal `cause` for host telemetry. Raw vendor clients keep their required
+`from` inputs and native errors.
+
+Max 5 MiB; batch max 20.

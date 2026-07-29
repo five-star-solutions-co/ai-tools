@@ -34,7 +34,11 @@ const bound = bindModule(emailModule, {
   resolveAuth: async (ctx) => {
     const orgId = ctx.extras?.['org_id']
     // host vault / DB — never on tool inputs
-    return { provider: 'resend', api_key: await loadKey(orgId) }
+    return {
+      provider: 'resend',
+      api_key: await loadKey(orgId),
+      sender: { email: 'verified@example.com', name: 'Product' },
+    }
   },
   resolveContext: async () => ({
     // Merged over adapter context (signal/fetch preserved). Only set what you add:
@@ -122,11 +126,16 @@ import { withAuth } from '@harryy/ai-tools/core'
 import { emailModule } from '@harryy/ai-tools/email'
 import { s3Module } from '@harryy/ai-tools/s3'
 
-const boundEmail = withAuth(emailModule, { provider: 'resend', api_key: '…' })
+const boundEmail = withAuth(emailModule, {
+  provider: 'resend',
+  api_key: '…',
+  sender: { email: 'verified@example.com', name: 'Product' },
+})
 withAuth(emailModule, {
   provider: 'cloudflare',
   account_id: '…',
   api_token: '…',
+  sender: { email: 'verified@example.com', name: 'Product' },
 })
 
 // Object store: use vendor packs (s3 / r2 / supabase-storage), not a storage seam

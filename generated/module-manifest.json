@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-29T01:50:01.164Z",
+	"generatedAt": "2026-07-29T02:10:46.464Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -808,8 +808,10 @@
 			"entry": "src/modules/email/index.ts",
 			"entryKey": "modules/email/index",
 			"exportNames": [
+				"CloudflareEmailSeamAuth",
 				"EmailAuth",
 				"EmailClient",
+				"EmailClientOptions",
 				"EmailSendBatchInput",
 				"EmailSendBatchOutput",
 				"EmailSendInput",
@@ -817,7 +819,9 @@
 				"MAX_BATCH_EMAILS",
 				"MAX_EMAIL_BYTES",
 				"NamedAddress",
+				"ResendEmailAuth",
 				"attachmentSchema",
+				"cloudflareEmailSeamAuthSchema",
 				"emailAuthSchema",
 				"emailModule",
 				"emailSendBatchInputSchema",
@@ -826,7 +830,9 @@
 				"emailSendInputSchema",
 				"emailSendOutputSchema",
 				"emailSendTool",
-				"namedAddressSchema"
+				"emailSenderSchema",
+				"namedAddressSchema",
+				"resendEmailAuthSchema"
 			],
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],

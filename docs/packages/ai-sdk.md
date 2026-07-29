@@ -31,6 +31,7 @@ const tools = createAiSdkTools(
     provider: 'cloudflare',
     account_id: '…',
     api_token: '…',
+    sender: { email: 'verified@example.com', name: 'Product' },
   }),
 )
 // pass into generateText / streamText tools option per AI SDK docs

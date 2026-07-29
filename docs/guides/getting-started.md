@@ -54,6 +54,7 @@ const bound = withAuth(emailModule, {
   provider: 'cloudflare',
   account_id: process.env.CF_ACCOUNT_ID!,
   api_token: process.env.CF_API_TOKEN!,
+  sender: { email: 'verified@example.com', name: 'Product' },
 })
 
 export const tools = createMastraTools(bound)
@@ -105,6 +106,7 @@ import { emailModule, emailSendTool } from '@harryy/ai-tools/email'
 const bound = withAuth(emailModule, {
   provider: 'resend',
   api_key: '…',
+  sender: { email: 'verified@example.com', name: 'Product' },
 })
 const tool = bound.tools.find((t) => t.id === emailSendTool.id)!
 

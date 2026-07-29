@@ -17,10 +17,10 @@ runResend('live seam email (resend)', () => {
 	test('send + sendBatch', async () => {
 		const client = EmailClient.fromAuth({
 			provider: 'resend',
-			api_key: resendKey!
+			api_key: resendKey!,
+			sender: resendFrom!
 		})
 		const out = await client.send({
-			from: resendFrom!,
 			to: resendTo!,
 			subject: `[ai-tools it] email seam ${Date.now()}`,
 			text: 'email seam integration'
@@ -29,13 +29,11 @@ runResend('live seam email (resend)', () => {
 		const batch = await client.sendBatch({
 			messages: [
 				{
-					from: resendFrom!,
 					to: resendTo!,
 					subject: `[ai-tools it] email seam batch a ${Date.now()}`,
 					text: 'a'
 				},
 				{
-					from: resendFrom!,
 					to: resendTo!,
 					subject: `[ai-tools it] email seam batch b ${Date.now()}`,
 					text: 'b'
@@ -53,10 +51,10 @@ runCf('live seam email (cloudflare)', () => {
 			const client = EmailClient.fromAuth({
 				provider: 'cloudflare',
 				api_token: cf!.api_token,
-				account_id: cf!.account_id
+				account_id: cf!.account_id,
+				sender: cfFrom!
 			})
 			const out = await client.send({
-				from: cfFrom!,
 				to: cfTo!,
 				subject: `[ai-tools it] email seam cf ${Date.now()}`,
 				text: 'email seam cloudflare'
@@ -65,13 +63,11 @@ runCf('live seam email (cloudflare)', () => {
 			const batch = await client.sendBatch({
 				messages: [
 					{
-						from: cfFrom!,
 						to: cfTo!,
 						subject: `[ai-tools it] email seam cf batch a ${Date.now()}`,
 						text: 'a'
 					},
 					{
-						from: cfFrom!,
 						to: cfTo!,
 						subject: `[ai-tools it] email seam cf batch b ${Date.now()}`,
 						text: 'b'

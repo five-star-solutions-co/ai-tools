@@ -44,7 +44,8 @@ src/modules/<capability>/
 ## Auth
 
 - Discriminated union on `provider`.
-- Host-only: `withAuth(module, { provider: 'resend', api_key: '…' })` (snake_case auth fields).
+- Host-only: `withAuth(module, { provider: 'resend', api_key: '…', sender: { email: 'verified@example.com' } })` (snake_case auth fields).
+- The email seam requires a verified `sender` in provider auth. Its model-facing send input has no `from`; raw vendor clients retain their native sender input.
 - Nested host credentials allowed (e.g. file-convert `storage: { access_key_id, secret_access_key, region, bucket, … }` — nested storage is S3 auth, not a second provider union).
 - Pure modules (`email-message`, `content-type`) use `auth: { type: 'none' }`.
 

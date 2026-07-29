@@ -56,6 +56,7 @@ import { emailModule } from '@harryy/ai-tools/email'
 const bound = withAuth(emailModule, {
   provider: 'resend',
   api_key: process.env.RESEND_API_KEY!,
+  sender: { email: 'verified@example.com', name: 'Product' },
 })
 ```
 
