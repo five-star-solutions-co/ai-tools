@@ -67,5 +67,8 @@ export const sqsModule = defineModule({
 	description: 'Send, receive, delete, and extend message visibility in Amazon SQS.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: sqsAuthSchema },
+	categories: ['queue', 'aws'],
+	classification: 'standard',
+	tags: ['sqs'],
 	tools: [sqsSendTool, sqsReceiveTool, sqsDeleteTool, sqsChangeVisibilityTool]
 })

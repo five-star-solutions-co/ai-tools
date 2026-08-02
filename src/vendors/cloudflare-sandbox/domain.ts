@@ -80,11 +80,18 @@ export type ParsedExecStream = {
 	error_code?: string
 }
 
+export type ParseExecSseOptions = {
+	/** Called for each stdout chunk as the SSE body is walked (buffer may still be complete). */
+	onStdout?: (chunk: string) => void
+	/** Called for each stderr chunk as the SSE body is walked. */
+	onStderr?: (chunk: string) => void
+}
+
 /**
  * Parse bridge /exec text/event-stream body.
  * Events: stdout/stderr (base64 data), exit ({"exit_code":N}), error ({"error","code"}).
  */
-export function parseExecSse(body: string): ParsedExecStream {
+export function parseExecSse(body: string, options: ParseExecSseOptions = {}): ParsedExecStream {
 	const stdoutChunks: string[] = []
 	const stderrChunks: string[] = []
 	let exit_code: number | undefined
@@ -106,9 +113,13 @@ export function parseExecSse(body: string): ParsedExecStream {
 		}
 		const data = dataLines.join('\n')
 		if (event === 'stdout' && data.length > 0) {
-			stdoutChunks.push(decodeBase64Chunk(data))
+			const chunk = decodeBase64Chunk(data)
+			stdoutChunks.push(chunk)
+			options.onStdout?.(chunk)
 		} else if (event === 'stderr' && data.length > 0) {
-			stderrChunks.push(decodeBase64Chunk(data))
+			const chunk = decodeBase64Chunk(data)
+			stderrChunks.push(chunk)
+			options.onStderr?.(chunk)
 		} else if (event === 'exit' && data.length > 0) {
 			const parsed = safeJson(data)
 			if (isPlainObject(parsed)) {

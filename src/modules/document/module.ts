@@ -111,6 +111,9 @@ export const documentModule = defineModule({
 		'Purpose-built document tools for reading existing files, creating final text, DOCX, and XLSX deliverables, and editing supplied files. Prefer these tools over general sandbox file generation.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: documentAuthSchema },
+	categories: ['documents', 'office'],
+	classification: 'pii',
+	tags: ['read', 'build', 'edit'],
 	tools: [
 		documentReadTool,
 		documentBuildTextTool,

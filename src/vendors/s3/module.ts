@@ -162,6 +162,9 @@ export const s3Module = defineModule({
 		'Store and retrieve objects with S3-compatible storage. Use for object listing, reads, writes, metadata, copies, deletion, signed URLs, and multipart uploads.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: s3AuthSchema },
+	categories: ['storage', 'aws'],
+	classification: 'pii',
+	tags: ['object-store'],
 	tools: [
 		s3ListObjectsTool,
 		s3GetObjectTool,

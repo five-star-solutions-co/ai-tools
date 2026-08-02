@@ -76,6 +76,9 @@ export const documentRenderModule = defineModule({
 		'Create final PDF or PNG ArtifactRefs from HTML or URLs with a browser renderer. Use file conversion for existing office documents.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: documentRenderAuthSchema },
+	categories: ['documents', 'render'],
+	classification: 'standard',
+	tags: ['pdf', 'screenshot'],
 	tools: [
 		documentRenderPdfTool,
 		documentRenderScreenshotTool,

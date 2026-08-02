@@ -20,6 +20,7 @@ export { filterToolsByRuntime, isToolArray, resolveTools } from './resolve-tools
 export type {
 	AuthDefinition,
 	FetchLike,
+	ModuleClassification,
 	ModuleDefinition,
 	ToolContext,
 	ToolDefinition,

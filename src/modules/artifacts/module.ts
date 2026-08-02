@@ -53,5 +53,8 @@ export const artifactsModule = defineModule({
 		'Persist small serialized content and inspect bounded byte or text ranges. ArtifactRef is the handoff between tools; structured document creation belongs to purpose-built builders.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: artifactsAuthSchema },
+	categories: ['storage', 'artifacts'],
+	classification: 'pii',
+	tags: ['artifact-ref', 'object-store'],
 	tools: [artifactsCreateTool, artifactsReadRangeTool, artifactsReadLinesTool]
 })

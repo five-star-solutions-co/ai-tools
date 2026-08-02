@@ -35,5 +35,8 @@ export const calendarModule = defineModule({
 	description: 'Build and parse iCalendar event data.',
 	runtime: 'both',
 	auth: { type: 'none' },
+	categories: ['calendar', 'productivity'],
+	classification: 'pii',
+	tags: ['ics'],
 	tools: [calendarBuildTool, calendarParseTool]
 })

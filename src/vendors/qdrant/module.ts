@@ -49,5 +49,8 @@ export const qdrantModule = defineModule({
 	description: 'Qdrant vector database REST: upsert, query, and delete points in a collection.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: qdrantAuthSchema },
+	categories: ['ai', 'vector'],
+	classification: 'pii',
+	tags: ['qdrant'],
 	tools: [qdrantUpsertTool, qdrantQueryTool, qdrantDeleteTool]
 })

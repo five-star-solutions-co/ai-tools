@@ -50,5 +50,8 @@ export const mastraVectorModule = defineModule({
 		'Mastra PgVector over Postgres: upsert, query, and delete vectors. Index names map from collection. Node runtime.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: mastraVectorAuthSchema },
+	categories: ['ai', 'vector'],
+	classification: 'pii',
+	tags: ['pgvector', 'mastra'],
 	tools: [mastraVectorUpsertTool, mastraVectorQueryTool, mastraVectorDeleteTool]
 })

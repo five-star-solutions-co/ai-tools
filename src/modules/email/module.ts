@@ -42,5 +42,8 @@ export const emailModule = defineModule({
 		'Send transactional email from the configured sender. The model supplies recipients and content, never the sender identity.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: emailAuthSchema },
+	categories: ['email', 'messaging'],
+	classification: 'pii',
+	tags: ['send'],
 	tools: [emailSendTool, emailSendBatchTool]
 })

@@ -1,6 +1,7 @@
 import { logoForModuleId } from '../generated/pack-logos'
 import type {
 	AuthDefinition,
+	ModuleClassification,
 	ModuleDefinition,
 	ToolContext,
 	ToolDefinition,
@@ -82,6 +83,15 @@ export type DefineModuleOptions<TAuth = unknown> = {
 	tools: readonly ToolDefinition[]
 	/** Optional override; default comes from the pack logo map by module id. */
 	logo?: string | undefined
+	/**
+	 * Catalog categories for UI filters / MCP / skill grouping.
+	 * Declared on the pack (`module.ts`) — not a central registry in core.
+	 */
+	categories?: readonly string[]
+	/** Host sensitivity hint (`standard` | `pii` | `phi`). Pack declares; host enforces. */
+	classification?: ModuleClassification
+	/** Module-level search / badge labels. */
+	tags?: readonly string[]
 }
 
 export function defineModule<TAuth = unknown>(options: DefineModuleOptions<TAuth>): ModuleDefinition<TAuth> {
@@ -103,6 +113,7 @@ export function defineModule<TAuth = unknown>(options: DefineModuleOptions<TAuth
 	)
 
 	const logo = options.logo ?? logoForModuleId(options.id)
+	const categories = options.categories ?? []
 
 	return {
 		id: options.id,
@@ -111,6 +122,9 @@ export function defineModule<TAuth = unknown>(options: DefineModuleOptions<TAuth
 		runtime: options.runtime ?? 'both',
 		auth: options.auth ?? { type: 'none' },
 		tools: options.tools,
+		categories,
+		...(options.classification !== undefined && { classification: options.classification }),
+		...(options.tags !== undefined && options.tags.length > 0 && { tags: options.tags }),
 		...(logo !== undefined && { logo })
 	}
 }

@@ -82,5 +82,8 @@ export const imageModule = defineModule({
 	description: 'Inspect, resize, crop, thumbnail, and re-encode image artifacts.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: imageAuthSchema },
+	categories: ['media', 'image'],
+	classification: 'standard',
+	tags: ['resize', 'convert'],
 	tools: [imageMetadataTool, imageResizeTool, imageCropTool, imageThumbnailTool, imageConvertTool]
 })

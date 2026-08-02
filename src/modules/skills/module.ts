@@ -55,5 +55,8 @@ export const skillsModule = defineModule({
 	description: 'List, search, and load portable skill definitions, including instructions and required tool ids.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: skillsAuthSchema },
+	categories: ['agent', 'skills'],
+	classification: 'standard',
+	tags: ['catalog'],
 	tools: [skillsListTool, skillsGetTool, skillsSearchTool]
 })

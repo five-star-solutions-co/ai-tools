@@ -144,6 +144,9 @@ export const slackModule = defineModule({
 		'Slack Web API vendor pack: text, media upload, chat-action parity, reactions, file download, interactive callbacks, bot identity. Expand with more Web API methods over time. Not a multi-provider messaging seam.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: slackAuthSchema },
+	categories: ['messaging', 'chat'],
+	classification: 'pii',
+	tags: ['slack'],
 	tools: [
 		slackSendTextTool,
 		slackEditTextTool,

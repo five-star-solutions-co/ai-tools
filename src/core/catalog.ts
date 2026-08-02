@@ -29,6 +29,9 @@ export type ModuleCatalogEntry = {
 	tools: ToolCatalogEntry[]
 	/** Inline SVG when the pack has a logo. */
 	logo?: string | undefined
+	categories: readonly string[]
+	classification?: ModuleDefinition['classification']
+	tags: readonly string[]
 }
 
 export function toToolCatalogEntry(tool: ToolDefinition): ToolCatalogEntry {
@@ -59,6 +62,9 @@ export function toModuleCatalogEntry(module: ModuleDefinition): ModuleCatalogEnt
 		runtime: module.runtime,
 		authType: module.auth.type,
 		tools: module.tools.map(toToolCatalogEntry),
+		categories: module.categories,
+		tags: module.tags ?? [],
+		...(module.classification !== undefined && { classification: module.classification }),
 		...(module.logo !== undefined && { logo: module.logo })
 	}
 }

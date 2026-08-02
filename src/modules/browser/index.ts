@@ -1,4 +1,6 @@
 export { BrowserClient } from './client'
+export { mintBrowserCdpConnection } from './domain'
+export type { BrowserCdpConnection, MintBrowserCdpOptions } from './domain'
 export {
 	agentCoreBrowserSeamAuthSchema,
 	browserActionOkSchema,

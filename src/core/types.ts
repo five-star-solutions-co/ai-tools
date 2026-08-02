@@ -6,6 +6,12 @@ export type ToolRuntime = 'both' | 'edge' | 'node'
 
 export type ToolSideEffect = 'delete' | 'none' | 'read' | 'send' | 'write'
 
+/**
+ * Host data-sensitivity hint for catalog / policy (not enforced by the kernel).
+ * Hosts map this to product rules (e.g. fail-closed PHI routing).
+ */
+export type ModuleClassification = 'standard' | 'pii' | 'phi'
+
 /** Injectable fetch (tests, custom runtimes). Passed into HttpService / AwsService. */
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
@@ -116,6 +122,17 @@ export type ModuleDefinition<TAuth = unknown> = {
 	 * Filled by `defineModule` from the shared logo map — hosts use `module.logo` as-is.
 	 */
 	logo?: string | undefined
+	/**
+	 * Catalog grouping for UI filters, MCP discovery, skill capability buckets.
+	 * Free strings (e.g. `email`, `browser`, `commerce`).
+	 */
+	categories: readonly string[]
+	/**
+	 * Host sensitivity hint. Omitted when unknown — host may default to standard.
+	 */
+	classification?: ModuleClassification | undefined
+	/** Module-level search / badge labels (distinct from per-tool tags). */
+	tags?: readonly string[] | undefined
 }
 
 /** Module, or a flat tool list (adapters). */

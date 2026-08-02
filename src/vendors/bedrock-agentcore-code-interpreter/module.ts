@@ -169,6 +169,9 @@ export const bedrockAgentCoreCodeInterpreterModule = defineModule({
 		'General-purpose Bedrock AgentCore execution fallback for arbitrary code, commands, and temporary files when no purpose-built tool covers the task.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: bedrockAgentCoreCodeInterpreterAuthSchema },
+	categories: ['compute', 'sandbox', 'aws'],
+	classification: 'standard',
+	tags: ['agentcore', 'exec'],
 	tools: [
 		bedrockAgentCoreCodeInterpreterStartSessionTool,
 		bedrockAgentCoreCodeInterpreterStopSessionTool,

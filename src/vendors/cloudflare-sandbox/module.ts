@@ -92,12 +92,13 @@ export const cloudflareSandboxExecTool = defineTool({
 	id: `${id}-exec`,
 	name: 'cloudflareSandboxExec',
 	description:
-		'Run a command in a Cloudflare sandbox as an argv array and return stdout, stderr, and exit_code. Use as a fallback for command-line work with no dedicated tool. Do not replace purpose-built document, spreadsheet, presentation, PDF, image, or render tools.',
+		'One-shot argv exec in a Cloudflare sandbox (stdout/stderr/exit_code). Prefer a host workspace agent for multi-step shell; use tools for workflow one-shots. Optional env when the bridge supports it.',
 	inputSchema: execInputSchema,
 	outputSchema: execOutputSchema,
 	sideEffect: 'write',
 	runtime: 'both',
 	network: true,
+	tags: ['exec', 'one-shot', 'compute'],
 	execute: async (input, ctx) => CloudflareSandboxClient.fromContext(ctx).exec(input)
 })
 
@@ -248,9 +249,12 @@ export const cloudflareSandboxModule = defineModule({
 	id,
 	title: 'Cloudflare Sandbox',
 	description:
-		'General-purpose Cloudflare execution fallback for arbitrary code, commands, and temporary files. Prefer purpose-built document, spreadsheet, presentation, PDF, image, render, and conversion tools. Export only files the sandbox genuinely produced.',
+		'Cloudflare sandbox bridge: one-shot exec/files/sessions for workflows. Prefer a host workspace agent for multi-step shell. Client export remains first-class for Workspace hybrids. Prefer purpose-built document tools over sandbox for office formats.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: cloudflareSandboxAuthSchema },
+	categories: ['compute', 'sandbox', 'cloudflare'],
+	classification: 'standard',
+	tags: ['exec', 'workspace', 'bridge'],
 	tools: [
 		cloudflareSandboxHealthTool,
 		cloudflareSandboxCreateTool,

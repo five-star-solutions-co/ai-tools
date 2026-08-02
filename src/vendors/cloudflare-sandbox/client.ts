@@ -133,13 +133,18 @@ export class CloudflareSandboxClient {
 	/**
 	 * Run a command. Bridge returns text/event-stream (stdout/stderr base64 + exit).
 	 * Uses HttpService.bytes so ofetch does not try to JSON-parse the SSE body.
+	 * Optional onStdout/onStderr fire while walking the buffered SSE (not true wire streaming).
 	 */
-	async exec(input: ExecInput): Promise<ExecOutput> {
+	async exec(
+		input: ExecInput,
+		stream: { onStdout?: (chunk: string) => void; onStderr?: (chunk: string) => void } = {}
+	): Promise<ExecOutput> {
 		const body: Record<string, unknown> = {
 			argv: input.argv,
 			timeout_ms: input.timeout_ms ?? DEFAULT_EXEC_TIMEOUT_MS
 		}
 		if (input.cwd) body['cwd'] = input.cwd
+		if (input.env && Object.keys(input.env).length > 0) body['env'] = input.env
 
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
@@ -153,7 +158,10 @@ export class CloudflareSandboxClient {
 			label: 'Cloudflare Sandbox exec'
 		})
 		const text = new TextDecoder().decode(bytes)
-		const parsed = parseExecSse(text)
+		const parsed = parseExecSse(text, {
+			...(stream.onStdout && { onStdout: stream.onStdout }),
+			...(stream.onStderr && { onStderr: stream.onStderr })
+		})
 		if (parsed.error && parsed.exit_code === undefined) {
 			throw new ToolError(parsed.error, {
 				code: 'upstream',

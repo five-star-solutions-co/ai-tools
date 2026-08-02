@@ -50,6 +50,9 @@ export const bedrockAgentCoreBrowserModule = defineModule({
 		'Amazon Bedrock AgentCore Browser session lifecycle and stream metadata. These tools start, inspect, and stop sessions; page interaction occurs through the returned automation stream.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: bedrockAgentCoreBrowserAuthSchema },
+	categories: ['browser', 'aws'],
+	classification: 'standard',
+	tags: ['agentcore', 'session'],
 	tools: [
 		bedrockAgentCoreBrowserStartSessionTool,
 		bedrockAgentCoreBrowserStopSessionTool,

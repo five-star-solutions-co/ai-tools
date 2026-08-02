@@ -87,7 +87,11 @@ export const execInputSchema = z.object({
 		.min(1)
 		.max(200)
 		.optional()
-		.describe('Optional bridge session id for isolated working directory and runtime state')
+		.describe('Optional bridge session id for isolated working directory and runtime state'),
+	env: z
+		.record(z.string().min(1).max(128), z.string().max(8_192))
+		.optional()
+		.describe('Optional environment variables for the process when the bridge supports env')
 })
 
 export const execOutputSchema = z.object({

@@ -76,6 +76,9 @@ export const eventBridgeSchedulerModule = defineModule({
 		'Amazon EventBridge Scheduler vendor pack: create, fully update, get, list, and delete schedules for a configured target.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: eventBridgeSchedulerAuthSchema },
+	categories: ['scheduler', 'aws'],
+	classification: 'standard',
+	tags: ['eventbridge'],
 	tools: [
 		eventBridgeSchedulerCreateTool,
 		eventBridgeSchedulerUpdateTool,

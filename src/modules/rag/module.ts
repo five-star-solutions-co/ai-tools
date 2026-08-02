@@ -55,5 +55,8 @@ export const ragModule = defineModule({
 		'Ingest text by chunking, embedding, and storing it; retrieve related chunks for a natural-language query; or delete previously ingested chunks. Use for semantic retrieval, not ordinary file reading.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: ragAuthSchema },
+	categories: ['ai', 'rag', 'vector'],
+	classification: 'pii',
+	tags: ['ingest', 'retrieve'],
 	tools: [ragIngestTool, ragRetrieveTool, ragDeleteTool]
 })

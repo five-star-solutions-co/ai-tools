@@ -51,5 +51,8 @@ export const supabaseVectorModule = defineModule({
 	description: 'Supabase Postgres and pgvector tools to upsert vectors, query nearest matches, and delete vectors.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: supabaseVectorAuthSchema },
+	categories: ['ai', 'vector'],
+	classification: 'pii',
+	tags: ['pgvector', 'supabase'],
 	tools: [supabaseVectorUpsertTool, supabaseVectorQueryTool, supabaseVectorDeleteTool]
 })

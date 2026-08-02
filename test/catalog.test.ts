@@ -14,6 +14,8 @@ describe('catalog', () => {
 		const moduleEntry = toModuleCatalogEntry(echoModule)
 		expect(moduleEntry.authType).toBe('none')
 		expect(moduleEntry.tools).toHaveLength(1)
+		expect(moduleEntry.categories).toEqual([])
+		expect(moduleEntry.tags).toEqual([])
 	})
 
 	test('pack modules expose inline logo svg for hosts', () => {
@@ -21,5 +23,7 @@ describe('catalog', () => {
 		expect(telegramModule.logo?.includes('<svg')).toBe(true)
 		const catalog = toModuleCatalogEntry(telegramModule)
 		expect(catalog.logo).toBe(telegramModule.logo)
+		expect(catalog.categories.length).toBeGreaterThan(0)
+		expect(catalog.classification).toBe('pii')
 	})
 })

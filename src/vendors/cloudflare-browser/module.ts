@@ -79,6 +79,9 @@ export const cloudflareBrowserModule = defineModule({
 		'Cloudflare Browser Run vendor pack for browser sessions plus HTML/URL PDF and screenshot quick actions.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: cloudflareBrowserClientAuthSchema },
+	categories: ['browser', 'cloudflare'],
+	classification: 'standard',
+	tags: ['render', 'cdp', 'session'],
 	tools: [
 		cloudflareBrowserStartSessionTool,
 		cloudflareBrowserGetSessionTool,

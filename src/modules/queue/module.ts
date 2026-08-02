@@ -67,5 +67,8 @@ export const queueModule = defineModule({
 	description: 'Enqueue, receive, acknowledge, and extend visibility for messages through the bound queue provider.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: queueAuthSchema },
+	categories: ['queue', 'async'],
+	classification: 'standard',
+	tags: ['enqueue', 'receive'],
 	tools: [queueEnqueueTool, queueReceiveTool, queueAcknowledgeTool, queueExtendVisibilityTool]
 })

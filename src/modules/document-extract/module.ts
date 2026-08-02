@@ -55,5 +55,8 @@ export const documentExtractModule = defineModule({
 		'Extract text from scanned or extraction-dependent documents. Choose inline text, a text ArtifactRef, or retrieval chunks. Extraction polls within the initial call; use the status tool only when a job_id is returned as pending.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: documentExtractAuthSchema },
+	categories: ['documents', 'ocr'],
+	classification: 'pii',
+	tags: ['textract', 'extract'],
 	tools: [documentExtractTextTool, documentExtractStatusTool, documentExtractTextBatchTool]
 })

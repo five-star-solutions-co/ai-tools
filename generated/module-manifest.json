@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-07-29T03:57:31.231Z",
+	"generatedAt": "2026-08-02T23:15:41.794Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -290,6 +290,7 @@
 				"AgentCoreBrowserSeamAuth",
 				"BrowserActionOk",
 				"BrowserAuth",
+				"BrowserCdpConnection",
 				"BrowserClickInput",
 				"BrowserClient",
 				"BrowserGetStateInput",
@@ -309,6 +310,7 @@
 				"CloudflareBrowserProvider",
 				"CloudflareBrowserProviderOptions",
 				"CloudflareBrowserSeamAuth",
+				"MintBrowserCdpOptions",
 				"agentCoreBrowserSeamAuthSchema",
 				"browserActionOkSchema",
 				"browserAuthSchema",
@@ -338,7 +340,8 @@
 				"browserTypeTool",
 				"browserWaitInputSchema",
 				"browserWaitTool",
-				"cloudflareBrowserSeamAuthSchema"
+				"cloudflareBrowserSeamAuthSchema",
+				"mintBrowserCdpConnection"
 			],
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
@@ -381,6 +384,7 @@
 			"entryKey": "vendors/cloudflare-browser/index",
 			"exportNames": [
 				"CloudflareBrowserAuth",
+				"CloudflareBrowserCdpConnection",
 				"CloudflareBrowserClient",
 				"CloudflareBrowserClientAuth",
 				"CloudflareBrowserClientOptions",
@@ -394,6 +398,7 @@
 				"CloudflareBrowserStartSessionInput",
 				"CloudflareBrowserViewport",
 				"MAX_HTML_CHARS",
+				"MintCloudflareBrowserCdpOptions",
 				"cloudflareBrowserAuthSchema",
 				"cloudflareBrowserClientAuthSchema",
 				"cloudflareBrowserGetSessionTool",
@@ -411,6 +416,7 @@
 				"cloudflareBrowserStartSessionTool",
 				"cloudflareBrowserStopSessionTool",
 				"cloudflareBrowserViewportSchema",
+				"mintCloudflareBrowserCdpConnection",
 				"plainTextFromHtml",
 				"titleFromHtml"
 			],

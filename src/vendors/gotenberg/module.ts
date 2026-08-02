@@ -68,5 +68,8 @@ export const gotenbergModule = defineModule({
 		'Gotenberg tools for HTML or URL rendering and office-document-to-PDF conversion. Each successful output is a final ArtifactRef; use the specific render or convert action matching the source format.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: gotenbergAuthSchema },
+	categories: ['documents', 'convert'],
+	classification: 'standard',
+	tags: ['libreoffice', 'pdf'],
 	tools: [gotenbergRenderPdfTool, gotenbergRenderScreenshotTool, gotenbergConvertTool, gotenbergConvertBatchTool]
 })

@@ -79,8 +79,10 @@ describe('cloudflare-browser', () => {
 				if (typeof body === 'object' && body !== null) bodies.push(body)
 				return new Response(
 					request.url.endsWith('/pdf')
-						? new Uint8Array([0x25, 0x50, 0x44, 0x46])
-						: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+						? // %PDF- prefix required by assertBinaryPrefix
+							new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])
+						: // PNG signature (8 bytes)
+							new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
 					{ status: 200 }
 				)
 			}

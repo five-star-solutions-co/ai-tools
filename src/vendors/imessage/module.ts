@@ -138,6 +138,9 @@ export const imessageModule = defineModule({
 		'iMessage tools for sending and editing text or media, typing indicators, reactions, unsend, read state, and attachment download.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: imessageAuthSchema },
+	categories: ['messaging', 'chat'],
+	classification: 'pii',
+	tags: ['imessage', 'photon'],
 	tools: [
 		imessageSendTextTool,
 		imessageEditTextTool,

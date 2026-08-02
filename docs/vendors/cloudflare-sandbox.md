@@ -11,6 +11,13 @@ HTTP client for the [Cloudflare Sandbox bridge](https://developers.cloudflare.co
 
 The host **deploys** the bridge Worker and supplies its URL + `SANDBOX_API_KEY`. This pack does not embed the Workers Sandbox SDK.
 
+**Hybrid:** keep `CloudflareSandboxClient` as the first-class host export (Workspace / agent shell). Prefer host workspace for multi-step interactive shell; use pack tools for one-shot workflow steps. Catalog: categories `compute`, `sandbox`, `cloudflare`; classification `standard`.
+
+### Exec extras
+
+- `env` on `exec` — optional process environment when the bridge accepts `env` on the body.
+- Client `exec(input, { onStdout, onStderr })` — callbacks while walking the buffered SSE body (not true wire streaming yet).
+
 ## Auth
 
 ```ts

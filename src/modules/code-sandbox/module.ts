@@ -142,6 +142,9 @@ export const codeSandboxModule = defineModule({
 		'General-purpose fallback for arbitrary code, commands, and temporary files when no dedicated tool covers the task. Do not use it instead of purpose-built document, spreadsheet, presentation, PDF, image, or render tools.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: codeSandboxAuthSchema },
+	categories: ['compute', 'sandbox'],
+	classification: 'standard',
+	tags: ['exec', 'workspace'],
 	tools: [
 		codeSandboxStartSessionTool,
 		codeSandboxGetSessionTool,

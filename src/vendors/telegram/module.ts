@@ -155,6 +155,9 @@ export const telegramModule = defineModule({
 		'Telegram Bot API tools for text, media, media groups, chat actions, reactions, file download, callbacks, and bot identity.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: telegramAuthSchema },
+	categories: ['messaging', 'chat'],
+	classification: 'pii',
+	tags: ['telegram'],
 	tools: [
 		telegramSendTextTool,
 		telegramEditTextTool,

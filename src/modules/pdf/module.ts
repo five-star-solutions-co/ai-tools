@@ -83,5 +83,8 @@ export const pdfModule = defineModule({
 	description: 'Inspect, merge, extract, split, and rotate PDF artifacts.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: pdfAuthSchema },
+	categories: ['documents', 'pdf'],
+	classification: 'pii',
+	tags: ['merge', 'split'],
 	tools: [pdfInspectTool, pdfMergeTool, pdfExtractPagesTool, pdfSplitTool, pdfRotateTool]
 })

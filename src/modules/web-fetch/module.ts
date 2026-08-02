@@ -41,5 +41,8 @@ export const webFetchModule = defineModule({
 		'Fallback HTTP access to allowlisted absolute URLs. Use GET or HEAD for reads and POST, PUT, PATCH, or DELETE for writes only when no purpose-built tool covers the API.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: webFetchAuthSchema },
+	categories: ['http', 'web'],
+	classification: 'standard',
+	tags: ['allowlist'],
 	tools: [webFetchGetTool, webFetchRequestTool]
 })

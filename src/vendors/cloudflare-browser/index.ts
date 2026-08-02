@@ -1,5 +1,7 @@
 export { CloudflareBrowserClient } from './client'
 export type { CloudflareBrowserClientOptions } from './client'
+export { mintCloudflareBrowserCdpConnection } from './cdp'
+export type { CloudflareBrowserCdpConnection, MintCloudflareBrowserCdpOptions } from './cdp'
 export {
 	cloudflareBrowserAuthSchema,
 	cloudflareBrowserClientAuthSchema,

@@ -401,6 +401,9 @@ export const katanaModule = defineModule({
 		'Katana MRP vendor pack: sales orders (including composite query for reporting), products, materials, customers, suppliers, purchase orders, manufacturing orders, and inventory.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: katanaAuthSchema },
+	categories: ['commerce', 'inventory'],
+	classification: 'pii',
+	tags: ['sales-orders'],
 	tools: [
 		katanaListSalesOrdersTool,
 		katanaGetSalesOrderTool,

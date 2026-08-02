@@ -78,5 +78,8 @@ export const tasksModule = defineModule({
 		'Create, inspect, list, update, and delete reusable task definitions. These tools define tasks; they do not run them.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: tasksAuthSchema },
+	categories: ['agent', 'tasks'],
+	classification: 'standard',
+	tags: ['task-definition'],
 	tools: [tasksCreateTool, tasksGetTool, tasksListTool, tasksUpdateTool, tasksDeleteTool]
 })

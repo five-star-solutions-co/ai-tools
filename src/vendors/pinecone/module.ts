@@ -50,5 +50,8 @@ export const pineconeModule = defineModule({
 	description: 'Pinecone data-plane REST: upsert, query, and delete vectors in a bound index.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: pineconeAuthSchema },
+	categories: ['ai', 'vector'],
+	classification: 'pii',
+	tags: ['pinecone'],
 	tools: [pineconeUpsertTool, pineconeQueryTool, pineconeDeleteTool]
 })

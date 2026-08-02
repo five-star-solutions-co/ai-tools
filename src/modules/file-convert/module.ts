@@ -42,5 +42,8 @@ export const fileConvertModule = defineModule({
 		'Convert existing office documents to PDF. This changes file format only; it does not create document content or print HTML and URLs.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: fileConvertAuthSchema },
+	categories: ['documents', 'convert'],
+	classification: 'standard',
+	tags: ['office-to-pdf'],
 	tools: [fileConvertTool, fileConvertBatchTool]
 })

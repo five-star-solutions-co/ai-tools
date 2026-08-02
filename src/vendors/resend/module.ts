@@ -39,5 +39,8 @@ export const resendModule = defineModule({
 	description: 'Resend vendor pack: send one email or a batch (max 20). Not a multi-provider email seam.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: resendAuthSchema },
+	categories: ['email'],
+	classification: 'pii',
+	tags: ['send'],
 	tools: [resendSendTool, resendSendBatchTool]
 })

@@ -55,5 +55,8 @@ export const vectorStoreModule = defineModule({
 		'Upsert, query, and delete embedding vectors in the configured store. Use for vector operations, not text embedding or document chunking.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: vectorStoreAuthSchema },
+	categories: ['ai', 'vector'],
+	classification: 'pii',
+	tags: ['upsert', 'query'],
 	tools: [vectorStoreUpsertTool, vectorStoreQueryTool, vectorStoreDeleteTool]
 })

@@ -55,5 +55,8 @@ export const presentationModule = defineModule({
 		'Purpose-built tools to read existing PPTX files, build final presentation deliverables, and edit supplied decks. Prefer these tools over general sandbox file generation.',
 	runtime: 'node',
 	auth: { type: 'custom', schema: presentationAuthSchema },
+	categories: ['documents', 'office'],
+	classification: 'pii',
+	tags: ['pptx'],
 	tools: [presentationReadTool, presentationBuildTool, presentationEditTool]
 })

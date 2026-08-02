@@ -174,6 +174,9 @@ export const messagingModule = defineModule({
 		'Send and edit text, media (single and batch), chat actions, reactions, file download, callback answers, and read on the bound messaging channel.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: messagingAuthSchema },
+	categories: ['messaging', 'chat'],
+	classification: 'pii',
+	tags: ['multi-provider'],
 	tools: [
 		messagingSendTextTool,
 		messagingEditTextTool,

@@ -181,9 +181,21 @@ Hosts/tests inject `fetch` and `signal` without changing tool schemas. Adapters 
 
 `defineTool` accepts additive host-facing hints on `meta` (not enforced by the kernel):
 
-`idempotent`, `longRunning`, `requiresConfirmation`, `supportsCancel`, `supportsProgress`, `network`, `artifacts`.
+`idempotent`, `longRunning`, `requiresConfirmation`, `supportsCancel`, `supportsProgress`, `network`, `artifacts`, `tags`.
 
 Catalog entries (`toToolCatalogEntry`) surface the same fields for discovery UIs.
+
+## Module catalog metadata
+
+Each pack declares catalog fields on its own `defineModule` in `module.ts` (not a central core registry):
+
+| Field | Role |
+| --- | --- |
+| `categories: string[]` | UI filters, MCP catalog, skill grouping |
+| `classification?: 'standard' \| 'pii' \| 'phi'` | Host sensitivity hint (not enforced here) |
+| `tags?: string[]` | Module-level search / badges |
+
+`toModuleCatalogEntry` projects `categories`, `classification`, and `tags` (tags default to `[]`). Host auth binding stays outside this package.
 
 ## Security checklist for pack authors
 

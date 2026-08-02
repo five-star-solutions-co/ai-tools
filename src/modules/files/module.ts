@@ -238,6 +238,9 @@ export const filesModule = defineModule({
 		'Manage durable workspace files by relative path: list, search by name, inspect metadata, read bounded content, create ArtifactRefs, write, copy, move, delete, create folders, and use multipart upload. This is distinct from temporary sandbox files.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: filesAuthSchema },
+	categories: ['storage', 'files'],
+	classification: 'pii',
+	tags: ['path-root', 's3'],
 	tools: [
 		filesListTool,
 		filesSearchTool,

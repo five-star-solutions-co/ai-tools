@@ -163,6 +163,9 @@ export const amazonSpApiModule = defineModule({
 		'Amazon Selling Partner API vendor pack: orders v0 and SearchOrders v2026, order items, FBA inventory summaries, reports (create/get/list/document), settlement V2 summary, and catalog item search.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: amazonSpApiAuthSchema },
+	categories: ['commerce', 'amazon'],
+	classification: 'pii',
+	tags: ['orders', 'fba', 'reports'],
 	tools: [
 		amazonSpApiListOrdersTool,
 		amazonSpApiGetOrderTool,

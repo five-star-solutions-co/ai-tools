@@ -75,5 +75,8 @@ export const schedulerModule = defineModule({
 	description: 'Create, replace, inspect, list, and delete schedules through the bound scheduling provider.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: schedulerAuthSchema },
+	categories: ['scheduler', 'async'],
+	classification: 'standard',
+	tags: ['cron', 'eventbridge'],
 	tools: [schedulerCreateTool, schedulerUpdateTool, schedulerGetTool, schedulerListTool, schedulerDeleteTool]
 })

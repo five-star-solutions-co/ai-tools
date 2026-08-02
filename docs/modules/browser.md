@@ -5,17 +5,36 @@
 | **Import** | `@harryy/ai-tools/browser` |
 | **Kind** | capability seam |
 | **Providers** | `bedrock-agentcore`, `cloudflare` |
+| **Categories** | `browser`, `automation` |
+| **Classification** | `standard` |
 
-| Tool | Purpose |
+## Hybrid model (recommended)
+
+| Path | Use for |
 | --- | --- |
-| `browser-start-session` | Start a browser session |
-| `browser-get-session` | Read status and stream metadata |
-| `browser-stop-session` | Stop a browser session |
-| `browser-navigate` | Open a URL (returns HTML when supported) |
-| `browser-snapshot` | Page HTML or text |
-| `browser-click` / `browser-type` / `browser-wait` | Interactive control when supported |
-| `browser-screenshot` | PNG → object-store ArtifactRef |
-| `browser-get-state` | Session status / streams |
+| **Session lifecycle + CDP mint** | Multi-step agent browsing (Mastra AgentBrowser / Playwright) |
+| **One-shot REST** | navigate / snapshot / screenshot without a full agent loop |
+| **Interactive REST tools** | Migration only — often `unsupported`; prefer CDP |
+
+```ts
+import { BrowserClient, mintBrowserCdpConnection } from '@harryy/ai-tools/browser'
+
+const client = new BrowserClient(auth)
+const session = await client.startSession()
+const cdp = mintBrowserCdpConnection(session)
+// host: connect Playwright / AgentBrowser to cdp.websocket_url (+ cdp.headers)
+```
+
+Cloudflare vendor helper: `mintCloudflareBrowserCdpConnection` from `@harryy/ai-tools/cloudflare-browser` (optional `api_token` → Authorization header).
+
+REST interactive tools (`click` / `type` / `wait`) stay for migration; do not remove until host CDP path is live.
+
+| Tool | Path | Tags |
+| --- | --- | --- |
+| `browser-start/get/stop-session` | lifecycle | `session`, `lifecycle` |
+| `browser-get-state` | lifecycle | `session`, `lifecycle` |
+| `browser-navigate` / `snapshot` / `screenshot` | one-shot | `one-shot` |
+| `browser-click` / `type` / `wait` | session-agent (secondary) | `session-agent`, `interactive`, `secondary` |
 
 ## Provider support
 
@@ -27,6 +46,6 @@
 | click / type / wait | `unsupported` (use CDP stream) | `unsupported` (use CDP stream) |
 | get-state | session status + streams | session status + streams |
 
-Interactive CDP control stays host-side via `streams.automation_stream_endpoint` from start-session (Playwright / Puppeteer). This package does not embed a CDP client.
+This package does not embed a CDP client.
 
 Cloudflare sessions support `session_timeout_seconds` from 60 to 600. Cloudflare does not accept the shared optional `name` or viewport fields, so those inputs return `bad_input` for that provider instead of being ignored.

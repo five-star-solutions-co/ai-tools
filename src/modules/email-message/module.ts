@@ -283,5 +283,8 @@ export const emailMessageModule = defineModule({
 	description: 'Parse and build RFC 822 email messages without sending them.',
 	runtime: 'both',
 	auth: { type: 'none' },
+	categories: ['email', 'utility'],
+	classification: 'pii',
+	tags: ['mime', 'pure'],
 	tools: [parseEmailMessageTool, buildEmailMessageTool]
 })

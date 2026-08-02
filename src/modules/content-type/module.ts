@@ -81,5 +81,8 @@ export const contentTypeModule = defineModule({
 	description: 'Look up media types from extensions and extensions from media types. This does not inspect file bytes.',
 	runtime: 'both',
 	auth: { type: 'none' },
+	categories: ['utility', 'content'],
+	classification: 'standard',
+	tags: ['mime', 'pure'],
 	tools: [contentTypeGetTool, contentTypeExtensionTool, contentTypeExtensionsTool]
 })

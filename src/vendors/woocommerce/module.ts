@@ -365,6 +365,9 @@ export const woocommerceModule = defineModule({
 		'WooCommerce REST API vendor pack (wc/v3): orders (CRUD, notes, refunds), products (CRUD, variations), customers, coupons, and product categories.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: woocommerceAuthSchema },
+	categories: ['commerce'],
+	classification: 'pii',
+	tags: ['orders', 'products'],
 	tools: [
 		woocommerceListOrdersTool,
 		woocommerceGetOrderTool,

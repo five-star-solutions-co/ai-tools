@@ -146,6 +146,9 @@ export const teamsModule = defineModule({
 		'Microsoft Teams tools for text, media, typing, file download, invoke callbacks, and bot identity. Conversation actions require service_url from the active conversation; reaction actions report unsupported behavior.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: teamsAuthSchema },
+	categories: ['messaging', 'chat'],
+	classification: 'pii',
+	tags: ['teams', 'bot-framework'],
 	tools: [
 		teamsSendTextTool,
 		teamsEditTextTool,

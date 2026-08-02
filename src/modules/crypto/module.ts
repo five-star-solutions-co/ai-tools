@@ -73,5 +73,8 @@ export const cryptoModule = defineModule({
 	description: 'Hash data, sign and verify HMAC values, and generate secure random bytes.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: cryptoAuthSchema },
+	categories: ['security', 'utility'],
+	classification: 'standard',
+	tags: ['digest', 'hmac'],
 	tools: [cryptoHashTool, cryptoHmacSignTool, cryptoHmacVerifyTool, cryptoRandomBytesTool]
 })

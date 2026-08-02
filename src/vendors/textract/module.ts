@@ -52,5 +52,8 @@ export const textractModule = defineModule({
 		'Amazon Textract vendor pack: async document text detection from S3 objects with inline, artifact, and chunks output modes (batch supported). Full Textract surface can grow over time.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: textractAuthSchema },
+	categories: ['documents', 'ocr', 'aws'],
+	classification: 'pii',
+	tags: ['textract'],
 	tools: [textractExtractTextTool, textractGetStatusTool, textractExtractTextBatchTool]
 })
