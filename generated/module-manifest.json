@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-02T23:15:41.794Z",
+	"generatedAt": "2026-08-03T02:13:42.983Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -493,6 +493,8 @@
 				"MAX_LIST_FILES",
 				"MAX_READ_PATHS",
 				"MAX_WRITE_FILES",
+				"MountBucketInput",
+				"MountBucketOutput",
 				"ParsedExecStream",
 				"ReadFileInput",
 				"ReadFileOutput",
@@ -503,6 +505,8 @@
 				"RunningOutput",
 				"SandboxIdInput",
 				"SandboxObjectArtifactRef",
+				"UnmountBucketInput",
+				"UnmountBucketOutput",
 				"WriteFileInput",
 				"WriteFileOutput",
 				"WriteFilesInput",
@@ -541,6 +545,8 @@
 				"importArtifactOutputSchema",
 				"listFilesInputSchema",
 				"listFilesOutputSchema",
+				"mountBucketInputSchema",
+				"mountBucketOutputSchema",
 				"parseExecSse",
 				"readFileInputSchema",
 				"readFileOutputSchema",
@@ -553,6 +559,8 @@
 				"sandboxIdInputSchema",
 				"sandboxObjectArtifactRefSchema",
 				"shellQuote",
+				"unmountBucketInputSchema",
+				"unmountBucketOutputSchema",
 				"workspaceAbsolutePath",
 				"workspaceFileKey",
 				"writeFileInputSchema",
