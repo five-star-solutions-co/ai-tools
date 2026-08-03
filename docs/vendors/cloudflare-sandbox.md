@@ -18,6 +18,62 @@ The host **deploys** the bridge Worker and supplies its URL + `SANDBOX_API_KEY`.
 - `env` on `exec` — optional process environment when the bridge accepts `env` on the body.
 - Client `exec(input, { onStdout, onStderr })` — callbacks while walking the buffered SSE body (not true wire streaming yet).
 
+### Bucket mounts (S3 / R2 / Mastra workspace FS)
+
+Bridge: `POST /v1/sandbox/:id/mount` and `POST /v1/sandbox/:id/unmount`.
+
+```ts
+import { CloudflareSandboxClient } from '@harryy/ai-tools/cloudflare-sandbox'
+
+const client = new CloudflareSandboxClient({
+  base_url: process.env.SANDBOX_API_URL!,
+  api_key: process.env.SANDBOX_API_KEY!,
+  // Optional: credentials/endpoint used as mount fallback for Mastra S3 workspace
+  storage: {
+    access_key_id: '…',
+    secret_access_key: '…',
+    region: 'auto',
+    bucket: 'workspace',
+    endpoint: 'https://ACCOUNT_ID.r2.cloudflarestorage.com'
+  }
+})
+
+const { sandbox_id } = await client.create()
+
+// Remote S3-compatible mount (explicit credentials)
+await client.mount({
+  sandbox_id,
+  bucket: 'workspace',
+  mount_path: '/data',
+  endpoint: 'https://ACCOUNT_ID.r2.cloudflarestorage.com',
+  provider: 'r2',
+  access_key_id: '…',
+  secret_access_key: '…',
+  prefix: '/agents/run-1/',
+  read_only: false
+})
+
+// Or: set endpoint and omit keys — credentials fall back to auth.storage (Mastra S3 workspace)
+await client.mount({
+  sandbox_id,
+  bucket: 'workspace',
+  mount_path: '/data',
+  endpoint: 'https://ACCOUNT_ID.r2.cloudflarestorage.com',
+  provider: 'r2'
+})
+
+// R2 binding mount (no endpoint — bucket is the Worker binding name)
+await client.mount({
+  sandbox_id,
+  bucket: 'MY_BUCKET',
+  mount_path: '/data'
+})
+
+await client.unmount({ sandbox_id, mount_path: '/data' })
+```
+
+Mounted paths are visible to all sessions in the sandbox. Destroying the sandbox unmounts automatically.
+
 ## Auth
 
 ```ts

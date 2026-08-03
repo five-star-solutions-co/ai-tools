@@ -307,6 +307,96 @@ export const executeCodeInputSchema = z.object({
 		.describe('Optional bridge session id for isolated working directory and runtime state')
 })
 
+/**
+ * Mount an S3-compatible bucket into the sandbox filesystem.
+ * @see https://developers.cloudflare.com/sandbox/bridge/http-api/#bucket-mounts
+ *
+ * Two bridge modes:
+ * - **R2 binding:** omit `endpoint`; `bucket` is the Worker R2 binding name.
+ * - **Remote S3/R2/GCS:** set `endpoint` (+ optional credentials; bridge may use Worker secrets).
+ */
+export const mountBucketInputSchema = z.object({
+	sandbox_id: sandboxId,
+	bucket: z
+		.string()
+		.min(1)
+		.max(256)
+		.describe(
+			'R2 Worker binding name when endpoint is omitted; otherwise the remote bucket name (e.g. for S3/R2 endpoint mounts)'
+		),
+	mount_path: z
+		.string()
+		.min(1)
+		.max(MAX_FILE_PATH)
+		.refine((p) => p.startsWith('/'), { message: 'mount_path must be an absolute path (start with /)' })
+		.describe('Absolute path inside the sandbox to mount at (e.g. /data or /mnt/workspace)'),
+	endpoint: z
+		.url()
+		.optional()
+		.describe(
+			'S3-compatible endpoint URL (e.g. https://s3.amazonaws.com or https://ACCOUNT.r2.cloudflarestorage.com). Omit for Worker R2 binding mounts'
+		),
+	provider: z
+		.enum(['r2', 's3', 'gcs'])
+		.optional()
+		.describe('Provider hint for s3fs optimizations when using endpoint mounts'),
+	read_only: z.boolean().optional().describe('Mount read-only (default false)'),
+	prefix: z
+		.string()
+		.min(1)
+		.max(MAX_FILE_PATH)
+		.optional()
+		.describe('Bucket prefix/subdirectory to expose at the mount (must start with / when set)'),
+	access_key_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Access key for endpoint mounts (maps to bridge credentials.accessKeyId)'),
+	secret_access_key: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Secret key for endpoint mounts (maps to bridge credentials.secretAccessKey)'),
+	credential_proxy: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, bridge keeps credentials out of the container (egress signing). Endpoint mounts only; requires ContainerProxy on the bridge Worker'
+		),
+	local_bucket: z
+		.boolean()
+		.optional()
+		.describe('When true, use local R2 binding sync (wrangler dev). Mutually exclusive with endpoint'),
+	s3fs_options: z
+		.array(z.string().min(1).max(256))
+		.max(32)
+		.optional()
+		.describe('Advanced s3fs mount flags (e.g. use_cache=/tmp/cache)')
+})
+
+export const mountBucketOutputSchema = z.object({
+	sandbox_id: z.string(),
+	bucket: z.string(),
+	mount_path: z.string(),
+	ok: z.literal(true)
+})
+
+export const unmountBucketInputSchema = z.object({
+	sandbox_id: sandboxId,
+	mount_path: z
+		.string()
+		.min(1)
+		.max(MAX_FILE_PATH)
+		.refine((p) => p.startsWith('/'), { message: 'mount_path must be an absolute path (start with /)' })
+		.describe('Absolute mount path previously passed to mount')
+})
+
+export const unmountBucketOutputSchema = z.object({
+	sandbox_id: z.string(),
+	mount_path: z.string(),
+	ok: z.literal(true)
+})
+
 export type SandboxIdInput = z.infer<typeof sandboxIdInputSchema>
 export type CreateSandboxOutput = z.infer<typeof createSandboxOutputSchema>
 export type DestroySandboxOutput = z.infer<typeof destroySandboxOutputSchema>
@@ -334,3 +424,7 @@ export type CreateBridgeSessionOutput = z.infer<typeof createBridgeSessionOutput
 export type DeleteBridgeSessionInput = z.infer<typeof deleteBridgeSessionInputSchema>
 export type DeleteBridgeSessionOutput = z.infer<typeof deleteBridgeSessionOutputSchema>
 export type ExecuteCodeInput = z.infer<typeof executeCodeInputSchema>
+export type MountBucketInput = z.infer<typeof mountBucketInputSchema>
+export type MountBucketOutput = z.infer<typeof mountBucketOutputSchema>
+export type UnmountBucketInput = z.infer<typeof unmountBucketInputSchema>
+export type UnmountBucketOutput = z.infer<typeof unmountBucketOutputSchema>

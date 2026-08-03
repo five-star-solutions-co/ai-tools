@@ -271,6 +271,172 @@ describe('cloudflare-sandbox', () => {
 		}
 	})
 
+	test('mount and unmount call bridge bucket mount endpoints', async () => {
+		const bodies: Array<{ method: string; path: string; body: Record<string, unknown> }> = []
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			const url = new URL(req.url)
+			const method = req.method.toUpperCase()
+			expect(req.headers.get('Authorization')).toBe('Bearer test-key')
+			if (method === 'POST' && url.pathname.endsWith('/mount')) {
+				const body = asRecord(JSON.parse(await req.text()))
+				bodies.push({ method, path: url.pathname, body })
+				return Response.json({ ok: true })
+			}
+			if (method === 'POST' && url.pathname.endsWith('/unmount')) {
+				const body = asRecord(JSON.parse(await req.text()))
+				bodies.push({ method, path: url.pathname, body })
+				return Response.json({ ok: true })
+			}
+			return new Response(`unexpected ${method} ${url.pathname}`, { status: 500 })
+		})
+		try {
+			const client = new CloudflareSandboxClient(auth)
+			const mounted = await client.mount({
+				sandbox_id: 'sbx-1',
+				bucket: 'workspace',
+				mount_path: '/data',
+				endpoint: 'https://example.r2.cloudflarestorage.com',
+				provider: 'r2',
+				access_key_id: 'AKIA',
+				secret_access_key: 'secret',
+				prefix: '/agents/run-1/',
+				read_only: true,
+				credential_proxy: true
+			})
+			expect(mounted).toEqual({
+				sandbox_id: 'sbx-1',
+				bucket: 'workspace',
+				mount_path: '/data',
+				ok: true
+			})
+			const unmounted = await client.unmount({ sandbox_id: 'sbx-1', mount_path: '/data' })
+			expect(unmounted).toEqual({ sandbox_id: 'sbx-1', mount_path: '/data', ok: true })
+
+			expect(bodies).toHaveLength(2)
+			expect(bodies[0]?.path).toBe('/v1/sandbox/sbx-1/mount')
+			expect(bodies[0]?.body).toEqual({
+				bucket: 'workspace',
+				mountPath: '/data',
+				options: {
+					endpoint: 'https://example.r2.cloudflarestorage.com',
+					provider: 'r2',
+					readOnly: true,
+					prefix: '/agents/run-1/',
+					credentialProxy: true,
+					credentials: {
+						accessKeyId: 'AKIA',
+						secretAccessKey: 'secret'
+					}
+				}
+			})
+			expect(bodies[1]?.path).toBe('/v1/sandbox/sbx-1/unmount')
+			expect(bodies[1]?.body).toEqual({ mountPath: '/data' })
+		} finally {
+			restore()
+		}
+	})
+
+	test('mount falls back to auth.storage credentials when endpoint is set', async () => {
+		let mountBody: Record<string, unknown> | undefined
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			const url = new URL(req.url)
+			if (req.method.toUpperCase() === 'POST' && url.pathname.endsWith('/mount')) {
+				mountBody = asRecord(JSON.parse(await req.text()))
+				return Response.json({ ok: true })
+			}
+			return new Response('unexpected', { status: 500 })
+		})
+		try {
+			const client = new CloudflareSandboxClient({
+				...auth,
+				storage: {
+					access_key_id: 'FROM_STORAGE',
+					secret_access_key: 'STORAGE_SECRET',
+					region: 'auto',
+					bucket: 'workspace',
+					endpoint: 'https://storage.example.com'
+				}
+			})
+			// Mastra workspace S3: pass endpoint (or storage.endpoint), keys fall back from auth.storage
+			await client.mount({
+				sandbox_id: 'sbx-1',
+				bucket: 'workspace',
+				mount_path: '/workspace-s3',
+				endpoint: 'https://storage.example.com',
+				provider: 'r2'
+			})
+			expect(mountBody).toEqual({
+				bucket: 'workspace',
+				mountPath: '/workspace-s3',
+				options: {
+					endpoint: 'https://storage.example.com',
+					provider: 'r2',
+					credentials: {
+						accessKeyId: 'FROM_STORAGE',
+						secretAccessKey: 'STORAGE_SECRET'
+					}
+				}
+			})
+		} finally {
+			restore()
+		}
+	})
+
+	test('mount R2 binding mode omits endpoint and credentials', async () => {
+		let mountBody: Record<string, unknown> | undefined
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			const url = new URL(req.url)
+			if (req.method.toUpperCase() === 'POST' && url.pathname.endsWith('/mount')) {
+				mountBody = asRecord(JSON.parse(await req.text()))
+				return Response.json({ ok: true })
+			}
+			return new Response('unexpected', { status: 500 })
+		})
+		try {
+			const client = new CloudflareSandboxClient(auth)
+			await client.mount({
+				sandbox_id: 'sbx-1',
+				bucket: 'MY_BUCKET',
+				mount_path: '/data'
+			})
+			expect(mountBody).toEqual({
+				bucket: 'MY_BUCKET',
+				mountPath: '/data'
+			})
+		} finally {
+			restore()
+		}
+	})
+
+	test('mount rejects relative mount_path and local_bucket+endpoint', async () => {
+		const client = new CloudflareSandboxClient(auth)
+		try {
+			await client.mount({
+				sandbox_id: 'sbx-1',
+				bucket: 'b',
+				mount_path: 'data'
+			})
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error) && error.code === 'bad_input').toBe(true)
+		}
+		try {
+			await client.mount({
+				sandbox_id: 'sbx-1',
+				bucket: 'b',
+				mount_path: '/data',
+				local_bucket: true,
+				endpoint: 'https://s3.amazonaws.com'
+			})
+			expect.unreachable()
+		} catch (error) {
+			expect(isToolError(error) && error.code === 'bad_input').toBe(true)
+		}
+	})
+
 	test('importArtifact without storage is bad_auth', async () => {
 		const client = new CloudflareSandboxClient(auth)
 		try {

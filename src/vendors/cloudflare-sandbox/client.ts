@@ -31,6 +31,8 @@ import type {
 	ImportArtifactOutput,
 	ListFilesInput,
 	ListFilesOutput,
+	MountBucketInput,
+	MountBucketOutput,
 	ReadFileInput,
 	ReadFileOutput,
 	ReadFilesInput,
@@ -39,12 +41,21 @@ import type {
 	RemoveFilesOutput,
 	RunningOutput,
 	SandboxIdInput,
+	UnmountBucketInput,
+	UnmountBucketOutput,
 	WriteFileInput,
 	WriteFileOutput,
 	WriteFilesInput,
 	WriteFilesOutput
 } from './contracts'
-import { DEFAULT_EXEC_TIMEOUT_MS, MAX_FILE_BYTES, MAX_LIST_FILES, cloudflareSandboxAuthSchema } from './contracts'
+import {
+	DEFAULT_EXEC_TIMEOUT_MS,
+	MAX_FILE_BYTES,
+	MAX_LIST_FILES,
+	cloudflareSandboxAuthSchema,
+	mountBucketInputSchema,
+	unmountBucketInputSchema
+} from './contracts'
 import {
 	executeCodeArgv,
 	parseExecSse,
@@ -59,6 +70,14 @@ export type CloudflareSandboxClientOptions = Pick<HttpServiceOptions, 'fetch' | 
 export class CloudflareSandboxClient {
 	readonly #http: HttpService
 	readonly #storage: S3Client | undefined
+	/** Optional S3 auth fields for endpoint mount credential fallback (Mastra workspace FS). */
+	readonly #storageAuth:
+		| {
+				access_key_id: string
+				secret_access_key: string
+				endpoint?: string | undefined
+		  }
+		| undefined
 
 	constructor(auth: CloudflareSandboxAuth, options: CloudflareSandboxClientOptions = {}) {
 		const parsed = cloudflareSandboxAuthSchema.safeParse(auth)
@@ -83,6 +102,13 @@ export class CloudflareSandboxClient {
 					...(options.fetch && { fetch: options.fetch }),
 					...(options.signal && { signal: options.signal })
 				})
+			: undefined
+		this.#storageAuth = parsed.data.storage
+			? {
+					access_key_id: parsed.data.storage.access_key_id,
+					secret_access_key: parsed.data.storage.secret_access_key,
+					...(parsed.data.storage.endpoint && { endpoint: parsed.data.storage.endpoint })
+				}
 			: undefined
 	}
 
@@ -345,6 +371,93 @@ export class CloudflareSandboxClient {
 			{ label: 'Cloudflare Sandbox deleteSession' }
 		)
 		return { sandbox_id: input.sandbox_id, session_id: input.session_id, deleted: true }
+	}
+
+	/**
+	 * Mount an S3-compatible bucket (or Worker R2 binding) at an absolute path in the sandbox.
+	 * Bridge: `POST /v1/sandbox/:id/mount`.
+	 * For Mastra / host workspace S3 FS: pass `endpoint` + credentials (or rely on auth.storage).
+	 * @see https://developers.cloudflare.com/sandbox/bridge/http-api/#bucket-mounts
+	 */
+	async mount(input: MountBucketInput): Promise<MountBucketOutput> {
+		const parsed = mountBucketInputSchema.safeParse(input)
+		if (!parsed.success) {
+			throw new ToolError('Invalid sandbox mount input', {
+				code: 'bad_input',
+				details: { issues: parsed.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const data = parsed.data
+		if (data.local_bucket && data.endpoint) {
+			throw new ToolError('local_bucket and endpoint are mutually exclusive on mount', { code: 'bad_input' })
+		}
+		if (data.prefix !== undefined && !data.prefix.startsWith('/')) {
+			throw new ToolError('mount prefix must start with /', { code: 'bad_input' })
+		}
+
+		// Endpoint mounts only: omit endpoint for Worker R2 binding mounts.
+		const endpoint = data.local_bucket ? undefined : data.endpoint
+		// Credentials: explicit input, else auth.storage when doing an endpoint mount (Mastra S3 FS).
+		const accessKeyId = data.access_key_id ?? (endpoint !== undefined ? this.#storageAuth?.access_key_id : undefined)
+		const secretAccessKey =
+			data.secret_access_key ?? (endpoint !== undefined ? this.#storageAuth?.secret_access_key : undefined)
+
+		const options: Record<string, unknown> = {}
+		if (endpoint) options['endpoint'] = endpoint
+		if (data.provider) options['provider'] = data.provider
+		if (data.read_only !== undefined) options['readOnly'] = data.read_only
+		if (data.prefix) options['prefix'] = data.prefix
+		if (data.credential_proxy !== undefined) options['credentialProxy'] = data.credential_proxy
+		if (data.local_bucket) options['localBucket'] = true
+		if (data.s3fs_options && data.s3fs_options.length > 0) options['s3fsOptions'] = data.s3fs_options
+		if (endpoint && accessKeyId && secretAccessKey) {
+			options['credentials'] = {
+				accessKeyId,
+				secretAccessKey
+			}
+		}
+
+		const body: Record<string, unknown> = {
+			bucket: data.bucket,
+			mountPath: data.mount_path
+		}
+		if (Object.keys(options).length > 0) body['options'] = options
+
+		await this.#http.post(`/v1/sandbox/${encodeURIComponent(data.sandbox_id)}/mount`, body, {
+			label: 'Cloudflare Sandbox mount'
+		})
+		return {
+			sandbox_id: data.sandbox_id,
+			bucket: data.bucket,
+			mount_path: data.mount_path,
+			ok: true
+		}
+	}
+
+	/**
+	 * Unmount a previously mounted bucket path.
+	 * Bridge: `POST /v1/sandbox/:id/unmount` with `{ mountPath }`.
+	 * Mounts are also cleared when the sandbox is destroyed.
+	 */
+	async unmount(input: UnmountBucketInput): Promise<UnmountBucketOutput> {
+		const parsed = unmountBucketInputSchema.safeParse(input)
+		if (!parsed.success) {
+			throw new ToolError('Invalid sandbox unmount input', {
+				code: 'bad_input',
+				details: { issues: parsed.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const data = parsed.data
+		await this.#http.post(
+			`/v1/sandbox/${encodeURIComponent(data.sandbox_id)}/unmount`,
+			{ mountPath: data.mount_path },
+			{ label: 'Cloudflare Sandbox unmount' }
+		)
+		return {
+			sandbox_id: data.sandbox_id,
+			mount_path: data.mount_path,
+			ok: true
+		}
 	}
 
 	#requireStorage(op: string): S3Client {
