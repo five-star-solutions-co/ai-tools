@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test'
 
-import { isToolError } from '../../../src/core'
 import { MessagingClient } from '../../../src/modules/messaging'
 import { env } from '../env'
 
@@ -12,13 +11,11 @@ const slackToken = env('AI_TOOLS_SLACK_BOT_TOKEN')
 const slackChannel = env('AI_TOOLS_SLACK_CHANNEL_ID')
 const runSlack = slackToken && slackChannel ? describe : describe.skip
 
-const imBase = env('AI_TOOLS_IMESSAGE_PROXY_URL')
-const imProject = env('AI_TOOLS_IMESSAGE_PROJECT_ID')
-const imSecret = env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
+const imAddress = env('AI_TOOLS_IMESSAGE_HTTP_ADDRESS') ?? env('AI_TOOLS_IMESSAGE_PROXY_URL')
+const imToken = env('AI_TOOLS_IMESSAGE_TOKEN') ?? env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
 const imChat = env('AI_TOOLS_IMESSAGE_CHAT_ID')
-/** User-sent message in the same space — required for a successful seam read. */
-const imInboundMessageId = env('AI_TOOLS_IMESSAGE_INBOUND_MESSAGE_ID')
-const runIm = imBase && imProject && imSecret && imChat ? describe : describe.skip
+const imServer = env('AI_TOOLS_IMESSAGE_SERVER')
+const runIm = imAddress && imToken && imChat ? describe : describe.skip
 
 const teamsApp = env('AI_TOOLS_TEAMS_APP_ID')
 const teamsPass = env('AI_TOOLS_TEAMS_APP_PASSWORD')
@@ -219,14 +216,14 @@ runSlack('live seam messaging (slack)', () => {
 
 runIm('live seam messaging (imessage)', () => {
 	test(
-		'full surface: send edit typing stopTyping react clear media batch read contract',
+		'full surface: send edit typing stopTyping react clear media batch markRead',
 		async () => {
 			const client = MessagingClient.fromAuth({
 				provider: 'imessage',
-				base_url: imBase!,
-				project_id: imProject!,
-				project_secret: imSecret!,
-				...(env('AI_TOOLS_IMESSAGE_PHONE') ? { phone: env('AI_TOOLS_IMESSAGE_PHONE') } : {})
+				address: imAddress!,
+				token: imToken!,
+				tls: imAddress!.startsWith('http://') ? false : undefined,
+				...(imServer ? { server: imServer } : {})
 			})
 			const chat_id = imChat!
 
@@ -246,38 +243,20 @@ runIm('live seam messaging (imessage)', () => {
 			await client.sendChatAction({ chat_id, action: 'typing' })
 			await client.stopTyping({ chat_id })
 
-			const reaction = await client.setReaction({
+			await client.setReaction({
 				chat_id,
 				message_id: msg.message_id,
-				emoji: '❤️'
+				emoji: 'love'
 			})
-			// Spectrum returns a reaction message id — required to clear.
-			if (reaction.message_id) {
-				await client.clearReaction({
-					chat_id,
-					message_id: reaction.message_id
-				})
-			}
+			// Clear uses target message + same emoji (Photon setReaction isSet=false).
+			await client.clearReaction({
+				chat_id,
+				message_id: msg.message_id,
+				emoji: 'love'
+			})
 
-			// Spectrum only marks *inbound* messages as read. Outbound must 400, not soft-fail.
-			let outboundReadError: unknown
-			try {
-				await client.read({ chat_id, message_id: msg.message_id })
-			} catch (error) {
-				outboundReadError = error
-			}
-			expect(isToolError(outboundReadError)).toBe(true)
-			if (!isToolError(outboundReadError)) {
-				throw new Error('expected ToolError for outbound iMessage read')
-			}
-			expect(outboundReadError.details?.['status']).toBe(400)
-
-			if (!imInboundMessageId) {
-				throw new Error(
-					'AI_TOOLS_IMESSAGE_INBOUND_MESSAGE_ID is required for successful messaging seam read (user-sent message id in the same chat)'
-				)
-			}
-			await client.read({ chat_id, message_id: imInboundMessageId })
+			// Advanced iMessage marks the whole chat read (message_id required by seam schema).
+			await client.read({ chat_id, message_id: msg.message_id })
 
 			const media = await client.sendMedia({
 				chat_id,

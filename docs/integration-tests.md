@@ -93,10 +93,9 @@ Live IT aims for **full public client-method smoke** when env is set (pack-file 
 
 | Var | Method |
 | --- | --- |
-| `AI_TOOLS_IMESSAGE_FILE_ID` | iMessage `downloadFile` (attachment message id from inbound) |
+| `AI_TOOLS_IMESSAGE_FILE_ID` | iMessage `downloadFile` (attachment **guid** from inbound) |
 | `AI_TOOLS_TEAMS_FILE_URL` | Teams `downloadFile` (absolute content URL from inbound) |
 | `AI_TOOLS_SLACK_USER_ID` | Slack `postEphemeral` |
-| `AI_TOOLS_IMESSAGE_INBOUND_MESSAGE_ID` | iMessage successful `read` (user-sent message) |
 
 **Explicitly not live-covered** (cannot self-seed without a human press / production write):
 
@@ -153,7 +152,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | telegram | `TELEGRAM_BOT_TOKEN` (+ chat; optional webhook URL/secret) | getBot, webhook, send/edit/action/react/media/group, downloadFile |
 | slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`; optional `SLACK_USER_ID`) | getBot, listConversations, send/edit, **thread** typing/stopTyping, react, media, **downloadFile round-trip**, answerCallback no-op, optional postEphemeral |
 | teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL; optional `TEAMS_FILE_URL`) | getBot; send/edit/action/react/media; answerCallback no-op; optional downloadFile |
-| imessage | proxy URL + project + chat + **`IMESSAGE_INBOUND_MESSAGE_ID`** (+ optional `IMESSAGE_FILE_ID`) | send/edit/typing/react/media/unsend/read; answerCallback no-op; optional downloadFile |
+| imessage | `IMESSAGE_HTTP_ADDRESS` + `IMESSAGE_TOKEN` + chat (+ optional `IMESSAGE_SERVER`, `IMESSAGE_FILE_ID`) | send/edit/typing/react/media/unsend/markRead; optional downloadFile |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/getBytesRange/signed URL/multipart |
 | gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot + convert + convertBatch |
 | cloudflare-browser | shared `CF_*` + S3 for render | start/get/stop + optional CDP navigate + renderPdf + renderScreenshot |

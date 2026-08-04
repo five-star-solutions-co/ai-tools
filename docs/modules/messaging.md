@@ -29,9 +29,8 @@ withAuth(messagingModule, {
 })
 withAuth(messagingModule, {
   provider: 'imessage',
-  base_url: 'https://photon-proxy.example.com',
-  project_id: '…',
-  project_secret: '…',
+  address: 'https://imessage.example.com',
+  token: '…',
 })
 
 // Optional nested S3 for ArtifactRef media (send source / download destination_key)
@@ -51,7 +50,7 @@ await client.sendText({ chat_id: 'C…', text: 'hi' })
 ```
 
 Teams connector calls require `service_url` on method inputs (from the inbound activity).  
-iMessage `chat_id` is the Spectrum **space id**; outbound goes through **photon-rest-proxy** REST (`/v1/send`, `/v1/react`, …). A host that only exposes `/v1/imessage/execute` is not a drop-in `base_url`.
+iMessage `chat_id` is the iMessage **chat guid** (`any;-;…` / `any;+;…`). Auth is Photon Advanced iMessage HTTP (`address` + `token`, optional `server`). See [imessage](../vendors/imessage.md).
 
 ### Media bytes
 
@@ -68,9 +67,9 @@ Exactly one of `body_base64` or `source` on send. `source.store` must be `object
 | --- | --- | --- | --- | --- |
 | sendMedia | yes | yes | yes | yes (`/v1/media`); **requires** `message_id` (never falls back to space id) |
 | sendMediaBatch | native group when homogeneous 2–10 photos or documents; else sequential | sequential | sequential | sequential |
-| downloadFile | yes | yes | yes | prefer `chat_id` + attachment `file_id`; legacy `space_id::message_id` still accepted |
-| setReaction | yes (empty output) | yes (empty output) | **presentation no-op** (Bot Framework has no bot reaction API; host may use Graph) | returns reaction `message_id` for clear |
-| clearReaction | empty list | emoji required | **presentation no-op** | unsend reaction message id from setReaction |
+| downloadFile | yes | yes | yes | attachment **guid** as `file_id`; legacy `space_id::guid` still accepted |
+| setReaction | yes (empty output) | yes (empty output) | **presentation no-op** (Bot Framework has no bot reaction API; host may use Graph) | returns message guid; clear with same target + emoji |
+| clearReaction | empty list | emoji required | **presentation no-op** | requires emoji; target message guid (Photon setReaction isSet=false) |
 | sendChatAction / stopTyping | typing / no-op stop | **assistant.threads.setStatus** when `reply_to_message_id` = thread_ts; else no-op; stop clears status | typing / no-op stop | real typing start/stop |
 | read | intentional no-op | intentional no-op | intentional no-op | inbound message id only |
 | unsend | **not on seam** — use [imessage](../vendors/imessage.md) vendor | same | same | vendor only |

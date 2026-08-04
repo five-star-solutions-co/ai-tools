@@ -1,4 +1,4 @@
-# iMessage (photon-rest-proxy)
+# iMessage (Photon Advanced iMessage HTTP)
 
 | | |
 | --- | --- |
@@ -6,60 +6,56 @@
 | **Kind** | **vendor** (`src/vendors/imessage`) |
 | **Module id** | `imessage` |
 | **Client** | `ImessageClient` |
-| **Runtime** | `both` (HTTP only — gRPC stays in the proxy container) |
+| **Runtime** | `both` (HTTP `fetch` only — no gRPC in this pack) |
+| **SDK** | [`@photon-ai/advanced-imessage`](https://github.com/photon-hq/advanced-imessage-ts) `createHttpClient` |
 
-Outbound iMessage via a hosted **[photon-rest-proxy](https://github.com/harryy2510)** (or your deploy of `~/Desktop/hariom/photon-rest-proxy`). The pack never talks to Photon gRPC directly.
+Outbound iMessage via Photon’s **Advanced iMessage HTTP middleware** (imessage-server-v2-http). The pack does **not** use photon-rest-proxy or gRPC.
 
 ### Inbound (out of pack scope)
 
-Photon / Spectrum **native webhooks** terminate on the **host** (HTTP route + secret storage + tenant map). This pack does **not** export `webhook.ts` verify/parse helpers: the inbound shape is product-specific and host-owned. Compare Telegram/Slack/Teams packs, which normalize bot platform webhooks for agent tools.
+Native / Spectrum webhooks terminate on the **host**. This pack does not export `webhook.ts`.
 
-**Pack owns:** outbound REST via photon-rest-proxy (`ImessageClient` + tools).  
-**Host owns:** inbound webhook HTTP, signature/secret handling, and durable turn/outbox.
+**Pack owns:** outbound HTTP via `@photon-ai/advanced-imessage/http`.  
+**Host owns:** inbound webhook HTTP, signature/secret handling, durable turn/outbox.
 
 ## Auth
 
 ```ts
 {
-  base_url: string          // proxy origin, e.g. https://photon-proxy.example.com
-  project_id: string        // → x-spectrum-project-id
-  project_secret: string    // → x-spectrum-project-secret
-  phone?: string            // optional default multi-line phone
+  address: string   // middleware host or http(s):// URL
+  token: string     // Bearer token
+  server?: string   // optional dedicated instance id → x-photon-server
+  tls?: boolean     // default true for bare hosts; false for local http://
 }
 ```
 
 ## Tools
 
-| id | Proxy |
+| id | SDK |
 | --- | --- |
-| `imessage-send-text` | `POST /v1/send` |
-| `imessage-edit-text` | `POST /v1/edit` |
-| `imessage-send-chat-action` | `POST /v1/typing` (start) |
-| `imessage-set-reaction` | `POST /v1/react` (returns **reaction** `message_id`) |
-| `imessage-clear-reaction` | `POST /v1/clear-reaction` (unsend that reaction message) |
-| `imessage-unsend` | `POST /v1/unsend` |
-| `imessage-read` | `POST /v1/read` |
-| `imessage-send-media` | `POST /v1/media` |
-| `imessage-download-file` | `POST /v1/download` |
+| `imessage-send-text` | `messages.sendText` |
+| `imessage-edit-text` | `messages.edit` |
+| `imessage-send-chat-action` | `chats.setTyping(true)` |
+| `imessage-set-reaction` | `messages.setReaction(..., true)` |
+| `imessage-clear-reaction` | `messages.setReaction(..., false)` — needs **target** message + same emoji |
+| `imessage-unsend` | `messages.unsend` |
+| `imessage-read` | `chats.markRead` (whole chat) |
+| `imessage-send-media` | `attachments.upload` + `messages.sendAttachment` (+ optional caption text) |
+| `imessage-download-file` | `attachments.downloadStream` (`file_id` = attachment guid) |
 
-`chat_id` is the Spectrum **space id** (e.g. `any;-;+15551111111`).
+`chat_id` is the iMessage **chat guid** (e.g. `any;-;+15551111111`).
 
 ### Reactions
 
-Spectrum models a reaction as its own Message. `setReaction` returns that reaction’s `message_id`. Pass **that** id to `clearReaction` (not the id of the message that was reacted to).
+Tapbacks: `love`, `like`, `dislike`, `laugh`, `emphasize`, `question`.  
+Other strings send as `{ kind: "emoji", emoji }`.
+
+**Clear** uses the **target** message guid + the same emoji/tapback (not a separate reaction message id).
 
 ### Media and download
 
-- `sendMedia` sends base64 bytes as a Spectrum `attachment` (optional caption as follow-up text).
-- `downloadFile` needs both `chat_id` (space) and `file_id` (attachment/voice **message** id from inbound).
-
-## Channel parity
-
-| Verb | Telegram | Slack | Teams | iMessage (proxy) |
-| --- | --- | --- | --- | --- |
-| sendMedia | yes | yes | yes | yes |
-| downloadFile | yes | yes | yes | yes |
-| clearReaction | empty reaction list | emoji required | successful no-op | unsend reaction message id |
+- `sendMedia` uploads bytes then sends by attachment guid; optional caption is a follow-up text.
+- `downloadFile` needs attachment **guid** as `file_id`.
 
 ## Bind
 
@@ -68,9 +64,8 @@ import { ImessageClient, imessageModule } from '@harryy/ai-tools/imessage'
 import { withAuth } from '@harryy/ai-tools/core'
 
 const client = new ImessageClient({
-  base_url: 'https://photon-proxy.example.com',
-  project_id: process.env.SPECTRUM_PROJECT_ID!,
-  project_secret: process.env.SPECTRUM_PROJECT_SECRET!,
+  address: process.env.IMESSAGE_HTTP_ADDRESS!,
+  token: process.env.IMESSAGE_TOKEN!,
 })
 
 await client.sendText({
@@ -78,12 +73,12 @@ await client.sendText({
   text: 'hello',
 })
 
-const reaction = await client.setReaction({
+await client.setReaction({
   chat_id: 'any;-;+15551111111',
-  message_id: 'target-msg',
-  emoji: '❤️',
+  message_id: 'target-msg-guid',
+  emoji: 'love',
 })
-// later: await client.clearReaction({ chat_id, message_id: reaction.message_id! })
+// later: await client.clearReaction({ chat_id, message_id: 'target-msg-guid', emoji: 'love' })
 
 withAuth(imessageModule, { /* same auth */ })
 ```
@@ -93,13 +88,13 @@ withAuth(imessageModule, { /* same auth */ })
 ```ts
 withAuth(messagingModule, {
   provider: 'imessage',
-  base_url: 'https://photon-proxy.example.com',
-  project_id: '…',
-  project_secret: '…',
+  address: 'https://imessage.example.com',
+  token: '…',
 })
 ```
 
-Messaging `downloadFile` has no `chat_id` field — pass `file_id` as `space_id::message_id` (double colon). Messaging `clearReaction` must receive the **reaction** message id (same Spectrum rule). Prefer vendor tools when you need full iMessage shapes.
+Messaging `clearReaction` for iMessage **requires** `emoji`.  
+Messaging `downloadFile` `file_id` is the attachment guid (optional `chat_id`; legacy `space_id::attachment_guid` still accepted).
 
 ## Live progressive text
 

@@ -149,7 +149,7 @@ defineTool / defineModule
 | `@harryy/ai-tools/telegram` | `telegram-send-text`, `-edit-text`, media, reactions, … | [telegram](./docs/vendors/telegram.md) |
 | `@harryy/ai-tools/slack` | `slack-send-text`, edit, media, reactions, files, … | [slack](./docs/vendors/slack.md) |
 | `@harryy/ai-tools/teams` | `teams-send-text`, edit, media, Bot Framework activities | [teams](./docs/vendors/teams.md) |
-| `@harryy/ai-tools/imessage` | send/edit/react/unsend/read via photon-rest-proxy | [imessage](./docs/vendors/imessage.md) |
+| `@harryy/ai-tools/imessage` | send/edit/react/unsend/read via Photon Advanced iMessage HTTP | [imessage](./docs/vendors/imessage.md) |
 | `@harryy/ai-tools/s3` | `s3-*` (+ signed URL, multipart) | [s3](./docs/vendors/s3.md) |
 | `@harryy/ai-tools/sqs` | `sqs-send`, `-receive`, `-delete`, `-change-visibility` | [sqs](./docs/vendors/sqs.md) |
 | `@harryy/ai-tools/qdrant` | `qdrant-upsert`, `-query`, `-delete` | [qdrant](./docs/vendors/qdrant.md) |

@@ -1,15 +1,17 @@
 /**
- * iMessage vendor client via hosted photon-rest-proxy (REST → Spectrum gRPC).
+ * iMessage vendor client via @photon-ai/advanced-imessage HTTP transport.
  * Host: `new ImessageClient(auth)`. Agent tools: `fromContext(ctx)`.
  *
- * Workers-safe: only HTTP to the proxy. No Photon SDK / gRPC in this package.
+ * Workers-safe: HTTP `fetch` only (no gRPC). Inbound events stay host webhooks.
+ * @see https://github.com/photon-hq/advanced-imessage-ts
  */
+
+import { createHttpClient } from '@photon-ai/advanced-imessage/http'
+import type { AdvancedIMessage } from '@photon-ai/advanced-imessage/http'
 
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
-import type { ToolContext } from '../../core/types'
-import { HttpService } from '../../transport/http-service'
-import type { HttpServiceOptions } from '../../transport/http-service'
+import type { FetchLike, ToolContext } from '../../core/types'
 import type {
 	ImessageAuth,
 	ImessageClearReactionInput,
@@ -26,25 +28,28 @@ import type {
 } from './contracts'
 import { imessageAuthSchema } from './contracts'
 import {
-	assertProxyOk,
+	decodeMediaBytes,
 	isImessageDefiniteRejection,
 	isImessageOutcomeUnknown,
 	ImessageClientError,
-	mediaBody,
-	parseDownloadResult,
-	parseMessageResult,
-	parseOkResult,
-	spaceBody,
-	throwImessageTransportError
+	mapSdkError,
+	messageToOutput,
+	parseDownloadChunks,
+	toSettableReaction
 } from './domain'
 
-export type ImessageClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
+/**
+ * Photon SDK uses `globalThis.fetch` (mock in tests). No HttpService / photon-rest-proxy.
+ */
+export type ImessageClientOptions = {
+	fetch?: FetchLike | undefined
+	signal?: AbortSignal | undefined
+}
 
 export class ImessageClient {
-	readonly #http: HttpService
-	readonly #defaultPhone: string | undefined
+	readonly #im: AdvancedIMessage
 
-	constructor(auth: ImessageAuth, options: ImessageClientOptions = {}) {
+	constructor(auth: ImessageAuth, _options: ImessageClientOptions = {}) {
 		const parsed = imessageAuthSchema.safeParse(auth)
 		if (!parsed.success) {
 			throw new ToolError('Invalid iMessage auth credentials', {
@@ -52,17 +57,12 @@ export class ImessageClient {
 				details: { issues: parsed.error.issues.map((issue) => issue.message) }
 			})
 		}
-		const { base_url, project_id, project_secret, phone } = parsed.data
-		this.#defaultPhone = phone
-		this.#http = new HttpService({
-			...options,
-			baseURL: base_url,
-			headers: {
-				'Content-Type': 'application/json',
-				'x-spectrum-project-id': project_id,
-				'x-spectrum-project-secret': project_secret
-			},
-			label: 'iMessage'
+		const { address, token, server, tls } = parsed.data
+		this.#im = createHttpClient({
+			address,
+			token,
+			...(server && { server }),
+			...(tls !== undefined && { tls })
 		})
 	}
 
@@ -74,138 +74,141 @@ export class ImessageClient {
 		})
 	}
 
-	#phone(override: string | undefined): string | undefined {
-		return override ?? this.#defaultPhone
+	/** Release SDK resources. */
+	async close(): Promise<void> {
+		await this.#im.close()
 	}
 
-	async #post(path: string, body: Record<string, unknown>, label: string): Promise<unknown> {
+	async sendText(input: ImessageSendTextInput): Promise<ImessageMessageOutput> {
 		try {
-			const res = await this.#http.post(path, body, { label, noThrow: true })
-			assertProxyOk(label, res.status, res.data)
-			return res.data
+			const message = await this.#im.messages.sendText(input.chat_id, input.text)
+			return messageToOutput(input.chat_id, message)
 		} catch (error) {
-			throwImessageTransportError(label, error)
+			mapSdkError('iMessage sendText', error)
 		}
 	}
 
-	/** POST /v1/send */
-	async sendText(input: ImessageSendTextInput): Promise<ImessageMessageOutput> {
-		const data = await this.#post(
-			'/v1/send',
-			spaceBody(input.chat_id, this.#phone(input.phone), { text: input.text }),
-			'iMessage send'
-		)
-		return parseMessageResult(data)
-	}
-
-	/** POST /v1/edit */
 	async editText(input: ImessageEditTextInput): Promise<ImessageMessageOutput> {
-		const data = await this.#post(
-			'/v1/edit',
-			spaceBody(input.chat_id, this.#phone(input.phone), {
-				message_id: input.message_id,
-				text: input.text
-			}),
-			'iMessage edit'
-		)
-		const ok = parseOkResult(data)
-		return {
-			space_id: ok.space_id ?? input.chat_id,
-			message_id: input.message_id
+		try {
+			const message = await this.#im.messages.edit(input.chat_id, input.message_id, input.text)
+			return messageToOutput(input.chat_id, message)
+		} catch (error) {
+			mapSdkError('iMessage editText', error)
 		}
 	}
 
 	/**
-	 * POST /v1/typing.
 	 * Non-typing chat actions map to typing start (presentation parity with other channels).
 	 */
 	async sendChatAction(input: ImessageSendChatActionInput): Promise<void> {
-		const action = input.action === 'typing' ? 'start' : 'start'
-		await this.#post('/v1/typing', spaceBody(input.chat_id, this.#phone(input.phone), { action }), 'iMessage typing')
+		try {
+			await this.#im.chats.setTyping(input.chat_id, true)
+		} catch (error) {
+			mapSdkError('iMessage sendChatAction', error)
+		}
 	}
 
-	/** Stop typing indicator. */
-	async stopTyping(input: { chat_id: string; phone?: string }): Promise<void> {
-		await this.#post(
-			'/v1/typing',
-			spaceBody(input.chat_id, this.#phone(input.phone), { action: 'stop' }),
-			'iMessage typing stop'
-		)
+	async stopTyping(input: { chat_id: string }): Promise<void> {
+		try {
+			await this.#im.chats.setTyping(input.chat_id, false)
+		} catch (error) {
+			mapSdkError('iMessage stopTyping', error)
+		}
 	}
 
 	/**
-	 * POST /v1/react.
-	 * Returns the reaction message_id — store it for clearReaction (Spectrum unsends the reaction Message).
+	 * Add a tapback/emoji reaction. Returns the resulting message guid (store for journaling).
+	 * Clear with clearReaction using the **same target message_id + emoji** (setReaction isSet=false).
 	 */
 	async setReaction(input: ImessageSetReactionInput): Promise<ImessageMessageOutput> {
-		const data = await this.#post(
-			'/v1/react',
-			spaceBody(input.chat_id, this.#phone(input.phone), {
-				message_id: input.message_id,
-				emoji: input.emoji
-			}),
-			'iMessage react'
-		)
-		return parseMessageResult(data)
+		try {
+			const message = await this.#im.messages.setReaction(
+				input.chat_id,
+				input.message_id,
+				toSettableReaction(input.emoji),
+				true
+			)
+			return messageToOutput(input.chat_id, message)
+		} catch (error) {
+			mapSdkError('iMessage setReaction', error)
+		}
 	}
 
 	/**
-	 * POST /v1/clear-reaction.
-	 * `message_id` must be the reaction message id from setReaction / /v1/react (not the target message).
+	 * Remove a reaction. `message_id` is the **target** message; `emoji` must match setReaction.
 	 */
 	async clearReaction(input: ImessageClearReactionInput): Promise<void> {
-		await this.#post(
-			'/v1/clear-reaction',
-			spaceBody(input.chat_id, this.#phone(input.phone), { message_id: input.message_id }),
-			'iMessage clearReaction'
-		)
+		try {
+			await this.#im.messages.setReaction(input.chat_id, input.message_id, toSettableReaction(input.emoji), false)
+		} catch (error) {
+			mapSdkError('iMessage clearReaction', error)
+		}
 	}
 
-	/** POST /v1/unsend */
 	async unsend(input: ImessageUnsendInput): Promise<void> {
-		await this.#post(
-			'/v1/unsend',
-			spaceBody(input.chat_id, this.#phone(input.phone), { message_id: input.message_id }),
-			'iMessage unsend'
-		)
+		try {
+			await this.#im.messages.unsend(input.chat_id, input.message_id)
+		} catch (error) {
+			mapSdkError('iMessage unsend', error)
+		}
 	}
 
-	/** POST /v1/read */
+	/** Mark the chat read (Advanced iMessage marks the whole conversation). */
 	async read(input: ImessageReadInput): Promise<void> {
-		await this.#post(
-			'/v1/read',
-			spaceBody(input.chat_id, this.#phone(input.phone), { message_id: input.message_id }),
-			'iMessage read'
-		)
-	}
-
-	/** POST /v1/media — Spectrum attachment(Buffer, { name, mimeType }). */
-	async sendMedia(input: ImessageSendMediaInput): Promise<ImessageMessageOutput> {
-		const data = await this.#post('/v1/media', mediaBody(input, this.#phone(input.phone)), 'iMessage sendMedia')
-		return parseMessageResult(data)
+		try {
+			await this.#im.chats.markRead(input.chat_id)
+		} catch (error) {
+			mapSdkError('iMessage read', error)
+		}
 	}
 
 	/**
-	 * POST /v1/download.
-	 * Requires `chat_id` (Spectrum space) plus `file_id` (attachment/voice message id from inbound).
+	 * Upload bytes then send attachment by GUID. Optional caption as follow-up text.
+	 */
+	async sendMedia(input: ImessageSendMediaInput): Promise<ImessageMessageOutput> {
+		try {
+			const data = decodeMediaBytes(input.body_base64)
+			const uploaded = await this.#im.attachments.upload({
+				fileName: input.file_name,
+				data
+			})
+			const message = await this.#im.messages.sendAttachment(input.chat_id, uploaded.attachment.guid)
+			if (input.caption) {
+				await this.#im.messages.sendText(input.chat_id, input.caption)
+			}
+			return messageToOutput(input.chat_id, message)
+		} catch (error) {
+			mapSdkError('iMessage sendMedia', error)
+		}
+	}
+
+	/**
+	 * Download attachment bytes by attachment guid (`file_id`).
 	 */
 	async downloadFile(input: ImessageDownloadFileInput): Promise<ImessageDownloadFileOutput> {
-		const chatId = input.chat_id
-		if (!chatId) {
-			throw new ToolError('iMessage downloadFile requires chat_id (Spectrum space id)', {
-				code: 'bad_input'
-			})
+		try {
+			const frames: { type: string; data?: Uint8Array; info?: { fileName?: string; totalBytes?: number } }[] = []
+			for await (const frame of this.#im.attachments.downloadStream(input.file_id)) {
+				if (frame.type === 'header') {
+					frames.push({
+						type: 'header',
+						info: {
+							...(frame.info.fileName && { fileName: frame.info.fileName }),
+							...(typeof frame.info.totalBytes === 'number' && { totalBytes: frame.info.totalBytes })
+						}
+					})
+				} else if (frame.type === 'primaryChunk') {
+					frames.push({ type: 'primaryChunk', data: frame.data })
+				}
+			}
+			return parseDownloadChunks(input, frames)
+		} catch (error) {
+			mapSdkError('iMessage downloadFile', error)
 		}
-		const data = await this.#post(
-			'/v1/download',
-			spaceBody(chatId, this.#phone(input.phone), { file_id: input.file_id }),
-			'iMessage downloadFile'
-		)
-		return parseDownloadResult(input, data)
 	}
 
 	async answerCallback(_input: unknown): Promise<void> {
-		// No interactive callbacks on iMessage proxy path.
+		// No interactive callbacks on iMessage.
 	}
 }
 

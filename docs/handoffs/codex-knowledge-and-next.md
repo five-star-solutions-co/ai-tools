@@ -262,7 +262,7 @@ Possible follow-ups (only if user asks):
 ## 7. Adjacent work already on main (context only)
 
 - Messaging vendors: telegram, slack, teams, imessage  
-- imessage via **photon-rest-proxy** (sibling repo `~/Desktop/hariom/photon-rest-proxy`) — media / download / clear-reaction routes already committed there  
+- imessage via **@photon-ai/advanced-imessage** HTTP (`createHttpClient`); inbound webhooks stay host  
 - Do not mix proxy work into this knowledge commit unless asked  
 
 ---

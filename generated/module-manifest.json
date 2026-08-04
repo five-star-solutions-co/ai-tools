@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-03T02:13:42.983Z",
+	"generatedAt": "2026-08-04T23:08:30.011Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -1115,7 +1115,8 @@
 				"imessageUnsendInputSchema",
 				"imessageUnsendTool",
 				"isImessageDefiniteRejection",
-				"isImessageOutcomeUnknown"
+				"isImessageOutcomeUnknown",
+				"toSettableReaction"
 			],
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],

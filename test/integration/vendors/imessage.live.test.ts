@@ -1,30 +1,30 @@
 import { describe, expect, test } from 'bun:test'
 
-import { ImessageClient, ImessageClientError } from '../../../src/vendors/imessage'
+import { ImessageClient } from '../../../src/vendors/imessage'
 import { env } from '../env'
 
-const baseUrl = env('AI_TOOLS_IMESSAGE_PROXY_URL')
-const projectId = env('AI_TOOLS_IMESSAGE_PROJECT_ID')
-const projectSecret = env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
+/** Photon Advanced iMessage HTTP middleware origin (or bare host). */
+const address = env('AI_TOOLS_IMESSAGE_HTTP_ADDRESS') ?? env('AI_TOOLS_IMESSAGE_PROXY_URL')
+const token = env('AI_TOOLS_IMESSAGE_TOKEN') ?? env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
 const chatId = env('AI_TOOLS_IMESSAGE_CHAT_ID')
-/** User-sent message in the same space — required for a successful /v1/read. */
-const inboundMessageId = env('AI_TOOLS_IMESSAGE_INBOUND_MESSAGE_ID')
-/** Optional: Spectrum attachment/voice message id from an inbound message for downloadFile. */
+/** Optional dedicated instance id (x-photon-server). */
+const server = env('AI_TOOLS_IMESSAGE_SERVER')
+/** Optional: attachment guid for downloadFile. */
 const inboundFileId = env('AI_TOOLS_IMESSAGE_FILE_ID')
-const run = baseUrl && projectId && projectSecret && chatId ? describe : describe.skip
+const run = address && token && chatId ? describe : describe.skip
 
 function client() {
 	return new ImessageClient({
-		base_url: baseUrl!,
-		project_id: projectId!,
-		project_secret: projectSecret!,
-		...(env('AI_TOOLS_IMESSAGE_PHONE') ? { phone: env('AI_TOOLS_IMESSAGE_PHONE') } : {})
+		address: address!,
+		token: token!,
+		tls: address!.startsWith('http://') ? false : undefined,
+		...(server ? { server } : {})
 	})
 }
 
 run('live vendor imessage', () => {
 	test(
-		'send edit typing react media unsend; read contract',
+		'send edit typing react media unsend; markRead',
 		async () => {
 			const c = client()
 			const sent = await c.sendText({
@@ -36,7 +36,7 @@ run('live vendor imessage', () => {
 
 			const edited = await c.editText({
 				chat_id: chatId!,
-				message_id: sent.message_id!,
+				message_id: sent.message_id,
 				text: `[ai-tools it] imessage edited ${Date.now()}`
 			})
 			expect(edited.space_id).toBeTruthy()
@@ -44,38 +44,19 @@ run('live vendor imessage', () => {
 			await c.sendChatAction({ chat_id: chatId!, action: 'typing' })
 			await c.stopTyping({ chat_id: chatId! })
 
-			const reaction = await c.setReaction({
+			await c.setReaction({
 				chat_id: chatId!,
-				message_id: sent.message_id!,
-				emoji: '❤️'
+				message_id: sent.message_id,
+				emoji: 'love'
 			})
-			if (reaction.message_id) {
-				await c.clearReaction({
-					chat_id: chatId!,
-					message_id: reaction.message_id
-				})
-			}
+			await c.clearReaction({
+				chat_id: chatId!,
+				message_id: sent.message_id,
+				emoji: 'love'
+			})
 
-			// Spectrum only marks *inbound* messages as read. Outbound must 400, not 502.
-			let outboundReadError: unknown
-			try {
-				await c.read({ chat_id: chatId!, message_id: sent.message_id! })
-			} catch (error) {
-				outboundReadError = error
-			}
-			expect(outboundReadError).toBeInstanceOf(ImessageClientError)
-			if (!(outboundReadError instanceof ImessageClientError)) {
-				throw new Error('expected ImessageClientError for outbound read')
-			}
-			expect(outboundReadError.details?.['status']).toBe(400)
-
-			// Successful read requires a user-sent message id in the same space.
-			if (!inboundMessageId) {
-				throw new Error(
-					'AI_TOOLS_IMESSAGE_INBOUND_MESSAGE_ID is required for successful /v1/read (user-sent message id in the same chat)'
-				)
-			}
-			await c.read({ chat_id: chatId!, message_id: inboundMessageId })
+			// Advanced iMessage marks the whole chat read (message_id optional).
+			await c.read({ chat_id: chatId! })
 
 			const media = await c.sendMedia({
 				chat_id: chatId!,
@@ -88,7 +69,6 @@ run('live vendor imessage', () => {
 
 			if (inboundFileId) {
 				const downloaded = await c.downloadFile({
-					chat_id: chatId!,
 					file_id: inboundFileId,
 					file_name: 'imessage-dl.bin'
 				})

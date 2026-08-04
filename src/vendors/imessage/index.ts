@@ -1,6 +1,7 @@
 export { ImessageClient } from './client'
 export type { ImessageClientOptions } from './client'
 export { isImessageDefiniteRejection, isImessageOutcomeUnknown, ImessageClientError } from './client'
+export { toSettableReaction } from './domain'
 export {
 	MAX_MEDIA_BYTES,
 	imessageAuthSchema,

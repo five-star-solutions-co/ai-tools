@@ -271,6 +271,7 @@
 		"@napi-rs/canvas": "0.1.70",
 		"@office-kit/docx": "0.1.1",
 		"@office-open/pptx": "0.10.13",
+		"@photon-ai/advanced-imessage": "2.0.2",
 		"aws4fetch": "1.0.20",
 		"decimal.js": "10.6.0",
 		"es-toolkit": "1.49.0",

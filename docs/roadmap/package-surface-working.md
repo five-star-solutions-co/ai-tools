@@ -62,7 +62,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `vendors/telegram` | Done | full pack + live message + webhook helpers |
 | `vendors/slack` | Done | Web API + webhook helpers + messaging seam provider |
 | `vendors/teams` | Done | Bot Framework pack + messaging seam provider |
-| `vendors/imessage` | Done | photon-rest-proxy **outbound** pack + messaging seam provider; inbound webhooks = host (no pack webhook.ts) |
+| `vendors/imessage` | Done | Photon Advanced iMessage HTTP outbound pack + messaging seam provider; inbound webhooks = host (no pack webhook.ts) |
 
 ### B. Host apps (what stays outside this package)
 
@@ -187,7 +187,7 @@ Slice 3 done when: this capability map is implemented under `src/channels/telegr
 | 7 | `vector-store` + `rag` | Done | qdrant+pinecone+supabase; ingest/retrieve via host embed |
 | 8 | `vendors/slack` + messaging seam | Done | Web API pack + multi-provider messaging |
 | 8b | `vendors/teams` | Done | Bot Framework pack in messaging seam |
-| 9 | `vendors/imessage` (photon-rest-proxy) | Done | HTTP pack; gRPC only in hosted proxy |
+| 9 | `vendors/imessage` (Photon Advanced HTTP) | Done | `@photon-ai/advanced-imessage` HTTP; inbound = host |
 | 10 | Remaining platform (speech, browser, pdf, image, queue, webhook, crypto, calendar) | Backlog | product-driven |
 
 ---

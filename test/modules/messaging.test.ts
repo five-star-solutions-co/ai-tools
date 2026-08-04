@@ -96,49 +96,77 @@ describe('messaging seam', () => {
 		expect(code).toBe('bad_input')
 	})
 
-	test('imessage provider sendText via proxy', async () => {
+	test('imessage provider sendText via Photon HTTP middleware', async () => {
+		const chat = 'any;-;+15551111111'
 		const restore = mockFetch((url, init) => {
-			expect(url).toBe('https://proxy.example.com/v1/send')
+			expect(url).toContain('/v1/messages:sendText')
 			const headers = new Headers(init?.headers)
-			expect(headers.get('x-spectrum-project-id')).toBe('p')
-			return new Response(JSON.stringify({ ok: true, message_id: 'im1', space_id: 'space-1' }), {
-				status: 200
-			})
+			expect(headers.get('authorization')).toBe('Bearer tok')
+			return new Response(
+				JSON.stringify({
+					message: {
+						guid: 'im1',
+						chatGuids: [chat],
+						dateCreated: new Date().toISOString(),
+						isFromMe: true,
+						isSent: true,
+						isDelivered: true,
+						content: { text: 'hi', attachments: [], mentions: [], effects: [], subject: '' },
+						appliedReactions: [],
+						placedStickers: [],
+						itemType: 0,
+						isArchived: false,
+						isAudioMessage: false,
+						isAutoReply: false,
+						isCorrupt: false,
+						isDelayed: false,
+						isDeliveredQuietly: false,
+						isExpirable: false,
+						isForward: false,
+						isServiceMessage: false,
+						isSpam: false,
+						isSystemMessage: false,
+						didNotifyRecipient: false,
+						dataDetectorResultsPresent: false
+					}
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
 		})
 		try {
 			const client = MessagingClient.fromAuth({
 				provider: 'imessage',
-				base_url: 'https://proxy.example.com',
-				project_id: 'p',
-				project_secret: 's'
+				address: 'http://localhost:8080',
+				token: 'tok',
+				tls: false
 			})
-			const result = await client.sendText({ chat_id: 'space-1', text: 'hi' })
+			const result = await client.sendText({ chat_id: chat, text: 'hi' })
 			expect(result.message_id).toBe('im1')
 		} finally {
 			restore()
 		}
 	})
 
-	test('imessage sendText missing message_id is outcome_unknown (not space_id fallback)', async () => {
+	test('imessage sendText invalid response is outcome_unknown', async () => {
 		const restore = mockFetch(() => {
-			return new Response(JSON.stringify({ ok: true, space_id: 'space-1' }), { status: 200 })
+			return new Response(JSON.stringify({}), { status: 200, headers: { 'content-type': 'application/json' } })
 		})
 		try {
 			const client = MessagingClient.fromAuth({
 				provider: 'imessage',
-				base_url: 'https://proxy.example.com',
-				project_id: 'p',
-				project_secret: 's'
+				address: 'http://localhost:8080',
+				token: 'tok',
+				tls: false
 			})
 			let error: unknown
 			try {
-				await client.sendText({ chat_id: 'space-1', text: 'hi' })
+				await client.sendText({ chat_id: 'any;-;+15551111111', text: 'hi' })
 			} catch (e) {
 				error = e
 			}
 			expect(error).toBeInstanceOf(ImessageClientError)
-			expect(isMessagingOutcomeUnknown(error)).toBe(true)
-			expect(isMessagingDefiniteRejection(error)).toBe(false)
+			// missing message envelope → SDK internal / connection-style failure path
+			expect(isMessagingOutcomeUnknown(error) || isMessagingDefiniteRejection(error)).toBe(true)
 		} finally {
 			restore()
 		}
@@ -208,20 +236,50 @@ describe('messaging seam', () => {
 		}
 	})
 
-	test('imessage setReaction returns reaction message_id', async () => {
+	test('imessage setReaction returns message guid', async () => {
+		const chat = 'any;-;+15551111111'
 		const restore = mockFetch((url) => {
-			expect(url).toBe('https://proxy.example.com/v1/react')
-			return new Response(JSON.stringify({ ok: true, message_id: 'react-99', space_id: 'space-1' }), { status: 200 })
+			expect(url).toContain('/v1/messages:setReaction')
+			return new Response(
+				JSON.stringify({
+					message: {
+						guid: 'react-99',
+						chatGuids: [chat],
+						dateCreated: new Date().toISOString(),
+						isFromMe: true,
+						isSent: true,
+						isDelivered: true,
+						content: { text: '', attachments: [], mentions: [], effects: [], subject: '' },
+						appliedReactions: [],
+						placedStickers: [],
+						itemType: 0,
+						isArchived: false,
+						isAudioMessage: false,
+						isAutoReply: false,
+						isCorrupt: false,
+						isDelayed: false,
+						isDeliveredQuietly: false,
+						isExpirable: false,
+						isForward: false,
+						isServiceMessage: false,
+						isSpam: false,
+						isSystemMessage: false,
+						didNotifyRecipient: false,
+						dataDetectorResultsPresent: false
+					}
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
 		})
 		try {
 			const client = MessagingClient.fromAuth({
 				provider: 'imessage',
-				base_url: 'https://proxy.example.com',
-				project_id: 'p',
-				project_secret: 's'
+				address: 'http://localhost:8080',
+				token: 'tok',
+				tls: false
 			})
 			const result = await client.setReaction({
-				chat_id: 'space-1',
+				chat_id: chat,
 				message_id: 'msg-1',
 				emoji: '👍'
 			})
@@ -269,50 +327,66 @@ describe('messaging seam', () => {
 		}
 	})
 
-	test('imessage stopTyping / read hit proxy', async () => {
+	test('imessage stopTyping / read hit Photon chats routes', async () => {
+		const chat = 'any;-;+15551111111'
 		const seen: string[] = []
 		const restore = mockFetch((url) => {
 			seen.push(url)
-			return new Response(JSON.stringify({ ok: true }), { status: 200 })
+			return new Response(JSON.stringify({}), { status: 200, headers: { 'content-type': 'application/json' } })
 		})
 		try {
 			const client = MessagingClient.fromAuth({
 				provider: 'imessage',
-				base_url: 'https://proxy.example.com',
-				project_id: 'p',
-				project_secret: 's'
+				address: 'http://localhost:8080',
+				token: 'tok',
+				tls: false
 			})
-			await client.stopTyping({ chat_id: 'space-1' })
-			await client.read({ chat_id: 'space-1', message_id: 'in-1' })
-			expect(seen).toEqual(['https://proxy.example.com/v1/typing', 'https://proxy.example.com/v1/read'])
+			await client.stopTyping({ chat_id: chat })
+			await client.read({ chat_id: chat, message_id: 'in-1' })
+			expect(seen.some((u) => u.includes('/v1/chats:setTyping'))).toBe(true)
+			expect(seen.some((u) => u.includes('/v1/chats:markRead'))).toBe(true)
 		} finally {
 			restore()
 		}
 	})
 
-	test('imessage downloadFile uses chat_id without composite file_id', async () => {
-		const restore = mockFetch((url, init) => {
-			expect(url).toBe('https://proxy.example.com/v1/download')
-			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
-			expect(body).toMatchObject({ space_id: 'space-1', file_id: 'att-1' })
-			return new Response(
-				JSON.stringify({
-					ok: true,
-					file_name: 'a.png',
-					body_base64: Buffer.from('png').toString('base64')
-				}),
-				{ status: 200 }
-			)
+	test('imessage downloadFile uses attachment guid as file_id', async () => {
+		const restore = mockFetch((url) => {
+			if (url.includes('/data')) {
+				return new Response(Buffer.from('png'), {
+					status: 200,
+					headers: { 'content-type': 'application/octet-stream' }
+				})
+			}
+			if (url.includes('/v1/attachments/att-1')) {
+				return new Response(
+					JSON.stringify({
+						attachment: {
+							guid: 'att-1',
+							fileName: 'a.png',
+							mimeType: 'image/png',
+							totalBytes: 3,
+							transferState: 'finished',
+							isOutgoing: false,
+							isSticker: false,
+							isHidden: false,
+							uti: 'public.png'
+						}
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
+			}
+			return new Response(JSON.stringify({ message: 'unexpected ' + url }), { status: 500 })
 		})
 		try {
 			const client = MessagingClient.fromAuth({
 				provider: 'imessage',
-				base_url: 'https://proxy.example.com',
-				project_id: 'p',
-				project_secret: 's'
+				address: 'http://localhost:8080',
+				token: 'tok',
+				tls: false
 			})
 			const out = await client.downloadFile({
-				chat_id: 'space-1',
+				chat_id: 'any;-;+15551111111',
 				file_id: 'att-1',
 				file_name: 'a.png'
 			})

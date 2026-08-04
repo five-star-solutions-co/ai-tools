@@ -1,21 +1,27 @@
 import { z } from 'zod'
 
 /**
- * Host auth for the hosted photon-rest-proxy (REST → Spectrum gRPC).
- * Credentials are forwarded per request; the proxy stores nothing.
+ * Host auth for Photon Advanced iMessage HTTP middleware
+ * (`@photon-ai/advanced-imessage` createHttpClient).
+ * @see https://github.com/photon-hq/advanced-imessage-ts
  */
 export const imessageAuthSchema = z.object({
-	base_url: z
+	address: z
 		.string()
-		.url()
-		.describe('Origin of the hosted photon-rest-proxy, for example https://photon-proxy.example.com'),
-	project_id: z.string().min(1).describe('Spectrum project id (sent as x-spectrum-project-id)'),
-	project_secret: z.string().min(1).describe('Spectrum project secret (sent as x-spectrum-project-secret)'),
-	phone: z
+		.min(1)
+		.describe(
+			'HTTP middleware address: host[:port] or full http(s):// URL (e.g. https://imessage.example.com or http://localhost:8080)'
+		),
+	token: z.string().min(1).describe('Bearer token for the Advanced iMessage HTTP middleware'),
+	server: z
 		.string()
 		.min(1)
 		.optional()
-		.describe('Optional default iMessage line phone when the project has multiple lines')
+		.describe('Optional dedicated iMessage instance id (x-photon-server). Omit for the shared middleware pool'),
+	tls: z
+		.boolean()
+		.optional()
+		.describe('Use HTTPS for bare host addresses (default true). Set false for local http:// development')
 })
 
 export type ImessageAuth = z.infer<typeof imessageAuthSchema>
@@ -35,46 +41,50 @@ export const imessageChatActionSchema = z.enum([
 ])
 
 export const imessageSendTextInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id (iMessage chat GUID)'),
-	text: z.string().min(1).describe('Message text'),
-	phone: z.string().min(1).optional().describe('Optional line phone override for multi-line projects')
+	chat_id: z.string().min(1).describe('iMessage chat guid (e.g. any;-;alice@example.com)'),
+	text: z.string().min(1).describe('Message text')
 })
 
 export const imessageMessageOutputSchema = z.object({
-	message_id: z.string().min(1).describe('Provider message id (required for journaling; never a space id)'),
-	space_id: z.string().describe('Spectrum space id')
+	message_id: z.string().min(1).describe('Message guid (provider id for journaling)'),
+	space_id: z.string().describe('Chat guid (same as chat_id)')
 })
 
 export const imessageEditTextInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id'),
-	message_id: z.string().min(1).describe('Message id to edit'),
-	text: z.string().min(1).describe('Replacement text'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	chat_id: z.string().min(1).describe('iMessage chat guid'),
+	message_id: z.string().min(1).describe('Message guid to edit'),
+	text: z.string().min(1).describe('Replacement text')
 })
 
 export const imessageSendChatActionInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id'),
-	action: imessageChatActionSchema.describe('Chat action; non-typing values map to typing start'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	chat_id: z.string().min(1).describe('iMessage chat guid'),
+	action: imessageChatActionSchema.describe('Chat action; non-typing values map to typing start')
 })
 
 export const imessageSetReactionInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id'),
-	message_id: z.string().min(1).describe('Message id to react to'),
-	emoji: z.string().min(1).max(64).describe('Emoji or tapback name the channel accepts'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	chat_id: z.string().min(1).describe('iMessage chat guid'),
+	message_id: z.string().min(1).describe('Message guid to react to'),
+	emoji: z
+		.string()
+		.min(1)
+		.max(64)
+		.describe(
+			'Tapback name (love, like, dislike, laugh, emphasize, question) or an emoji character (maps to kind emoji)'
+		)
 })
 
 export const imessageUnsendInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id'),
-	message_id: z.string().min(1).describe('Message id to unsend'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	chat_id: z.string().min(1).describe('iMessage chat guid'),
+	message_id: z.string().min(1).describe('Message guid to unsend')
 })
 
 export const imessageReadInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id'),
-	message_id: z.string().min(1).describe('Mark read up to this message id'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	chat_id: z.string().min(1).describe('iMessage chat guid'),
+	message_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Optional; Advanced iMessage markRead marks the whole chat (field kept for seam parity)')
 })
 
 export const imessageOkOutputSchema = z.object({
@@ -84,30 +94,30 @@ export const imessageOkOutputSchema = z.object({
 
 export const MAX_MEDIA_BYTES = 20 * 1024 * 1024
 
+/**
+ * Clear a reaction via setReaction(isSet=false).
+ * `message_id` is the **target** message guid (not a reaction-message id).
+ * `emoji` must match what was set (tapback name or emoji character).
+ */
 export const imessageClearReactionInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id'),
-	message_id: z
-		.string()
-		.min(1)
-		.describe('Reaction message id returned by setReaction / POST /v1/react (not the target message id)'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	chat_id: z.string().min(1).describe('iMessage chat guid'),
+	message_id: z.string().min(1).describe('Target message guid that was reacted to'),
+	emoji: z.string().min(1).max(64).describe('Same tapback name or emoji used when setting the reaction')
 })
 
 export const imessageSendMediaInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Spectrum space id'),
-	kind: z.enum(['photo', 'document']).describe('Media kind (presentation; Spectrum sends as attachment)'),
+	chat_id: z.string().min(1).describe('iMessage chat guid'),
+	kind: z.enum(['photo', 'document']).describe('Media kind (presentation)'),
 	body_base64: z.string().min(1).describe('File body as base64'),
 	file_name: z.string().min(1).describe('File name including extension'),
-	caption: z.string().optional().describe('Optional caption sent as plain text after the attachment'),
-	content_type: z.string().optional().describe('Optional MIME type; inferred from file_name when omitted'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	caption: z.string().optional().describe('Optional caption sent as a follow-up text message'),
+	content_type: z.string().optional().describe('Optional MIME type; inferred from file_name when omitted')
 })
 
 export const imessageDownloadFileInputSchema = z.object({
-	file_id: z.string().min(1).describe('Spectrum message id of the attachment/voice message (from inbound webhook)'),
+	file_id: z.string().min(1).describe('Attachment guid (from inbound payload or upload)'),
 	file_name: z.string().min(1).optional().describe('Preferred file name for the download result'),
-	chat_id: z.string().min(1).optional().describe('Spectrum space id; required when not defaulted elsewhere'),
-	phone: z.string().min(1).optional().describe('Optional line phone override')
+	chat_id: z.string().min(1).optional().describe('Chat guid (optional for attachment download; kept for seam parity)')
 })
 
 export const imessageDownloadFileOutputSchema = z.object({

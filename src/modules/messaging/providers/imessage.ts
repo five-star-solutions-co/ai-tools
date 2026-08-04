@@ -1,5 +1,6 @@
 /**
- * iMessage provider for the messaging seam. Wraps `ImessageClient` (proxy REST).
+ * iMessage provider for the messaging seam.
+ * Wraps `ImessageClient` (Photon Advanced iMessage HTTP SDK).
  */
 
 import { ToolError } from '../../../core/errors'
@@ -35,10 +36,10 @@ export class ImessageMessagingProvider implements MessagingOps {
 		const { provider: _p, storage: _s, ...vendorAuth } = auth
 		this.#client = new ImessageClient(
 			{
-				base_url: vendorAuth.base_url,
-				project_id: vendorAuth.project_id,
-				project_secret: vendorAuth.project_secret,
-				...(vendorAuth.phone && { phone: vendorAuth.phone })
+				address: vendorAuth.address,
+				token: vendorAuth.token,
+				...(vendorAuth.server && { server: vendorAuth.server }),
+				...(vendorAuth.tls !== undefined && { tls: vendorAuth.tls })
 			},
 			options
 		)
@@ -84,11 +85,20 @@ export class ImessageMessagingProvider implements MessagingOps {
 	}
 
 	/**
-	 * Spectrum clears reactions by unsending the reaction Message.
-	 * Pass the reaction message_id returned by setReaction.
+	 * Clears via setReaction(isSet=false). Requires emoji matching setReaction.
+	 * `message_id` is the **target** message guid.
 	 */
 	clearReaction(input: MessagingClearReactionInput): Promise<void> {
-		return this.#client.clearReaction({ chat_id: input.chat_id, message_id: input.message_id })
+		if (!input.emoji) {
+			throw new ToolError('iMessage clearReaction requires emoji (same tapback/emoji used when setting)', {
+				code: 'bad_input'
+			})
+		}
+		return this.#client.clearReaction({
+			chat_id: input.chat_id,
+			message_id: input.message_id,
+			emoji: input.emoji
+		})
 	}
 
 	async sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
@@ -108,16 +118,11 @@ export class ImessageMessagingProvider implements MessagingOps {
 	}
 
 	async downloadFile(input: MessagingDownloadFileInput): Promise<MessagingChannelDownloadOutput> {
-		const chatId = input.chat_id ?? splitImessageFileRef(input.file_id).chat_id
+		// file_id is attachment guid; optional chat_id for journaling only
 		const fileId = input.chat_id ? input.file_id : (splitImessageFileRef(input.file_id).file_id ?? input.file_id)
-		if (!chatId) {
-			throw new ToolError('iMessage downloadFile requires chat_id (space id), or file_id as space_id::message_id', {
-				code: 'bad_input'
-			})
-		}
 		return this.#client.downloadFile({
 			file_id: fileId,
-			chat_id: chatId,
+			...(input.chat_id && { chat_id: input.chat_id }),
 			...(input.file_name && { file_name: input.file_name })
 		})
 	}
@@ -129,12 +134,12 @@ export class ImessageMessagingProvider implements MessagingOps {
 	read(input: MessagingReadInput): Promise<void> {
 		return this.#client.read({
 			chat_id: input.chat_id,
-			message_id: input.message_id
+			...(input.message_id && { message_id: input.message_id })
 		})
 	}
 }
 
-/** Legacy composite: `space_id::message_id` when chat_id is omitted. */
+/** Legacy composite: `space_id::message_id` when chat_id is omitted (message_id is attachment guid). */
 function splitImessageFileRef(fileId: string): { chat_id?: string; file_id: string } {
 	const sep = '::'
 	const idx = fileId.indexOf(sep)
