@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-04T23:08:30.011Z",
+	"generatedAt": "2026-08-04T23:44:07.705Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -1077,6 +1077,8 @@
 				"ImessageDownloadFileInput",
 				"ImessageDownloadFileOutput",
 				"ImessageEditTextInput",
+				"ImessageEnsureChatInput",
+				"ImessageEnsureChatOutput",
 				"ImessageMessageOutput",
 				"ImessageReadInput",
 				"ImessageSendChatActionInput",
@@ -1099,6 +1101,8 @@
 				"imessageDownloadFileTool",
 				"imessageEditTextInputSchema",
 				"imessageEditTextTool",
+				"imessageEnsureChatInputSchema",
+				"imessageEnsureChatOutputSchema",
 				"imessageMessageOutputSchema",
 				"imessageModule",
 				"imessageOkOutputSchema",

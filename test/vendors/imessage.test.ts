@@ -137,6 +137,82 @@ describe('imessage', () => {
 		}
 	})
 
+	test('ensureChat posts to /v1/chats and returns chat_id', async () => {
+		const chatGuid = 'any;-;+15551234567'
+		const restore = mockFetch((url, init) => {
+			expect(url).toContain('/v1/chats')
+			expect(url).not.toContain('/v1/chats:')
+			expect(init?.method).toBe('POST')
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			expect(body.addresses).toEqual(['+15551234567'])
+			expect(body.initialMessage?.text ?? body.initial_message?.text).toBe('hi there')
+			return new Response(
+				JSON.stringify({
+					chat: {
+						guid: chatGuid,
+						displayName: '',
+						isGroup: false,
+						isArchived: false,
+						isFiltered: false,
+						service: 1,
+						participants: [{ address: '+15551234567', service: 1 }]
+					},
+					initialMessage: messageEnvelope('open-1', chatGuid, 'hi there').message
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
+		})
+
+		try {
+			const client = new ImessageClient(auth)
+			const result = await client.ensureChat({
+				addresses: ['+15551234567'],
+				message: 'hi there'
+			})
+			expect(result).toEqual({ chat_id: chatGuid, message_id: 'open-1' })
+		} finally {
+			restore()
+		}
+	})
+
+	test('ensureChat without opening message omits message_id', async () => {
+		const chatGuid = 'any;-;alice@example.com'
+		const restore = mockFetch((url, init) => {
+			expect(url).toContain('/v1/chats')
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			expect(body.addresses).toEqual(['alice@example.com', 'bob@example.com'])
+			expect(body.initialMessage ?? body.initial_message).toBeUndefined()
+			return new Response(
+				JSON.stringify({
+					chat: {
+						guid: chatGuid,
+						displayName: '',
+						isGroup: true,
+						isArchived: false,
+						isFiltered: false,
+						service: 1,
+						participants: [
+							{ address: 'alice@example.com', service: 1 },
+							{ address: 'bob@example.com', service: 1 }
+						]
+					}
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
+		})
+
+		try {
+			const client = new ImessageClient(auth)
+			const result = await client.ensureChat({
+				addresses: ['alice@example.com', 'bob@example.com']
+			})
+			expect(result).toEqual({ chat_id: chatGuid })
+			expect(result.message_id).toBeUndefined()
+		} finally {
+			restore()
+		}
+	})
+
 	test('sendText tool via withAuth', async () => {
 		const bound = withAuth(imessageModule, auth)
 		const tool = bound.tools.find((t) => t.id === 'imessage-send-text')

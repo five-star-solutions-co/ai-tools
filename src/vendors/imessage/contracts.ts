@@ -126,6 +126,33 @@ export const imessageDownloadFileOutputSchema = z.object({
 	body_base64: z.string().describe('Downloaded file body as base64')
 })
 
+/**
+ * Create (or resolve) a chat via Photon `chats.create`.
+ * Host-only proactive / contact-delivery path — not auto-run before sendText.
+ * One address = 1:1; two or more = group.
+ */
+export const imessageEnsureChatInputSchema = z.object({
+	addresses: z
+		.array(z.string().min(1))
+		.min(1)
+		.describe('Peer phone number(s) or email(s). One address creates a 1:1 chat; two or more create a group'),
+	message: z.string().min(1).optional().describe('Optional opening text sent in the same create call'),
+	client_message_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Optional idempotency key for chat creation and the optional opening send')
+})
+
+export const imessageEnsureChatOutputSchema = z.object({
+	chat_id: z.string().min(1).describe('Chat guid for later send, edit, react, or unsend'),
+	message_id: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Guid of the opening message when message was provided and the server returned one')
+})
+
 export type ImessageSendTextInput = z.infer<typeof imessageSendTextInputSchema>
 export type ImessageMessageOutput = z.infer<typeof imessageMessageOutputSchema>
 export type ImessageEditTextInput = z.infer<typeof imessageEditTextInputSchema>
@@ -137,3 +164,5 @@ export type ImessageClearReactionInput = z.infer<typeof imessageClearReactionInp
 export type ImessageSendMediaInput = z.infer<typeof imessageSendMediaInputSchema>
 export type ImessageDownloadFileInput = z.infer<typeof imessageDownloadFileInputSchema>
 export type ImessageDownloadFileOutput = z.infer<typeof imessageDownloadFileOutputSchema>
+export type ImessageEnsureChatInput = z.infer<typeof imessageEnsureChatInputSchema>
+export type ImessageEnsureChatOutput = z.infer<typeof imessageEnsureChatOutputSchema>

@@ -18,6 +18,8 @@ import type {
 	ImessageDownloadFileInput,
 	ImessageDownloadFileOutput,
 	ImessageEditTextInput,
+	ImessageEnsureChatInput,
+	ImessageEnsureChatOutput,
 	ImessageMessageOutput,
 	ImessageReadInput,
 	ImessageSendChatActionInput,
@@ -77,6 +79,27 @@ export class ImessageClient {
 	/** Release SDK resources. */
 	async close(): Promise<void> {
 		await this.#im.close()
+	}
+
+	/**
+	 * Create a chat (1:1 or group) via Photon `chats.create`.
+	 * Host-only: call once for contact / proactive delivery, store `chat_id`, then sendText.
+	 * Does **not** run automatically before sendText — most threads already exist from inbound user messages.
+	 */
+	async ensureChat(input: ImessageEnsureChatInput): Promise<ImessageEnsureChatOutput> {
+		try {
+			const created = await this.#im.chats.create(input.addresses, {
+				...(input.message && { message: input.message }),
+				...(input.client_message_id && { clientMessageId: input.client_message_id })
+			})
+			const out: ImessageEnsureChatOutput = { chat_id: created.chat.guid }
+			if (created.initialMessage?.guid) {
+				out.message_id = created.initialMessage.guid
+			}
+			return out
+		} catch (error) {
+			mapSdkError('iMessage ensureChat', error)
+		}
 	}
 
 	async sendText(input: ImessageSendTextInput): Promise<ImessageMessageOutput> {

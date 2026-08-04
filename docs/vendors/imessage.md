@@ -45,6 +45,21 @@ Native / Spectrum webhooks terminate on the **host**. This pack does not export 
 
 `chat_id` is the iMessage **chat guid** (e.g. `any;-;+15551111111`).
 
+### Host-only: `ensureChat` (no agent tool)
+
+Most chats already exist from **inbound** user messages. For rare **proactive / contact-delivery** flows (host opens first):
+
+```ts
+const { chat_id, message_id } = await client.ensureChat({
+  addresses: ['+15551234567'], // one = 1:1; two+ = group
+  message: 'optional opening text', // same Photon create call
+  // client_message_id?: '…'  // optional idempotency key
+})
+// persist chat_id on the conversation, then sendText / media as usual
+```
+
+Maps to Photon `chats.create`. **Not** auto-run before `sendText`. No `imessage-ensure-chat` tool — host client only.
+
 ### Reactions
 
 Tapbacks: `love`, `like`, `dislike`, `laugh`, `emphasize`, `question`.  
@@ -67,6 +82,9 @@ const client = new ImessageClient({
   address: process.env.IMESSAGE_HTTP_ADDRESS!,
   token: process.env.IMESSAGE_TOKEN!,
 })
+
+// Proactive only (rare): open chat, then send
+// const { chat_id } = await client.ensureChat({ addresses: ['+15551111111'] })
 
 await client.sendText({
   chat_id: 'any;-;+15551111111',
