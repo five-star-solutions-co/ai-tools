@@ -10,9 +10,9 @@ Tool: **[semantic-release](https://semantic-release.gitbook.io/)** on `main`.
 | Commit | Release |
 | --- | --- |
 | `feat:` / `feat(scope):` | **minor** |
-| `fix:` / `perf:` / `revert:` | **patch** |
+| `fix:` / `perf:` / `refactor:` / `revert:` | **patch** |
 | `BREAKING CHANGE:` in body or `type!:` | **major** |
-| `chore:` `docs:` `test:` `ci:` `style:` `refactor:` `build:` | no release |
+| `chore:` `docs:` `test:` `ci:` `style:` `build:` | no release |
 
 ```text
 push to main

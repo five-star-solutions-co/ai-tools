@@ -211,7 +211,7 @@ Codegen owns `package.json` exports for packs under `src/modules|vendors/<key>/`
 | Commit | Version |
 | --- | --- |
 | `feat:` | minor |
-| `fix:` / `perf:` | patch |
+| `fix:` / `perf:` / `refactor:` | patch |
 | `BREAKING CHANGE` / `type!:` | major |
 
 Details: [docs/versioning.md](./docs/versioning.md).

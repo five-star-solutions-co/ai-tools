@@ -15,15 +15,15 @@ export default {
 					{ type: 'feat', release: 'minor' },
 					{ type: 'fix', release: 'patch' },
 					{ type: 'perf', release: 'patch' },
+					{ type: 'refactor', release: 'patch' },
 					{ type: 'revert', release: 'patch' },
 					{ breaking: true, release: 'major' },
-					// No release for docs/chore/test/ci/style/refactor by default
+					// Only pure non-product noise stays off the version train
 					{ type: 'docs', release: false },
 					{ type: 'chore', release: false },
 					{ type: 'test', release: false },
 					{ type: 'ci', release: false },
 					{ type: 'style', release: false },
-					{ type: 'refactor', release: false },
 					{ type: 'build', release: false }
 				]
 			}
