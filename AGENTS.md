@@ -104,8 +104,9 @@ import { telegramModule } from '@harryy/ai-tools/telegram'           // vendor (
 import { S3Client, s3Module } from '@harryy/ai-tools/s3'             // vendor (object store)
 ```
 
-- Codegen owns `package.json` `exports`, `tsdown.config.ts`, `generated/*`, `src/generated/module-keys.ts`.
-- Never hand-edit those; run `bun run codegen` after adding a pack under `src/modules|vendors/<key>/` with `index.ts`.
+- Codegen owns `package.json` `exports`, `generated/*` (including `module-manifest.json`), `src/generated/module-keys.ts`.
+- `tsdown.config.ts` is hand-maintained for build options; its **entry map is loaded from** `generated/module-manifest.json` at build time — do not paste pack paths into it.
+- Never hand-edit codegen-owned files; run `bun run codegen` after adding a pack under `src/modules|vendors/<key>/` with `index.ts`.
 - Do **not** nest public imports (`@harryy/ai-tools/vendors/resend`).
 
 ### R4 — Client + tools + adapters (not “everything is a class”)

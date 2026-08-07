@@ -5,7 +5,7 @@ import path from 'node:path'
 import { describe, expect, test } from 'bun:test'
 
 import { discoverModules } from '../scripts/codegen/discover'
-import { renderPackageExports, renderTsdownConfig } from '../scripts/codegen/render'
+import { renderPackageExports } from '../scripts/codegen/render'
 
 describe('codegen discover (oxc-parser)', () => {
 	test('discovers modules and extracts defineModule id from AST', async () => {
@@ -82,20 +82,6 @@ export const demoEchoModule = defineModule({
 			types: './dist/modules/demo-echo/index.d.ts',
 			default: './dist/modules/demo-echo/index.js'
 		})
-
-		const tsdown = renderTsdownConfig([
-			{
-				key: 'demo-echo',
-				lane: 'modules',
-				entryPath: '/x',
-				entryRelative: 'src/modules/demo-echo/index.ts',
-				entryKey: 'modules/demo-echo/index',
-				exportNames: ['demoEchoModule'],
-				runtime: 'both'
-			}
-		])
-		expect(tsdown).toContain("'modules/demo-echo/index': 'src/modules/demo-echo/index.ts'")
-		expect(tsdown).toContain('AUTO-GENERATED')
 	})
 })
 
@@ -104,8 +90,14 @@ describe('repo codegen artifacts', () => {
 		const manifestPath = path.join(import.meta.dir, '../generated/module-manifest.json')
 		const raw = await readFile(manifestPath, 'utf8')
 		const manifest = JSON.parse(raw) as {
-			brain: Array<{ exportKey: string; runtime: string; nodeFormats: string[] }>
-			modules: Array<{ key: string; runtime: string; nodeFormats: string[] }>
+			brain: Array<{ exportKey: string; entryKey: string; source: string; runtime: string; nodeFormats: string[] }>
+			modules: Array<{
+				key: string
+				entry: string
+				entryKey: string
+				runtime: string
+				nodeFormats: string[]
+			}>
 		}
 		expect(manifest.brain.map((b) => b.exportKey)).toContain('core')
 		expect(manifest.brain.map((b) => b.exportKey)).toContain('mcp')
@@ -113,5 +105,30 @@ describe('repo codegen artifacts', () => {
 		expect(manifest.modules.every((surface) => ['node', 'edge', 'both'].includes(surface.runtime))).toBe(true)
 		expect(manifest.modules.find((surface) => surface.key === 'document')?.nodeFormats).toEqual(['esm', 'cjs'])
 		expect(manifest.modules.find((surface) => surface.key === 'presentation')?.nodeFormats).toEqual(['esm', 'cjs'])
+	})
+
+	test('tsdown entry is derived from module-manifest (not a generated entry dump)', async () => {
+		const manifestPath = path.join(import.meta.dir, '../generated/module-manifest.json')
+		const configPath = path.join(import.meta.dir, '../tsdown.config.ts')
+		const config = await readFile(configPath, 'utf8')
+		expect(config).toContain('module-manifest.json')
+		expect(config).not.toContain('AUTO-GENERATED')
+
+		const raw = await readFile(manifestPath, 'utf8')
+		const manifest = JSON.parse(raw) as {
+			brain: Array<{ entryKey: string; source: string }>
+			modules: Array<{ entryKey: string; entry: string }>
+		}
+		expect(manifest.brain.length).toBeGreaterThan(0)
+		expect(manifest.modules.some((m) => m.entryKey.includes('slack'))).toBe(true)
+		// Build would fail if keys/paths were empty; assert every surface has both sides.
+		for (const b of manifest.brain) {
+			expect(b.entryKey.length).toBeGreaterThan(0)
+			expect(b.source.startsWith('src/')).toBe(true)
+		}
+		for (const m of manifest.modules) {
+			expect(m.entryKey.length).toBeGreaterThan(0)
+			expect(m.entry.startsWith('src/')).toBe(true)
+		}
 	})
 })

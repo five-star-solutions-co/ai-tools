@@ -79,7 +79,9 @@ export class TeamsMessagingProvider implements MessagingOps {
 		return
 	}
 
-	/** Presentation no-op via TeamsClient (Bot Framework has no bot reaction API). */
+	/**
+	 * Graph reactions when Teams auth has tenant_id; otherwise client no-op.
+	 */
 	async setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {
 		await this.#client.setReaction({
 			chat_id: input.chat_id,
@@ -89,11 +91,15 @@ export class TeamsMessagingProvider implements MessagingOps {
 		return {}
 	}
 
-	/** Presentation no-op — see setReaction. */
+	/**
+	 * Graph unsetReaction when tenant_id bound; requires emoji for Graph.
+	 * Without tenant_id, client no-ops.
+	 */
 	clearReaction(input: MessagingClearReactionInput): Promise<void> {
 		return this.#client.clearReaction({
 			chat_id: input.chat_id,
-			message_id: input.message_id
+			message_id: input.message_id,
+			...(input.emoji && { emoji: input.emoji })
 		})
 	}
 

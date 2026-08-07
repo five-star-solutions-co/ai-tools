@@ -31,7 +31,7 @@ Read first, in order:
 | `vendors/_messaging/` | Live message helpers |
 | `vendors/_vector/` | **Same as `_storage`:** schemas on barrel; parse helpers only in `domain.ts` (import `../_vector/domain`, **not** from kit barrel) |
 
-Codegen **skips** `_foo`. Never hand-edit `package.json` exports / `tsdown.config.ts` / `generated/*` — run `bun run codegen`.
+Codegen **skips** `_foo`. Never hand-edit `package.json` exports / `generated/*` — run `bun run codegen`. `tsdown.config.ts` loads entry from `module-manifest.json` (do not paste pack paths there).
 
 ### Gold files (copy these)
 

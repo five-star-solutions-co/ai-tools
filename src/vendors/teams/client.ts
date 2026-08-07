@@ -36,6 +36,8 @@ import {
 	buildTypingActivity,
 	conversationActivitiesPath,
 	conversationActivityPath,
+	graphReactionUrl,
+	graphTokenBody,
 	isAbsoluteHttpUrl,
 	isTeamsDefiniteRejection,
 	isTeamsOutcomeUnknown,
@@ -44,7 +46,8 @@ import {
 	parseDownload,
 	TeamsClientError,
 	throwForStatus,
-	throwTeamsTransportError
+	throwTeamsTransportError,
+	toGraphReactionType
 } from './domain'
 
 export type TeamsClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
@@ -54,6 +57,8 @@ export class TeamsClient {
 	readonly #http: HttpService
 	#accessToken: string | undefined
 	#accessTokenExpiresAt = 0
+	#graphToken: string | undefined
+	#graphTokenExpiresAt = 0
 
 	constructor(auth: TeamsAuth, options: TeamsClientOptions = {}) {
 		const parsed = teamsAuthSchema.safeParse(auth)
@@ -179,18 +184,95 @@ export class TeamsClient {
 	}
 
 	/**
-	 * Presentation no-op. Teams Bot Framework has limited bot reaction support;
-	 * ChannelTransport still exposes setReaction so live seams stay uniform.
+	 * Add a reaction via Microsoft Graph when `tenant_id` is bound on auth.
+	 * Without `tenant_id`, succeeds as a no-op (Bot Framework has no reaction write).
+	 * Channel messages: pass `team_id` + `channel_id`; otherwise uses chat path with `chat_id`.
 	 */
-	async setReaction(_input: TeamsSetReactionInput): Promise<void> {
-		return
+	async setReaction(input: TeamsSetReactionInput): Promise<void> {
+		if (!this.#auth.tenant_id) return
+		await this.#graphReaction('setReaction', input)
 	}
 
 	/**
-	 * Presentation no-op. See setReaction.
+	 * Remove a reaction via Graph when `tenant_id` is bound. Requires `emoji` matching setReaction.
+	 * Without `tenant_id`, succeeds as a no-op.
 	 */
-	async clearReaction(_input: TeamsClearReactionInput): Promise<void> {
-		return
+	async clearReaction(input: TeamsClearReactionInput): Promise<void> {
+		if (!this.#auth.tenant_id) return
+		if (!input.emoji) {
+			throw new ToolError('Teams clearReaction requires emoji when using Graph reactions (tenant_id bound)', {
+				code: 'bad_input'
+			})
+		}
+		await this.#graphReaction('unsetReaction', {
+			chat_id: input.chat_id,
+			message_id: input.message_id,
+			emoji: input.emoji,
+			...(input.team_id && { team_id: input.team_id }),
+			...(input.channel_id && { channel_id: input.channel_id })
+		})
+	}
+
+	async #ensureGraphToken(): Promise<string> {
+		const tenantId = this.#auth.tenant_id
+		if (!tenantId) {
+			throw new ToolError('Teams Graph reactions require tenant_id on auth', { code: 'bad_auth' })
+		}
+		const now = Date.now()
+		if (this.#graphToken && now < this.#graphTokenExpiresAt - 60_000) {
+			return this.#graphToken
+		}
+		try {
+			const { data } = await this.#http.post(botframeworkTokenUrl(tenantId), graphTokenBody(this.#auth), {
+				label: 'Teams Graph token',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+			})
+			const token = parseAccessToken(data)
+			this.#graphToken = token.access_token
+			this.#graphTokenExpiresAt = now + token.expires_in * 1000
+			return token.access_token
+		} catch (error) {
+			throwTeamsTransportError('Teams Graph token', error)
+		}
+	}
+
+	async #graphReaction(
+		op: 'setReaction' | 'unsetReaction',
+		input: {
+			chat_id: string
+			message_id: string
+			emoji: string
+			team_id?: string | undefined
+			channel_id?: string | undefined
+		}
+	): Promise<void> {
+		const token = await this.#ensureGraphToken()
+		const url = graphReactionUrl({
+			chat_id: input.chat_id,
+			message_id: input.message_id,
+			op,
+			...(input.team_id && { team_id: input.team_id }),
+			...(input.channel_id && { channel_id: input.channel_id })
+		})
+		const label = op === 'setReaction' ? 'Teams Graph setReaction' : 'Teams Graph unsetReaction'
+		let res: Awaited<ReturnType<HttpService['post']>>
+		try {
+			res = await this.#http.post(
+				url,
+				{ reactionType: toGraphReactionType(input.emoji) },
+				{
+					label,
+					noThrow: true,
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json; charset=utf-8'
+					}
+				}
+			)
+		} catch (error) {
+			throwTeamsTransportError(label, error)
+		}
+		if (!res.ok) throwForStatus(label, res.status, res.data)
 	}
 
 	/** POST message with data-URI attachment (small files). */

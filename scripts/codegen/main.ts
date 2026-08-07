@@ -3,13 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { discoverModules } from './discover'
-import {
-	renderGeneratedModulesTs,
-	renderModuleManifest,
-	renderPackageExports,
-	renderPackLogosTs,
-	renderTsdownConfig
-} from './render'
+import { renderGeneratedModulesTs, renderModuleManifest, renderPackageExports, renderPackLogosTs } from './render'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -51,9 +45,9 @@ export async function runCodegen(options: { checkOnly?: boolean } = {}): Promise
 	packageJson['exports'] = renderPackageExports(modules)
 	const packageText = `${JSON.stringify(packageJson, null, '\t')}\n`
 
+	// tsdown.config.ts is hand-maintained; it loads entry from module-manifest.json at build time.
 	const targets: Array<{ relative: string; content: string }> = [
 		{ relative: 'package.json', content: packageText },
-		{ relative: 'tsdown.config.ts', content: renderTsdownConfig(modules) },
 		{
 			relative: 'generated/module-manifest.json',
 			content: `${JSON.stringify(renderModuleManifest(modules, { repoRoot }), null, '\t')}\n`

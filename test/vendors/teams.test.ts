@@ -194,10 +194,34 @@ describe('teams module', () => {
 		}
 	})
 
-	test('setReaction and clearReaction are successful no-ops', async () => {
+	test('setReaction and clearReaction are no-ops without tenant_id', async () => {
 		const client = new TeamsClient(auth)
 		await client.setReaction({ chat_id: 'c', message_id: 'm', emoji: '👍' })
-		await client.clearReaction({ chat_id: 'c', message_id: 'm' })
+		await client.clearReaction({ chat_id: 'c', message_id: 'm', emoji: '👍' })
+	})
+
+	test('setReaction uses Graph when tenant_id is bound', async () => {
+		const calls: string[] = []
+		const restore = mockFetch((url, _headers, init) => {
+			calls.push(url)
+			if (url.includes('login.microsoftonline.com')) {
+				return new Response(JSON.stringify({ access_token: 'g-tok', expires_in: 3600 }), { status: 200 })
+			}
+			if (url.includes('graph.microsoft.com') && url.includes('setReaction')) {
+				expect(url).toContain('/chats/chat-1/messages/')
+				const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+				expect(body.reactionType).toBe('👍')
+				return new Response(null, { status: 204 })
+			}
+			return new Response(JSON.stringify({ message: 'unexpected ' + url }), { status: 500 })
+		})
+		try {
+			const client = new TeamsClient({ ...auth, tenant_id: 'tid-1' })
+			await client.setReaction({ chat_id: 'chat-1', message_id: 'msg-1', emoji: 'like' })
+			expect(calls.some((u) => u.includes('graph.microsoft.com'))).toBe(true)
+		} finally {
+			restore()
+		}
 	})
 
 	test('getBot returns identity from auth', async () => {

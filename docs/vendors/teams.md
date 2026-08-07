@@ -55,8 +55,20 @@ Bot Framework connector base is **per conversation**. Inbound activities carry `
 | `editText` | `PUT {service_url}/v3/conversations/{chat_id}/activities/{message_id}` |
 | `downloadFile` | `GET {file_id}` (content URL) with bearer token |
 | `answerCallback` | `POST` absolute reply URL when `callback_query_id` is http(s); else no-op |
-| `setReaction` / `clearReaction` | successful presentation no-ops (limited BF reaction support) |
+| `setReaction` / `clearReaction` | **Graph** `setReaction` / `unsetReaction` when auth has `tenant_id`; else no-op |
 | `getBot` | local identity from bound `app_id` |
+
+### Graph reactions
+
+Bind a real Azure AD `tenant_id` (not multi-tenant `botframework.com` only). App registration needs Graph application permissions that allow chat/channel message reactions (e.g. `ChatMessage.ReadWrite` / channel equivalents — host scopes).
+
+```ts
+const client = new TeamsClient({ app_id, app_password, tenant_id })
+await client.setReaction({ chat_id, message_id, emoji: '👍' })
+// channel path:
+await client.setReaction({ chat_id, message_id, emoji: '❤️', team_id, channel_id })
+await client.clearReaction({ chat_id, message_id, emoji: '👍' }) // emoji required for Graph
+```
 
 ## Helpers
 

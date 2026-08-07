@@ -59,7 +59,7 @@ defineTool / defineModule  (kernel — only real tool definitions)
 
 - Auth is **host-bound only** (`constructor` / `withAuth` / `ctx.auth`). **Never** on tool inputs.
 - Public imports are **flat**: `@harryy/ai-tools/resend`, not `@harryy/ai-tools/vendors/resend`.
-- Codegen owns `package.json` exports, `tsdown.config.ts`, `generated/module-manifest.json`, `src/generated/module-keys.ts`.
+- Codegen owns `package.json` exports, `generated/module-manifest.json`, `src/generated/module-keys.ts`. `tsdown.config.ts` is hand shell; entry from the manifest.
 
 ### 1.3 modules vs vendors
 

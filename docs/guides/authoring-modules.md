@@ -96,9 +96,10 @@ export const resendSendTool = defineTool({
 Do **not** hand-edit:
 
 - `package.json` → `exports` (pack entries)
-- `tsdown.config.ts` entry map
-- `generated/module-manifest.json`
+- `generated/module-manifest.json` (source of truth for pack + brain paths)
 - `src/generated/module-keys.ts`
+
+`tsdown.config.ts` is hand-maintained for format/dts/deps only. It **reads entry from** `generated/module-manifest.json` — do not paste `modules/…` or `vendors/…` paths into it.
 
 Run `bun run codegen` (also part of `build`). `codegen:check` fails CI on drift.
 

@@ -15,6 +15,7 @@ Documentation hub. Root [README](../README.md) is the short entry point; this tr
 | [Changelog](../CHANGELOG.md) | Released notes |
 | [Repo review / gap backlog](./handoffs/repo-review-standards-and-gaps.md) | Standards dump + G-task backlog (not an architecture lock) |
 | [Working inventory](./roadmap/package-surface-working.md) | Delivery status board |
+| [Channel vendor gaps](./roadmap/channel-vendor-gaps.md) | Slack/Teams/iMessage production gaps vs packs |
 | [Document plane](./specs/document-plane.md) | Locked reader, builder, edit, and explicit-converter product scope |
 
 **Authority when docs disagree:** `AGENTS.md` → shipped code + gold files → specs (`provider-seam`, http/aws) → pack docs → architecture + working roadmap.

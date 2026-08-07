@@ -2,9 +2,9 @@
  * Microsoft Teams / Bot Framework payload shaping + parse.
  * No HTTP — client owns transport.
  *
- * Reactions: Bot Framework / Teams has limited reaction support for bots.
- * setReaction / clearReaction are successful no-ops so ChannelTransport seam
- * methods remain callable without failing the live presentation path.
+ * Reactions: Microsoft Graph setReaction / unsetReaction when host binds tenant_id
+ * (app-only Graph token). Without tenant_id the client keeps successful no-ops so
+ * seam presentation paths do not hard-fail.
  */
 
 import { isPlainObject, isString, trimEnd } from 'es-toolkit'
@@ -95,6 +95,65 @@ export function botframeworkTokenBody(auth: { app_id: string; app_password: stri
 		client_secret: auth.app_password,
 		scope: 'https://api.botframework.com/.default'
 	}).toString()
+}
+
+/** App-only Graph token (same client credentials; requires a real Azure AD tenant_id). */
+export function graphTokenBody(auth: { app_id: string; app_password: string }): string {
+	return new URLSearchParams({
+		grant_type: 'client_credentials',
+		client_id: auth.app_id,
+		client_secret: auth.app_password,
+		scope: 'https://graph.microsoft.com/.default'
+	}).toString()
+}
+
+/**
+ * Graph reaction URL.
+ * Channel path when team_id + channel_id are set; otherwise chat path using chat_id.
+ */
+export function graphReactionUrl(input: {
+	chat_id: string
+	message_id: string
+	team_id?: string | undefined
+	channel_id?: string | undefined
+	op: 'setReaction' | 'unsetReaction'
+}): string {
+	const messageId = encodeURIComponent(input.message_id)
+	if (input.team_id && input.channel_id) {
+		return (
+			`https://graph.microsoft.com/v1.0/teams/${encodeURIComponent(input.team_id)}` +
+			`/channels/${encodeURIComponent(input.channel_id)}/messages/${messageId}/${input.op}`
+		)
+	}
+	return `https://graph.microsoft.com/v1.0/chats/${encodeURIComponent(input.chat_id)}/messages/${messageId}/${input.op}`
+}
+
+/** Map free-form emoji / short name to a Graph reactionType string (unicode preferred). */
+export function toGraphReactionType(emoji: string): string {
+	const trimmed = emoji.trim()
+	const lower = trimmed.toLowerCase().replace(/^:|:$/g, '')
+	switch (lower) {
+		case 'like':
+		case 'thumbsup':
+		case '+1':
+			return '👍'
+		case 'heart':
+		case 'love':
+			return '❤️'
+		case 'laugh':
+		case 'joy':
+			return '😂'
+		case 'surprised':
+		case 'open_mouth':
+			return '😲'
+		case 'sad':
+		case 'cry':
+			return '😢'
+		case 'angry':
+			return '😠'
+		default:
+			return trimmed
+	}
 }
 
 export function parseAccessToken(data: unknown): { access_token: string; expires_in: number } {

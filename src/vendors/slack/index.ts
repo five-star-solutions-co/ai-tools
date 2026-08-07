@@ -3,9 +3,18 @@ export type { SlackClientOptions } from './client'
 export { isSlackDefiniteRejection, isSlackOutcomeUnknown, SlackClientError } from './client'
 export {
 	MAX_MEDIA_BYTES,
+	MAX_SLACK_MEDIA_BATCH,
 	slackAnswerCallbackInputSchema,
+	slackAppendStreamInputSchema,
+	slackAuthRevokeInputSchema,
+	slackAuthRevokeOutputSchema,
 	slackAuthSchema,
 	slackClearReactionInputSchema,
+	slackConversationHistoryInputSchema,
+	slackConversationInfoInputSchema,
+	slackConversationInfoOutputSchema,
+	slackConversationMessagesOutputSchema,
+	slackConversationRepliesInputSchema,
 	slackDownloadFileInputSchema,
 	slackDownloadFileOutputSchema,
 	slackEditTextInputSchema,
@@ -15,16 +24,35 @@ export {
 	slackMessageOutputSchema,
 	slackOkOutputSchema,
 	slackPostEphemeralInputSchema,
+	slackPublishHomeInputSchema,
 	slackSendChatActionInputSchema,
+	slackSendMediaBatchInputSchema,
+	slackSendMediaBatchItemSchema,
+	slackSendMediaBatchOutputSchema,
 	slackSendMediaInputSchema,
 	slackSendTextInputSchema,
+	slackSetAssistantStatusInputSchema,
 	slackSetReactionInputSchema,
-	slackStopTypingInputSchema
+	slackSetSuggestedPromptsInputSchema,
+	slackStartStreamInputSchema,
+	slackStopStreamInputSchema,
+	slackStopTypingInputSchema,
+	slackUsersConversationsInputSchema,
+	slackUsersInfoInputSchema,
+	slackUsersInfoOutputSchema
 } from './contracts'
 export type {
 	SlackAnswerCallbackInput,
+	SlackAppendStreamInput,
 	SlackAuth,
+	SlackAuthRevokeInput,
+	SlackAuthRevokeOutput,
 	SlackClearReactionInput,
+	SlackConversationHistoryInput,
+	SlackConversationInfoInput,
+	SlackConversationInfoOutput,
+	SlackConversationMessagesOutput,
+	SlackConversationRepliesInput,
 	SlackDownloadFileInput,
 	SlackDownloadFileOutput,
 	SlackEditTextInput,
@@ -33,11 +61,22 @@ export type {
 	SlackListConversationsOutput,
 	SlackMessageOutput,
 	SlackPostEphemeralInput,
+	SlackPublishHomeInput,
 	SlackSendChatActionInput,
+	SlackSendMediaBatchInput,
+	SlackSendMediaBatchItem,
+	SlackSendMediaBatchOutput,
 	SlackSendMediaInput,
 	SlackSendTextInput,
+	SlackSetAssistantStatusInput,
 	SlackSetReactionInput,
-	SlackStopTypingInput
+	SlackSetSuggestedPromptsInput,
+	SlackStartStreamInput,
+	SlackStopStreamInput,
+	SlackStopTypingInput,
+	SlackUsersConversationsInput,
+	SlackUsersInfoInput,
+	SlackUsersInfoOutput
 } from './contracts'
 export {
 	slackAnswerCallbackTool,
@@ -51,6 +90,15 @@ export {
 	slackSendTextTool,
 	slackSetReactionTool
 } from './module'
+export {
+	extractSlackChannelRefs,
+	extractSlackUserMentions,
+	formatSlackChannelRef,
+	formatSlackMessagePermalink,
+	formatSlackUserMention,
+	slackMrkdwnToPlainText,
+	stripLeadingSlackBotMention
+} from './reference'
 export { parseSlackEvent, verifySlackRequestSignature } from './webhook'
 export type { ParseSlackEventResult, SlackInboundEvent, SlackInboundMedia } from './webhook'
 export { createLiveMessage, createTypingPulse } from '../_messaging'

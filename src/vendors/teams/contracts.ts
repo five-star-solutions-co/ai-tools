@@ -61,14 +61,28 @@ export const teamsSendChatActionInputSchema = z.object({
 })
 
 export const teamsSetReactionInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Teams conversation id'),
-	message_id: z.string().min(1).describe('Activity id'),
-	emoji: z.string().min(1).max(32).describe('Emoji reaction (presentation no-op on Teams)')
+	chat_id: z.string().min(1).describe('Teams chat or conversation id (Graph chat id when using Graph reactions)'),
+	message_id: z.string().min(1).describe('Message / activity id'),
+	emoji: z
+		.string()
+		.min(1)
+		.max(32)
+		.describe('Emoji or short name (like, heart, …); Graph setReaction when tenant_id is bound'),
+	team_id: z.string().min(1).optional().describe('Team id for channel-message Graph path'),
+	channel_id: z.string().min(1).optional().describe('Channel id for channel-message Graph path')
 })
 
 export const teamsClearReactionInputSchema = z.object({
-	chat_id: z.string().min(1).describe('Teams conversation id'),
-	message_id: z.string().min(1).describe('Activity id')
+	chat_id: z.string().min(1).describe('Teams chat or conversation id'),
+	message_id: z.string().min(1).describe('Message / activity id'),
+	emoji: z
+		.string()
+		.min(1)
+		.max(32)
+		.optional()
+		.describe('Same emoji/short name as setReaction; required for Graph unsetReaction'),
+	team_id: z.string().min(1).optional().describe('Team id for channel-message Graph path'),
+	channel_id: z.string().min(1).optional().describe('Channel id for channel-message Graph path')
 })
 
 export const teamsSendMediaInputSchema = z.object({

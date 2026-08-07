@@ -8,12 +8,15 @@ import { isPlainObject, isString } from 'es-toolkit'
 import { ToolError } from '../../core/errors'
 import { base64ToBytes, bytesToBase64, toArrayBuffer } from '../../shared/bytes'
 import type {
+	SlackConversationInfoOutput,
+	SlackConversationMessagesOutput,
 	SlackDownloadFileInput,
 	SlackDownloadFileOutput,
 	SlackGetBotOutput,
 	SlackListConversationsOutput,
 	SlackMessageOutput,
-	SlackSendMediaInput
+	SlackSendMediaBatchOutput,
+	SlackUsersInfoOutput
 } from './contracts'
 import { MAX_MEDIA_BYTES } from './contracts'
 
@@ -299,24 +302,15 @@ export function parseConversationsList(value: Record<string, unknown>): SlackLis
 			...(typeof row['is_private'] === 'boolean' && { is_private: row['is_private'] })
 		})
 	}
-	const metadata = value['response_metadata']
-	const nextCursor =
-		isPlainObject(metadata) && isString(metadata['next_cursor']) && metadata['next_cursor'].length > 0
-			? metadata['next_cursor']
-			: undefined
+	const nextCursor = nextCursorFrom(value)
 	return {
 		channels,
 		...(nextCursor && { next_cursor: nextCursor })
 	}
 }
 
-export function decodeMediaBytes(bodyBase64: string): Uint8Array {
-	let bytes: Uint8Array
-	try {
-		bytes = base64ToBytes(bodyBase64)
-	} catch (error) {
-		throw new ToolError('Invalid base64 body', { code: 'bad_input', cause: error })
-	}
+/** Empty + size checks shared by base64 and raw-byte media paths. */
+function assertMediaBytes(bytes: Uint8Array): Uint8Array {
 	if (bytes.byteLength === 0) {
 		throw new ToolError('Media body must not be empty', { code: 'bad_input' })
 	}
@@ -329,9 +323,120 @@ export function decodeMediaBytes(bodyBase64: string): Uint8Array {
 	return bytes
 }
 
-export function mediaArrayBuffer(input: SlackSendMediaInput): { bytes: Uint8Array; body: ArrayBuffer } {
-	const bytes = decodeMediaBytes(input.body_base64)
+export function decodeMediaBytes(bodyBase64: string): Uint8Array {
+	let bytes: Uint8Array
+	try {
+		bytes = base64ToBytes(bodyBase64)
+	} catch (error) {
+		throw new ToolError('Invalid base64 body', { code: 'bad_input', cause: error })
+	}
+	return assertMediaBytes(bytes)
+}
+
+/** Host may pass raw bytes instead of base64 (client path only). */
+export function resolveMediaBytes(input: { body_base64?: string | undefined; body?: Uint8Array | undefined }): {
+	bytes: Uint8Array
+	body: ArrayBuffer
+} {
+	const bytes =
+		input.body !== undefined
+			? assertMediaBytes(input.body)
+			: input.body_base64
+				? decodeMediaBytes(input.body_base64)
+				: undefined
+	if (!bytes) {
+		throw new ToolError('Media requires body_base64 or body (Uint8Array)', { code: 'bad_input' })
+	}
 	return { bytes, body: toArrayBuffer(bytes) }
+}
+
+function nextCursorFrom(value: Record<string, unknown>): string | undefined {
+	const metadata = value['response_metadata']
+	return isPlainObject(metadata) ? firstString(metadata['next_cursor']) : undefined
+}
+
+export function parseUsersInfo(value: Record<string, unknown>): SlackUsersInfoOutput {
+	const user = value['user']
+	if (!isPlainObject(user) || !isString(user['id'])) {
+		throw new ToolError('Slack users.info returned invalid payload', { code: 'upstream' })
+	}
+	const profile = isPlainObject(user['profile']) ? user['profile'] : undefined
+	const out: SlackUsersInfoOutput = { user_id: user['id'] }
+	const name = firstString(user['name'])
+	if (name) out.name = name
+	const realName = firstString(user['real_name'])
+	if (realName) out.real_name = realName
+	const displayName = firstString(profile?.['display_name'], profile?.['real_name'], user['real_name'])
+	if (displayName) out.display_name = displayName
+	if (typeof user['is_bot'] === 'boolean') out.is_bot = user['is_bot']
+	const tz = firstString(user['tz'])
+	if (tz) out.tz = tz
+	if (profile) out.profile = profile
+	return out
+}
+
+export function parseConversationInfo(value: Record<string, unknown>): SlackConversationInfoOutput {
+	const channel = value['channel']
+	if (!isPlainObject(channel) || !isString(channel['id'])) {
+		throw new ToolError('Slack conversations.info returned invalid payload', { code: 'upstream' })
+	}
+	const out: SlackConversationInfoOutput = { id: channel['id'], raw: channel }
+	const name = firstString(channel['name'])
+	if (name) out.name = name
+	if (typeof channel['is_channel'] === 'boolean') out.is_channel = channel['is_channel']
+	if (typeof channel['is_im'] === 'boolean') out.is_im = channel['is_im']
+	if (typeof channel['is_mpim'] === 'boolean') out.is_mpim = channel['is_mpim']
+	if (typeof channel['is_private'] === 'boolean') out.is_private = channel['is_private']
+	if (typeof channel['is_archived'] === 'boolean') out.is_archived = channel['is_archived']
+	if (typeof channel['num_members'] === 'number') out.num_members = channel['num_members']
+	return out
+}
+
+export function parseConversationMessages(value: Record<string, unknown>): SlackConversationMessagesOutput {
+	const messagesRaw = value['messages']
+	if (!Array.isArray(messagesRaw)) {
+		throw new ToolError('Slack conversation messages payload invalid', { code: 'upstream' })
+	}
+	const out: SlackConversationMessagesOutput = {
+		messages: messagesRaw.filter(isPlainObject)
+	}
+	const nextCursor = nextCursorFrom(value)
+	if (nextCursor) out.next_cursor = nextCursor
+	if (typeof value['has_more'] === 'boolean') out.has_more = value['has_more']
+	return out
+}
+
+export function parseAuthRevoke(value: Record<string, unknown>): { revoked: boolean } {
+	return { revoked: value['revoked'] === true }
+}
+
+export function parseStreamTs(value: Record<string, unknown>): SlackMessageOutput {
+	const ts = firstString(value['ts'])
+	if (!ts) {
+		throw new ToolError('Slack stream API returned invalid payload (missing ts)', { code: 'upstream' })
+	}
+	return { message_id: ts }
+}
+
+export function parseUploadBatchComplete(
+	value: Record<string, unknown>,
+	knownFileIds: string[]
+): SlackSendMediaBatchOutput {
+	const files = Array.isArray(value['files']) ? value['files'] : []
+	const fromResponse: string[] = []
+	for (const file of files) {
+		if (isPlainObject(file)) {
+			const id = firstString(file['id'])
+			if (id) fromResponse.push(id)
+		}
+	}
+	const fileIds = fromResponse.length > 0 ? fromResponse : knownFileIds
+	const first = isPlainObject(files[0]) ? files[0] : undefined
+	const messageId = (first ? extractTsFromShares(first['shares']) : undefined) ?? fileIds[0]
+	if (!messageId || fileIds.length === 0) {
+		throw new ToolError('Slack files.completeUploadExternal returned no file ids', { code: 'upstream' })
+	}
+	return { message_id: messageId, file_ids: fileIds }
 }
 
 export function isHttpsUrl(value: string): boolean {

@@ -34,6 +34,18 @@ const client = new SlackClient({ bot_token: 'xoxb-…' })
 | `getBot` | `slack-get-bot` | `auth.test` |
 | `postEphemeral` | client only | `chat.postEphemeral` |
 | `listConversations` | client only | `conversations.list` |
+| `setAssistantStatus` | client only | full `assistant.threads.setStatus` (+ `loading_messages`) |
+| `setSuggestedPrompts` | client only | `assistant.threads.setSuggestedPrompts` |
+| `publishHome` | client only | `views.publish` |
+| `startStream` / `appendStream` / `stopStream` | client only | `chat.*Stream` |
+| `authRevoke` | client only | `auth.revoke` |
+| `usersInfo` | client only | `users.info` |
+| `usersConversations` | client only | `users.conversations` |
+| `conversationsInfo` / `History` / `Replies` | client only | authorized reference reads |
+| `sendMediaBatch` | client only | multi-file external upload (one complete) |
+| `downloadFileBytes` | client only | same as download without base64 |
+
+Host media may pass `body: Uint8Array` instead of `body_base64` on `sendMedia` / `sendMediaBatch`.
 
 ## Helpers
 
@@ -41,6 +53,9 @@ const client = new SlackClient({ bot_token: 'xoxb-…' })
 | --- | --- |
 | `verifySlackRequestSignature` | HMAC-SHA256 `v0:{ts}:{body}` vs `X-Slack-Signature` |
 | `parseSlackEvent` | Events API / interactive body → normalized inbound event or challenge |
+| `extractSlackUserMentions` / `extractSlackChannelRefs` | parse mrkdwn references |
+| `formatSlackUserMention` / `formatSlackChannelRef` / `formatSlackMessagePermalink` | build mrkdwn / archive URLs |
+| `stripLeadingSlackBotMention` / `slackMrkdwnToPlainText` | inbound text cleanup |
 | `createLiveMessage` | progressive `start` / `update` / `finalize` |
 | `createTypingPulse` | renew chat action while work runs |
 | `isSlackDefiniteRejection` / `isSlackOutcomeUnknown` | live-message finalize policy |
