@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/imessage` |
+| **Import** | `@5ss/ai-tools/imessage` |
 | **Kind** | **vendor** (`src/vendors/imessage`) |
 | **Module id** | `imessage` |
 | **Client** | `ImessageClient` |
@@ -81,8 +81,8 @@ const { chat_id } = await client.ensureChat({ addresses: ['+15551234567'] })
 ## Bind
 
 ```ts
-import { ImessageClient, imessageModule } from '@harryy/ai-tools/imessage'
-import { withAuth } from '@harryy/ai-tools/core'
+import { ImessageClient, imessageModule } from '@5ss/ai-tools/imessage'
+import { withAuth } from '@5ss/ai-tools/core'
 
 const client = new ImessageClient({
   project_id: process.env.IMESSAGE_PROJECT_ID!,

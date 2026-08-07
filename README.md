@@ -2,8 +2,8 @@
 
 Reusable **AI tools** with strict Zod schemas and model-facing contracts. Define once in the kernel; project to **Mastra**, **Vercel AI SDK**, **TanStack AI**, **Cloudflare Workers AI**, **MCP**, or call via class clients / `runTool`.
 
-[![ci](https://github.com/harryy2510/ai-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/harryy2510/ai-tools/actions/workflows/ci.yml)
-[![release](https://github.com/harryy2510/ai-tools/actions/workflows/release.yml/badge.svg)](https://github.com/harryy2510/ai-tools/actions/workflows/release.yml)
+[![ci](https://github.com/five-star-solutions-co/ai-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/five-star-solutions-co/ai-tools/actions/workflows/ci.yml)
+[![release](https://github.com/five-star-solutions-co/ai-tools/actions/workflows/release.yml/badge.svg)](https://github.com/five-star-solutions-co/ai-tools/actions/workflows/release.yml)
 
 **Docs:** [docs/README.md](./docs/README.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md) · **Release:** [docs/versioning.md](./docs/versioning.md)
 

@@ -31,7 +31,7 @@ If nothing releasable has landed since the last tag, semantic-release exits 0 an
 ### npm Trusted Publisher
 
 1. npm package **`@5ss/ai-tools`** → **Trusted Publisher**
-2. GitHub repo: **`harryy2510/ai-tools`** (exact)
+2. GitHub repo: **`5ss/ai-tools`** (exact)
 3. Workflow file: **`release.yml`** (exact — not `ci.yml`, not `publish.yml`)
 4. Permission: `npm publish`
 5. Do **not** set repo secret `NPM_TOKEN` / `NODE_AUTH_TOKEN` for this workflow (empty token → `EINVALIDNPMTOKEN`). OIDC uses `id-token: write` only.

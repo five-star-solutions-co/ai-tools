@@ -4,57 +4,57 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).
 
-## [2.11.1](https://github.com/harryy2510/ai-tools/compare/v2.11.0...v2.11.1) (2026-08-07)
+## [2.11.1](https://github.com/five-star-solutions-co/ai-tools/compare/v2.11.0...v2.11.1) (2026-08-07)
 
-## [2.11.0](https://github.com/harryy2510/ai-tools/compare/v2.10.2...v2.11.0) (2026-08-07)
+## [2.11.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.10.2...v2.11.0) (2026-08-07)
 
-## [2.10.2](https://github.com/harryy2510/ai-tools/compare/v2.10.1...v2.10.2) (2026-08-07)
+## [2.10.2](https://github.com/five-star-solutions-co/ai-tools/compare/v2.10.1...v2.10.2) (2026-08-07)
 
-## [2.10.1](https://github.com/harryy2510/ai-tools/compare/v2.10.0...v2.10.1) (2026-08-05)
+## [2.10.1](https://github.com/five-star-solutions-co/ai-tools/compare/v2.10.0...v2.10.1) (2026-08-05)
 
-## [2.10.0](https://github.com/harryy2510/ai-tools/compare/v2.9.0...v2.10.0) (2026-08-03)
+## [2.10.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.9.0...v2.10.0) (2026-08-03)
 
-## [2.9.0](https://github.com/harryy2510/ai-tools/compare/v2.8.0...v2.9.0) (2026-08-02)
+## [2.9.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.8.0...v2.9.0) (2026-08-02)
 
-## [2.8.0](https://github.com/harryy2510/ai-tools/compare/v2.7.1...v2.8.0) (2026-07-29)
+## [2.8.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.7.1...v2.8.0) (2026-07-29)
 
-## [2.7.1](https://github.com/harryy2510/ai-tools/compare/v2.7.0...v2.7.1) (2026-07-29)
+## [2.7.1](https://github.com/five-star-solutions-co/ai-tools/compare/v2.7.0...v2.7.1) (2026-07-29)
 
-## [2.7.0](https://github.com/harryy2510/ai-tools/compare/v2.6.0...v2.7.0) (2026-07-29)
+## [2.7.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.6.0...v2.7.0) (2026-07-29)
 
-## [2.6.0](https://github.com/harryy2510/ai-tools/compare/v2.5.1...v2.6.0) (2026-07-29)
+## [2.6.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.5.1...v2.6.0) (2026-07-29)
 
-## [2.5.1](https://github.com/harryy2510/ai-tools/compare/v2.5.0...v2.5.1) (2026-07-28)
+## [2.5.1](https://github.com/five-star-solutions-co/ai-tools/compare/v2.5.0...v2.5.1) (2026-07-28)
 
-## [2.5.0](https://github.com/harryy2510/ai-tools/compare/v2.4.0...v2.5.0) (2026-07-28)
+## [2.5.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.4.0...v2.5.0) (2026-07-28)
 
-## [2.4.0](https://github.com/harryy2510/ai-tools/compare/v2.3.0...v2.4.0) (2026-07-28)
+## [2.4.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.3.0...v2.4.0) (2026-07-28)
 
-## [2.3.0](https://github.com/harryy2510/ai-tools/compare/v2.2.0...v2.3.0) (2026-07-28)
+## [2.3.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.2.0...v2.3.0) (2026-07-28)
 
-## [2.2.0](https://github.com/harryy2510/ai-tools/compare/v2.1.0...v2.2.0) (2026-07-28)
+## [2.2.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.1.0...v2.2.0) (2026-07-28)
 
-## [2.1.0](https://github.com/harryy2510/ai-tools/compare/v2.0.1...v2.1.0) (2026-07-28)
+## [2.1.0](https://github.com/five-star-solutions-co/ai-tools/compare/v2.0.1...v2.1.0) (2026-07-28)
 
-## [2.0.1](https://github.com/harryy2510/ai-tools/compare/v2.0.0...v2.0.1) (2026-07-27)
+## [2.0.1](https://github.com/five-star-solutions-co/ai-tools/compare/v2.0.0...v2.0.1) (2026-07-27)
 
-## [2.0.0](https://github.com/harryy2510/ai-tools/compare/v1.6.1...v2.0.0) (2026-07-27)
+## [2.0.0](https://github.com/five-star-solutions-co/ai-tools/compare/v1.6.1...v2.0.0) (2026-07-27)
 
-## [1.6.1](https://github.com/harryy2510/ai-tools/compare/v1.6.0...v1.6.1) (2026-07-24)
+## [1.6.1](https://github.com/five-star-solutions-co/ai-tools/compare/v1.6.0...v1.6.1) (2026-07-24)
 
-## [1.6.0](https://github.com/harryy2510/ai-tools/compare/v1.5.0...v1.6.0) (2026-07-24)
+## [1.6.0](https://github.com/five-star-solutions-co/ai-tools/compare/v1.5.0...v1.6.0) (2026-07-24)
 
-## [1.5.0](https://github.com/harryy2510/ai-tools/compare/v1.4.0...v1.5.0) (2026-07-24)
+## [1.5.0](https://github.com/five-star-solutions-co/ai-tools/compare/v1.4.0...v1.5.0) (2026-07-24)
 
-## [1.4.0](https://github.com/harryy2510/ai-tools/compare/v1.3.0...v1.4.0) (2026-07-23)
+## [1.4.0](https://github.com/five-star-solutions-co/ai-tools/compare/v1.3.0...v1.4.0) (2026-07-23)
 
-## [1.3.0](https://github.com/harryy2510/ai-tools/compare/v1.2.1...v1.3.0) (2026-07-23)
+## [1.3.0](https://github.com/five-star-solutions-co/ai-tools/compare/v1.2.1...v1.3.0) (2026-07-23)
 
-## [1.2.1](https://github.com/harryy2510/ai-tools/compare/v1.2.0...v1.2.1) (2026-07-23)
+## [1.2.1](https://github.com/five-star-solutions-co/ai-tools/compare/v1.2.0...v1.2.1) (2026-07-23)
 
-## [1.2.0](https://github.com/harryy2510/ai-tools/compare/v1.1.0...v1.2.0) (2026-07-23)
+## [1.2.0](https://github.com/five-star-solutions-co/ai-tools/compare/v1.1.0...v1.2.0) (2026-07-23)
 
-## [1.1.0](https://github.com/harryy2510/ai-tools/compare/v1.0.0...v1.1.0) (2026-07-21)
+## [1.1.0](https://github.com/five-star-solutions-co/ai-tools/compare/v1.0.0...v1.1.0) (2026-07-21)
 
 ## 1.0.0 (2026-07-21)
 
@@ -108,5 +108,5 @@ Initial public package surface (archival).
 - **HTTP** surface and framework adapters (Mastra, AI SDK, TanStack, Cloudflare, MCP).
 - Early product modules and tooling (see git history for full evolution).
 
-[Unreleased]: https://github.com/harryy2510/ai-tools/compare/v1.6.1...HEAD
-[0.0.1]: https://github.com/harryy2510/ai-tools/releases/tag/v0.0.1
+[Unreleased]: https://github.com/five-star-solutions-co/ai-tools/compare/v1.6.1...HEAD
+[0.0.1]: https://github.com/five-star-solutions-co/ai-tools/releases/tag/v0.0.1
