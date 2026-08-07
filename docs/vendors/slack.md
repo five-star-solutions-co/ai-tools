@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/slack` |
+| **Import** | `@5ss/ai-tools/slack` |
 | **Kind** | **vendor** (`src/vendors/slack`) |
 | **Module id** | `slack` |
 | **Auth** | Host: `{ bot_token }` |
@@ -12,7 +12,7 @@ Slack Web API vendor pack. Same layout as Telegram / Resend: class client + tool
 ## Bind
 
 ```ts
-import { slackModule, SlackClient, createLiveMessage, withAuth } from '@harryy/ai-tools/slack'
+import { slackModule, SlackClient, createLiveMessage, withAuth } from '@5ss/ai-tools/slack'
 
 withAuth(slackModule, { bot_token: 'xoxb-…' })
 const client = new SlackClient({ bot_token: 'xoxb-…' })
@@ -78,7 +78,7 @@ const { message_id } = await live.finalize('…final…')
 ## Webhooks
 
 ```ts
-import { parseSlackEvent, verifySlackRequestSignature } from '@harryy/ai-tools/slack'
+import { parseSlackEvent, verifySlackRequestSignature } from '@5ss/ai-tools/slack'
 
 const ok = verifySlackRequestSignature({
   signing_secret,

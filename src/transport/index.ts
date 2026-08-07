@@ -1,5 +1,5 @@
 /**
- * Public transport (`@harryy/ai-tools/http`).
+ * Public transport (`@5ss/ai-tools/http`).
  * Inside the package prefer leaf imports: `./http-service`, `./aws-service`.
  */
 

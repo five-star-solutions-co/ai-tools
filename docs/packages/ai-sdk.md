@@ -1,4 +1,4 @@
-# `@harryy/ai-tools/ai-sdk`
+# `@5ss/ai-tools/ai-sdk`
 
 Project kernel tools to the Vercel [AI SDK](https://sdk.vercel.ai) `tool` / dynamic tool surface.
 
@@ -11,7 +11,7 @@ bun add ai   # >= 5.0
 ## API
 
 ```ts
-import { createAiSdkTool, createAiSdkTools } from '@harryy/ai-tools/ai-sdk'
+import { createAiSdkTool, createAiSdkTools } from '@5ss/ai-tools/ai-sdk'
 
 createAiSdkTool(tool)
 createAiSdkTools(moduleOrTools)
@@ -22,9 +22,9 @@ Uses AI SDK **dynamic tools** where needed so Zod 4 schemas project cleanly unde
 ## Example
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { emailModule } from '@harryy/ai-tools/email'
-import { createAiSdkTools } from '@harryy/ai-tools/ai-sdk'
+import { withAuth } from '@5ss/ai-tools/core'
+import { emailModule } from '@5ss/ai-tools/email'
+import { createAiSdkTools } from '@5ss/ai-tools/ai-sdk'
 
 const tools = createAiSdkTools(
   withAuth(emailModule, {

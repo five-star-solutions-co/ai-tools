@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/bedrock-agentcore-browser` |
+| **Import** | `@5ss/ai-tools/bedrock-agentcore-browser` |
 | **Kind** | vendor pack |
 | **Auth** | AWS keys + region; optional `browser_id` (default `aws.browser.v1`) |
 

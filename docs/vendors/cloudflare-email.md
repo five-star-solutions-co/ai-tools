@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/cloudflare-email` |
+| **Import** | `@5ss/ai-tools/cloudflare-email` |
 | **Kind** | **vendor** (`src/vendors/cloudflare-email`) — not an email multi-provider seam |
 | **Module id** | `cloudflare-email` |
 | **Client** | `CloudflareEmailClient` |
@@ -23,7 +23,7 @@ Seam with shared send verbs: [email](../modules/email.md).
 ## Host (class client)
 
 ```ts
-import { CloudflareEmailClient } from '@harryy/ai-tools/cloudflare-email'
+import { CloudflareEmailClient } from '@5ss/ai-tools/cloudflare-email'
 
 const email = new CloudflareEmailClient({
   account_id: process.env.CF_ACCOUNT_ID!,
@@ -47,9 +47,9 @@ Optional injectables: `new CloudflareEmailClient(auth, { fetch, signal })`.
 ## Agent (module + tools)
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { cloudflareEmailModule, cloudflareEmailSendTool } from '@harryy/ai-tools/cloudflare-email'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
+import { withAuth } from '@5ss/ai-tools/core'
+import { cloudflareEmailModule, cloudflareEmailSendTool } from '@5ss/ai-tools/cloudflare-email'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
 
 const bound = withAuth(cloudflareEmailModule, {
   account_id: '…',

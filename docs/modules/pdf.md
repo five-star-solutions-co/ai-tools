@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/pdf` |
+| **Import** | `@5ss/ai-tools/pdf` |
 | **Kind** | capability module |
 | **Engine** | `pdf-lib` |
 
@@ -19,7 +19,7 @@ Artifact-backed PDF utilities. This module edits existing PDF containers. It doe
 Auth contains nested `storage` credentials. Inputs and outputs use `ArtifactRef`, so PDF bytes do not pass through the model.
 
 ```ts
-import { PdfClient } from '@harryy/ai-tools/pdf'
+import { PdfClient } from '@5ss/ai-tools/pdf'
 
 const pdf = PdfClient.fromAuth({ storage })
 const result = await pdf.extractPages({

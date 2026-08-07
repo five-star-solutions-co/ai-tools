@@ -1,7 +1,7 @@
 # Spec: Package surface architecture (modules · vendors)
 
 Status: **locked for implementation**  
-Package: `@harryy/ai-tools`  
+Package: `@5ss/ai-tools`  
 Date: 2026-07-22  
 
 Related:
@@ -47,7 +47,7 @@ Related:
 ## The three product kinds (two source roots)
 
 ```text
-@harryy/ai-tools
+@5ss/ai-tools
 ├── modules/      Platform seams (email, messaging, files, document-render, …)
 └── vendors/      3rd-party packs (resend, telegram, s3, cloudflare-email, …)
 ```
@@ -57,18 +57,18 @@ Related:
 | **Platform capability** | `src/modules/<capability>/` | Capability name (`email`, `files`) | Small stable contracts; usually **2+ swappable providers**, or an explicitly product-locked host/single-provider seam |
 | **Vendor pack** | `src/vendors/<vendor>/` | Vendor name (`resend`, `telegram`, `s3`, …) | Full first-party API; grow tools over time (includes chat + object stores) |
 
-**3rd party → vendors; seams → modules.** Chat platforms, email ESPs, and object store (`s3`, S3-compatible including R2 endpoint) are **vendor packs**. Platform **seams** (files, document-render, email, messaging, …) stay under **modules/**. There is **no** multi-provider `storage` seam — object CRUD is `@harryy/ai-tools/s3`; `files` is path-rooted manage with nested S3 auth.
+**3rd party → vendors; seams → modules.** Chat platforms, email ESPs, and object store (`s3`, S3-compatible including R2 endpoint) are **vendor packs**. Platform **seams** (files, document-render, email, messaging, …) stay under **modules/**. There is **no** multi-provider `storage` seam — object CRUD is `@5ss/ai-tools/s3`; `files` is path-rooted manage with nested S3 auth.
 
 **Thin seams are allowed** when 2+ backends share the same verbs, or when an explicit product decision locks a capability contract before the second provider. They wrap vendor clients and must **not** shrink or replace full packs. Native-only APIs stay on the vendor. Do **not** invent a fat multi-provider facade that erases vendor surface.
 
 Public imports stay **flat** regardless of source lane:
 
 ```ts
-import { emailModule } from '@harryy/ai-tools/email'
-import { messagingModule } from '@harryy/ai-tools/messaging'
-import { S3Client, s3Module } from '@harryy/ai-tools/s3'
-import { resendModule, ResendClient } from '@harryy/ai-tools/resend'
-import { telegramModule } from '@harryy/ai-tools/telegram'
+import { emailModule } from '@5ss/ai-tools/email'
+import { messagingModule } from '@5ss/ai-tools/messaging'
+import { S3Client, s3Module } from '@5ss/ai-tools/s3'
+import { resendModule, ResendClient } from '@5ss/ai-tools/resend'
+import { telegramModule } from '@5ss/ai-tools/telegram'
 ```
 
 Codegen discovers `modules/*` and `vendors/*` only.

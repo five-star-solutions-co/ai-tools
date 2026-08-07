@@ -1,30 +1,94 @@
 import { z } from 'zod'
 
 /**
- * Host auth for Photon Advanced iMessage HTTP middleware
- * (`@photon-ai/advanced-imessage` createHttpClient).
+ * Host auth for Photon iMessage over **gRPC** (Node/Bun only), aligned with spectrum-ts cloud.
+ *
+ * Two layers (do not conflate):
+ * 1. **Spectrum Cloud** — `project_id` + `project_secret` → temporary tokens
+ *    (`POST /projects/{id}/imessage/tokens`), then gRPC to Photon’s managed hosts.
+ * 2. **Direct gRPC** — `address` + temporary `token` when the host already has line credentials
+ *    (same shape as spectrum-ts explicit `clients[]`).
+ *
+ * Flat object (not a Zod union) so seams can `.extend` for `provider` / `storage`.
+ *
+ * @see https://github.com/photon-hq/spectrum-ts/blob/main/packages/imessage/src/auth.ts
  * @see https://github.com/photon-hq/advanced-imessage-ts
  */
-export const imessageAuthSchema = z.object({
-	address: z
-		.string()
-		.min(1)
-		.describe(
-			'HTTP middleware address: host[:port] or full http(s):// URL (e.g. https://imessage.example.com or http://localhost:8080)'
-		),
-	token: z.string().min(1).describe('Bearer token for the Advanced iMessage HTTP middleware'),
-	server: z
-		.string()
-		.min(1)
-		.optional()
-		.describe('Optional dedicated iMessage instance id (x-photon-server). Omit for the shared middleware pool'),
-	tls: z
-		.boolean()
-		.optional()
-		.describe('Use HTTPS for bare host addresses (default true). Set false for local http:// development')
-})
+export const imessageAuthSchema = z
+	.object({
+		/** Spectrum Cloud project id (with project_secret). Preferred production path. */
+		project_id: z.string().min(1).optional().describe('Spectrum / Photon project id'),
+		project_secret: z
+			.string()
+			.min(1)
+			.optional()
+			.describe('Spectrum / Photon project secret (Basic auth to Spectrum Cloud)'),
+		/**
+		 * gRPC host:port for direct line access (e.g. imessage.spectrum.photon.codes:443 or
+		 * {instanceId}.imsg.photon.codes:443). Required with `token`; omitted when using Spectrum Cloud
+		 * (address is derived like spectrum-ts).
+		 */
+		address: z.string().min(1).optional().describe('gRPC host:port for direct Advanced iMessage connection'),
+		/** Temporary iMessage bearer (not the project secret). Required for direct gRPC; Spectrum mints this. */
+		token: z.string().min(1).optional().describe('Temporary iMessage gRPC bearer token'),
+		/**
+		 * Dedicated instance id. With Spectrum Cloud multi-instance responses, required to pick a line;
+		 * gRPC address becomes `{server}.imsg.photon.codes:443`.
+		 */
+		server: z.string().min(1).optional().describe('Dedicated iMessage instance id (Spectrum dedicated routing)'),
+		spectrum_cloud_url: z.url().optional().describe('Spectrum Cloud origin (default https://spectrum.photon.codes)'),
+		/**
+		 * Override shared gRPC host (spectrum-ts `SPECTRUM_IMESSAGE_ADDRESS`).
+		 * Default `imessage.spectrum.photon.codes:443`.
+		 */
+		spectrum_imessage_address: z
+			.string()
+			.min(1)
+			.optional()
+			.describe('Shared gRPC host override (default imessage.spectrum.photon.codes:443)'),
+		tls: z.boolean().optional().describe('gRPC TLS (default true; set false only for local plaintext)')
+	})
+	.superRefine((value, ctx) => {
+		const hasProjectId = Boolean(value.project_id)
+		const hasProjectSecret = Boolean(value.project_secret)
+		if (hasProjectId !== hasProjectSecret) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'project_id and project_secret must be provided together for Spectrum Cloud auth'
+			})
+		}
+		if (hasProjectId) return
+		if (!value.token || !value.address) {
+			ctx.addIssue({
+				code: 'custom',
+				message:
+					'Provide project_id + project_secret (Spectrum Cloud) or address + token (direct gRPC, spectrum-ts clients shape)'
+			})
+		}
+	})
 
 export type ImessageAuth = z.infer<typeof imessageAuthSchema>
+
+export type ImessageSpectrumAuth = ImessageAuth & {
+	project_id: string
+	project_secret: string
+}
+
+/** Direct gRPC line credentials (host already minted a token). */
+export type ImessageGrpcAuth = ImessageAuth & {
+	address: string
+	token: string
+}
+
+export function isImessageSpectrumAuth(auth: ImessageAuth): auth is ImessageSpectrumAuth {
+	return Boolean(auth.project_id && auth.project_secret)
+}
+
+/** Aliases for hosts that want a named schema export (same base + refine). */
+export const imessageSpectrumAuthSchema = imessageAuthSchema
+export const imessageGrpcAuthSchema = imessageAuthSchema
+/** @deprecated Use imessageGrpcAuthSchema — pack is gRPC-only. */
+export const imessageMiddlewareAuthSchema = imessageAuthSchema
 
 export const imessageChatActionSchema = z.enum([
 	'typing',

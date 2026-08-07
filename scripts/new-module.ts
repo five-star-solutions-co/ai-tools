@@ -275,7 +275,7 @@ function renderDocsMd(options: CliOptions): string {
 
 | | |
 | --- | --- |
-| **Import** | \`@harryy/ai-tools/${options.key}\` |
+| **Import** | \`@5ss/ai-tools/${options.key}\` |
 | **Module id** | \`${options.key}\` |
 | **Runtime** | \`both\` |
 | **Auth** | ${authLine} |
@@ -291,7 +291,7 @@ Connectivity check scaffold. Replace with real tools and update this page.
 ## Host usage
 
 \`\`\`ts
-import { ${camelFromKey(options.key)}Module } from '@harryy/ai-tools/${options.key}'
+import { ${camelFromKey(options.key)}Module } from '@5ss/ai-tools/${options.key}'
 // withAuth if auth is custom; then project via an adapter or runTool
 \`\`\`
 
@@ -354,7 +354,7 @@ async function main(): Promise<void> {
 
 	const codegen = await runCodegen()
 	console.log(
-		`Scaffolded module "${parsed.key}" (${codegen.moduleCount} modules in package). Export: @harryy/ai-tools/${parsed.key}`
+		`Scaffolded module "${parsed.key}" (${codegen.moduleCount} modules in package). Export: @5ss/ai-tools/${parsed.key}`
 	)
 	console.log(`  src/modules/${parsed.key}/index.ts`)
 	console.log(`  src/modules/${parsed.key}/module.ts`)

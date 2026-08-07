@@ -1,7 +1,7 @@
 # Working doc: package surface delivery
 
 Status: **living** (update as slices land)  
-Package: `@harryy/ai-tools`  
+Package: `@5ss/ai-tools`  
 Architecture source of truth: [package-surface-architecture.md](../specs/package-surface-architecture.md)  
 Provider seam (Lane A): [provider-seam.md](../specs/provider-seam.md)  
 
@@ -22,7 +22,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 
 ## Inventory: what exists where (as of 2026-07-26)
 
-### A. `@harryy/ai-tools` (this package)
+### A. `@5ss/ai-tools` (this package)
 
 | Surface | Status | Notes |
 | --- | --- | --- |

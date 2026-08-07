@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/document-render` |
+| **Import** | `@5ss/ai-tools/document-render` |
 | **Kind** | multi-provider **seam** (`src/modules/document-render`) |
 | **Module id** | `document-render` |
 | **Auth** | Host union: `provider: 'gotenberg' \| 'cloudflare-browser'` + nested `storage` |

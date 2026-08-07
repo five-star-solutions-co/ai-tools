@@ -14,7 +14,7 @@ export type BrainPackage = {
 }
 
 /**
- * Public subpaths stay flat (`@harryy/ai-tools/mastra`).
+ * Public subpaths stay flat (`@5ss/ai-tools/mastra`).
  * Source lives under `src/adapters/*` for adapters; transport public as `./http`.
  */
 export const BRAIN_PACKAGES: readonly BrainPackage[] = [

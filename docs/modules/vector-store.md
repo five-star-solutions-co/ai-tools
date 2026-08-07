@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/vector-store` |
+| **Import** | `@5ss/ai-tools/vector-store` |
 | **Kind** | multi-provider **seam** (`src/modules/vector-store`) |
 | **Module id** | `vector-store` |
 | **Providers** | `qdrant`, `pinecone`, `supabase`, `mastra` |
@@ -13,10 +13,10 @@ Capability seam: upsert / query / delete vectors. HTTP lives in **vendor packs**
 
 | Seam provider | Vendor pack |
 | --- | --- |
-| `qdrant` | [@harryy/ai-tools/qdrant](../vendors/qdrant.md) |
-| `pinecone` | [@harryy/ai-tools/pinecone](../vendors/pinecone.md) |
-| `supabase` | [@harryy/ai-tools/supabase-vector](../vendors/supabase-vector.md) |
-| `mastra` | [@harryy/ai-tools/mastra-vector](../vendors/mastra-vector.md) (`@mastra/pg` PgVector, **node**) |
+| `qdrant` | [@5ss/ai-tools/qdrant](../vendors/qdrant.md) |
+| `pinecone` | [@5ss/ai-tools/pinecone](../vendors/pinecone.md) |
+| `supabase` | [@5ss/ai-tools/supabase-vector](../vendors/supabase-vector.md) |
+| `mastra` | [@5ss/ai-tools/mastra-vector](../vendors/mastra-vector.md) (`@mastra/pg` PgVector, **node**) |
 
 Shared I/O shapes: `vendors/_vector/` (codegen-skipped kit).
 
@@ -61,8 +61,8 @@ withAuth(vectorStoreModule, {
 ## Bind
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { VectorStoreClient, vectorStoreModule } from '@harryy/ai-tools/vector-store'
+import { withAuth } from '@5ss/ai-tools/core'
+import { VectorStoreClient, vectorStoreModule } from '@5ss/ai-tools/vector-store'
 
 VectorStoreClient.fromAuth({
   provider: 'supabase',

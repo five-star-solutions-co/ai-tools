@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/resend` |
+| **Import** | `@5ss/ai-tools/resend` |
 | **Kind** | **vendor** (`src/vendors/resend`) |
 | **Module id** | `resend` |
 | **Client** | `ResendClient` |
@@ -23,7 +23,7 @@ Seam with shared send verbs: [email](../modules/email.md).
 ## Host (client)
 
 ```ts
-import { ResendClient } from '@harryy/ai-tools/resend'
+import { ResendClient } from '@5ss/ai-tools/resend'
 
 const resend = new ResendClient({ api_key: '…' })
 await resend.send({ to, from, subject, text })
@@ -33,9 +33,9 @@ await resend.sendBatch({ messages: […] })
 ## Agent (tools)
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { resendModule } from '@harryy/ai-tools/resend'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
+import { withAuth } from '@5ss/ai-tools/core'
+import { resendModule } from '@5ss/ai-tools/resend'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
 
 const bound = withAuth(resendModule, { api_key: '…' })
 const tools = createMastraTools(bound)

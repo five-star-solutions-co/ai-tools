@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/browser` |
+| **Import** | `@5ss/ai-tools/browser` |
 | **Kind** | capability seam |
 | **Providers** | `bedrock-agentcore`, `cloudflare` |
 | **Categories** | `browser`, `automation` |
@@ -17,7 +17,7 @@
 | **Interactive REST tools** | Migration only — often `unsupported`; prefer CDP |
 
 ```ts
-import { BrowserClient, mintBrowserCdpConnection } from '@harryy/ai-tools/browser'
+import { BrowserClient, mintBrowserCdpConnection } from '@5ss/ai-tools/browser'
 
 const client = new BrowserClient(auth)
 const session = await client.startSession()
@@ -25,7 +25,7 @@ const cdp = mintBrowserCdpConnection(session)
 // host: connect Playwright / AgentBrowser to cdp.websocket_url (+ cdp.headers)
 ```
 
-Cloudflare vendor helper: `mintCloudflareBrowserCdpConnection` from `@harryy/ai-tools/cloudflare-browser` (optional `api_token` → Authorization header; optional `browser: 'kitesurf'` to ensure the WebSocket URL carries the engine query).
+Cloudflare vendor helper: `mintCloudflareBrowserCdpConnection` from `@5ss/ai-tools/cloudflare-browser` (optional `api_token` → Authorization header; optional `browser: 'kitesurf'` to ensure the WebSocket URL carries the engine query).
 
 Cloudflare host auth may set `browser: 'kitesurf'` for the lightweight Workers engine on sessions, one-shot navigate/snapshot/screenshot (via vendor client). Default is Chromium when omitted.
 

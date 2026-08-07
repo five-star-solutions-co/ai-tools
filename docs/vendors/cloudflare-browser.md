@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/cloudflare-browser` |
+| **Import** | `@5ss/ai-tools/cloudflare-browser` |
 | **Kind** | **vendor** (`src/vendors/cloudflare-browser`) |
 | **Module id** | `cloudflare-browser` |
 | **Client** | `CloudflareBrowserClient` |
@@ -49,8 +49,8 @@ This pack sends `?browser=kitesurf` on Quick Actions and session create via `Htt
 ## Bind
 
 ```ts
-import { CloudflareBrowserClient, cloudflareBrowserModule } from '@harryy/ai-tools/cloudflare-browser'
-import { withAuth } from '@harryy/ai-tools/core'
+import { CloudflareBrowserClient, cloudflareBrowserModule } from '@5ss/ai-tools/cloudflare-browser'
+import { withAuth } from '@5ss/ai-tools/core'
 
 withAuth(cloudflareBrowserModule, {
   account_id: '…',

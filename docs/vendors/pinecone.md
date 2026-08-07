@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/pinecone` |
+| **Import** | `@5ss/ai-tools/pinecone` |
 | **Kind** | **vendor** (`src/vendors/pinecone`) |
 | **Module id** | `pinecone` |
 | **Client** | `PineconeClient` |

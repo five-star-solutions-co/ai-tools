@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/email-message` |
+| **Import** | `@5ss/ai-tools/email-message` |
 | **Module id** | `email-message` |
 | **Runtime** | `both` |
 | **Auth** | **none** |
@@ -10,7 +10,7 @@
 
 Parse and build RFC 822 / MIME **email messages** **without sending**. Pair with [email](./email.md) when you need delivery.
 
-For **content-type ↔ extension** lookup, use [content-type](./content-type.md) (`@harryy/ai-tools/content-type`).
+For **content-type ↔ extension** lookup, use [content-type](./content-type.md) (`@5ss/ai-tools/content-type`).
 
 ## Install / import
 
@@ -19,7 +19,7 @@ import {
   emailMessageModule,
   parseEmailMessageTool,
   buildEmailMessageTool,
-} from '@harryy/ai-tools/email-message'
+} from '@5ss/ai-tools/email-message'
 ```
 
 No `withAuth` required.

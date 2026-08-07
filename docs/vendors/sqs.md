@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/sqs` |
+| **Import** | `@5ss/ai-tools/sqs` |
 | **Kind** | vendor pack |
 | **Transport** | `AwsService`, service `sqs` |
 

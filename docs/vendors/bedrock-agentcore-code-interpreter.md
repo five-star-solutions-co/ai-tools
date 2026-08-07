@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/bedrock-agentcore-code-interpreter` |
+| **Import** | `@5ss/ai-tools/bedrock-agentcore-code-interpreter` |
 | **Kind** | vendor pack |
 | **Auth** | AWS keys + region; optional `code_interpreter_id` (default `aws.codeinterpreter.v1`) |
 

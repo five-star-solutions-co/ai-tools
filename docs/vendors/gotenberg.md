@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/gotenberg` |
+| **Import** | `@5ss/ai-tools/gotenberg` |
 | **Kind** | **vendor** (`src/vendors/gotenberg`) |
 | **Module id** | `gotenberg` |
 | **Client** | `GotenbergClient` |

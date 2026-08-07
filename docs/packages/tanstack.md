@@ -1,4 +1,4 @@
-# `@harryy/ai-tools/tanstack`
+# `@5ss/ai-tools/tanstack`
 
 Project kernel tools to [TanStack AI](https://tanstack.com/ai).
 
@@ -15,7 +15,7 @@ import {
   createTanStackTool,
   createTanStackTools,
   createTanStackToolRecord,
-} from '@harryy/ai-tools/tanstack'
+} from '@5ss/ai-tools/tanstack'
 ```
 
 | Helper | Use |

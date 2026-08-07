@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/mastra-vector` |
+| **Import** | `@5ss/ai-tools/mastra-vector` |
 | **Kind** | **vendor** (`src/vendors/mastra-vector`) |
 | **Module id** | `mastra-vector` |
 | **Client** | `MastraVectorClient` |
@@ -16,7 +16,7 @@ Wraps Mastra **`PgVector`**. Host owns the connection string, schema, and index 
 bun add @mastra/pg
 ```
 
-Optional peer of `@harryy/ai-tools` (same idea as `@mastra/core` for the adapter).
+Optional peer of `@5ss/ai-tools` (same idea as `@mastra/core` for the adapter).
 
 ## Auth
 

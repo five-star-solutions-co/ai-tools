@@ -4,8 +4,8 @@
 
 | Root | Use when | Public import |
 | --- | --- | --- |
-| `src/modules/<key>/` | **Seam we own** (multi-provider or pure helpers) | `@harryy/ai-tools/<key>` |
-| `src/vendors/<key>/` | **3rd-party product** full pack | `@harryy/ai-tools/<key>` |
+| `src/modules/<key>/` | **Seam we own** (multi-provider or pure helpers) | `@5ss/ai-tools/<key>` |
+| `src/vendors/<key>/` | **3rd-party product** full pack | `@5ss/ai-tools/<key>` |
 
 Underscore kits (`src/vendors/_email/`, `_storage/`, `_messaging/`) are **not** packs: codegen skips them; they are only shared helpers for packs in that vertical.
 

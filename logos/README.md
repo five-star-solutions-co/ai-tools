@@ -7,7 +7,7 @@
 Logos are **inlined on the module** by `defineModule` (codegen → `src/generated/pack-logos.ts` → build).
 
 ```ts
-import { telegramModule } from '@harryy/ai-tools/telegram'
+import { telegramModule } from '@5ss/ai-tools/telegram'
 
 // Inline SVG markup — no separate asset path required
 telegramModule.logo
@@ -26,7 +26,7 @@ logos/
 ```
 
 `bun run codegen` embeds these into `src/generated/pack-logos.ts` for the JS build.
-Optional package export `@harryy/ai-tools/logos/*` remains for raw file access.
+Optional package export `@5ss/ai-tools/logos/*` remains for raw file access.
 
 ## Pattern
 

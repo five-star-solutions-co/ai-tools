@@ -1,4 +1,4 @@
-# @harryy/ai-tools wiki
+# @5ss/ai-tools wiki
 
 Documentation hub. Root [README](../README.md) is the short entry point; this tree is the full map.
 
@@ -24,13 +24,13 @@ Documentation hub. Root [README](../README.md) is the short entry point; this tr
 
 | Import | Doc |
 | --- | --- |
-| `@harryy/ai-tools/core` | [core](./packages/core.md) |
-| `@harryy/ai-tools/http` | [HttpService / AwsService](./reference/http-and-aws-services.md) |
-| `@harryy/ai-tools/mastra` | [mastra](./packages/mastra.md) |
-| `@harryy/ai-tools/ai-sdk` | [ai-sdk](./packages/ai-sdk.md) |
-| `@harryy/ai-tools/tanstack` | [tanstack](./packages/tanstack.md) |
-| `@harryy/ai-tools/cloudflare` | [cloudflare](./packages/cloudflare.md) |
-| `@harryy/ai-tools/mcp` | [mcp](./packages/mcp.md) |
+| `@5ss/ai-tools/core` | [core](./packages/core.md) |
+| `@5ss/ai-tools/http` | [HttpService / AwsService](./reference/http-and-aws-services.md) |
+| `@5ss/ai-tools/mastra` | [mastra](./packages/mastra.md) |
+| `@5ss/ai-tools/ai-sdk` | [ai-sdk](./packages/ai-sdk.md) |
+| `@5ss/ai-tools/tanstack` | [tanstack](./packages/tanstack.md) |
+| `@5ss/ai-tools/cloudflare` | [cloudflare](./packages/cloudflare.md) |
+| `@5ss/ai-tools/mcp` | [mcp](./packages/mcp.md) |
 
 ## Seams (`src/modules/`)
 
@@ -38,27 +38,27 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 
 | Import | Doc |
 | --- | --- |
-| `@harryy/ai-tools/email` | [email](./modules/email.md) — providers: `resend`, `cloudflare` |
-| `@harryy/ai-tools/messaging` | [messaging](./modules/messaging.md) — providers: `telegram`, `slack`, `teams`, `imessage` |
+| `@5ss/ai-tools/email` | [email](./modules/email.md) — providers: `resend`, `cloudflare` |
+| `@5ss/ai-tools/messaging` | [messaging](./modules/messaging.md) — providers: `telegram`, `slack`, `teams`, `imessage` |
 
-| `@harryy/ai-tools/files` | [files](./modules/files.md) — path root over storage |
-| `@harryy/ai-tools/document-extract` | [document-extract](./modules/document-extract.md) — `textract` |
-| `@harryy/ai-tools/document-render` | [document-render](./modules/document-render.md) — `gotenberg`, `cloudflare-browser` |
-| `@harryy/ai-tools/code-sandbox` | [code-sandbox](./modules/code-sandbox.md) — `cloudflare`, `bedrock-agentcore` |
-| `@harryy/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — Gotenberg `office-to-pdf` |
-| `@harryy/ai-tools/document` | [document](./modules/document.md) — read / build / edit text, documents, presentations, and spreadsheets |
-| `@harryy/ai-tools/web-fetch` | [web-fetch](./modules/web-fetch.md) |
-| `@harryy/ai-tools/vector-store` | [vector-store](./modules/vector-store.md) — providers: `qdrant`, `pinecone`, `supabase`, `mastra` |
-| `@harryy/ai-tools/rag` | [rag](./modules/rag.md) — chunk + host embed route + nested vector-store |
-| `@harryy/ai-tools/email-message` | [email-message](./modules/email-message.md) — pure MIME |
-| `@harryy/ai-tools/content-type` | [content-type](./modules/content-type.md) — pure type ↔ extension |
-| `@harryy/ai-tools/skills` | [skills](./modules/skills.md) — portable skill catalog (list/get/search) |
-| `@harryy/ai-tools/pdf` | [pdf](./modules/pdf.md) |
-| `@harryy/ai-tools/image` | [image](./modules/image.md) |
-| `@harryy/ai-tools/crypto` | [crypto](./modules/crypto.md) |
-| `@harryy/ai-tools/calendar` | [calendar](./modules/calendar.md) |
-| `@harryy/ai-tools/queue` | [queue](./modules/queue.md) — provider: `sqs` |
-| `@harryy/ai-tools/browser` | [browser](./modules/browser.md) — providers: `bedrock-agentcore`, `cloudflare` |
+| `@5ss/ai-tools/files` | [files](./modules/files.md) — path root over storage |
+| `@5ss/ai-tools/document-extract` | [document-extract](./modules/document-extract.md) — `textract` |
+| `@5ss/ai-tools/document-render` | [document-render](./modules/document-render.md) — `gotenberg`, `cloudflare-browser` |
+| `@5ss/ai-tools/code-sandbox` | [code-sandbox](./modules/code-sandbox.md) — `cloudflare`, `bedrock-agentcore` |
+| `@5ss/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — Gotenberg `office-to-pdf` |
+| `@5ss/ai-tools/document` | [document](./modules/document.md) — read / build / edit text, documents, presentations, and spreadsheets |
+| `@5ss/ai-tools/web-fetch` | [web-fetch](./modules/web-fetch.md) |
+| `@5ss/ai-tools/vector-store` | [vector-store](./modules/vector-store.md) — providers: `qdrant`, `pinecone`, `supabase`, `mastra` |
+| `@5ss/ai-tools/rag` | [rag](./modules/rag.md) — chunk + host embed route + nested vector-store |
+| `@5ss/ai-tools/email-message` | [email-message](./modules/email-message.md) — pure MIME |
+| `@5ss/ai-tools/content-type` | [content-type](./modules/content-type.md) — pure type ↔ extension |
+| `@5ss/ai-tools/skills` | [skills](./modules/skills.md) — portable skill catalog (list/get/search) |
+| `@5ss/ai-tools/pdf` | [pdf](./modules/pdf.md) |
+| `@5ss/ai-tools/image` | [image](./modules/image.md) |
+| `@5ss/ai-tools/crypto` | [crypto](./modules/crypto.md) |
+| `@5ss/ai-tools/calendar` | [calendar](./modules/calendar.md) |
+| `@5ss/ai-tools/queue` | [queue](./modules/queue.md) — provider: `sqs` |
+| `@5ss/ai-tools/browser` | [browser](./modules/browser.md) — providers: `bedrock-agentcore`, `cloudflare` |
 
 ## Vendors (`src/vendors/`)
 
@@ -66,30 +66,30 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 
 | Import | Doc |
 | --- | --- |
-| `@harryy/ai-tools/resend` | [resend](./vendors/resend.md) |
-| `@harryy/ai-tools/cloudflare-email` | [cloudflare-email](./vendors/cloudflare-email.md) |
-| `@harryy/ai-tools/telegram` | [telegram](./vendors/telegram.md) |
-| `@harryy/ai-tools/slack` | [slack](./vendors/slack.md) |
-| `@harryy/ai-tools/teams` | [teams](./vendors/teams.md) |
-| `@harryy/ai-tools/imessage` | [imessage](./vendors/imessage.md) — Photon Advanced iMessage HTTP |
-| `@harryy/ai-tools/s3` | [s3](./vendors/s3.md) |
-| `@harryy/ai-tools/sqs` | [sqs](./vendors/sqs.md) |
+| `@5ss/ai-tools/resend` | [resend](./vendors/resend.md) |
+| `@5ss/ai-tools/cloudflare-email` | [cloudflare-email](./vendors/cloudflare-email.md) |
+| `@5ss/ai-tools/telegram` | [telegram](./vendors/telegram.md) |
+| `@5ss/ai-tools/slack` | [slack](./vendors/slack.md) |
+| `@5ss/ai-tools/teams` | [teams](./vendors/teams.md) |
+| `@5ss/ai-tools/imessage` | [imessage](./vendors/imessage.md) — Photon Advanced iMessage HTTP |
+| `@5ss/ai-tools/s3` | [s3](./vendors/s3.md) |
+| `@5ss/ai-tools/sqs` | [sqs](./vendors/sqs.md) |
 
-| `@harryy/ai-tools/qdrant` | [qdrant](./vendors/qdrant.md) |
-| `@harryy/ai-tools/pinecone` | [pinecone](./vendors/pinecone.md) |
-| `@harryy/ai-tools/supabase-vector` | [supabase-vector](./vendors/supabase-vector.md) — pgvector |
-| `@harryy/ai-tools/mastra-vector` | [mastra-vector](./vendors/mastra-vector.md) — `@mastra/pg` PgVector |
-| `@harryy/ai-tools/textract` | [textract](./vendors/textract.md) |
-| `@harryy/ai-tools/eventbridge-scheduler` | [eventbridge-scheduler](./vendors/eventbridge-scheduler.md) |
-| `@harryy/ai-tools/bedrock-agentcore-code-interpreter` | [bedrock-agentcore-code-interpreter](./vendors/bedrock-agentcore-code-interpreter.md) |
-| `@harryy/ai-tools/bedrock-agentcore-browser` | [bedrock-agentcore-browser](./vendors/bedrock-agentcore-browser.md) |
+| `@5ss/ai-tools/qdrant` | [qdrant](./vendors/qdrant.md) |
+| `@5ss/ai-tools/pinecone` | [pinecone](./vendors/pinecone.md) |
+| `@5ss/ai-tools/supabase-vector` | [supabase-vector](./vendors/supabase-vector.md) — pgvector |
+| `@5ss/ai-tools/mastra-vector` | [mastra-vector](./vendors/mastra-vector.md) — `@mastra/pg` PgVector |
+| `@5ss/ai-tools/textract` | [textract](./vendors/textract.md) |
+| `@5ss/ai-tools/eventbridge-scheduler` | [eventbridge-scheduler](./vendors/eventbridge-scheduler.md) |
+| `@5ss/ai-tools/bedrock-agentcore-code-interpreter` | [bedrock-agentcore-code-interpreter](./vendors/bedrock-agentcore-code-interpreter.md) |
+| `@5ss/ai-tools/bedrock-agentcore-browser` | [bedrock-agentcore-browser](./vendors/bedrock-agentcore-browser.md) |
 
-| `@harryy/ai-tools/gotenberg` | [gotenberg](./vendors/gotenberg.md) |
-| `@harryy/ai-tools/cloudflare-browser` | [cloudflare-browser](./vendors/cloudflare-browser.md) |
-| `@harryy/ai-tools/cloudflare-sandbox` | [cloudflare-sandbox](./vendors/cloudflare-sandbox.md) |
-| `@harryy/ai-tools/woocommerce` | [woocommerce](./vendors/woocommerce.md) |
-| `@harryy/ai-tools/katana` | [katana](./vendors/katana.md) |
-| `@harryy/ai-tools/amazon-sp-api` | [amazon-sp-api](./vendors/amazon-sp-api.md) |
+| `@5ss/ai-tools/gotenberg` | [gotenberg](./vendors/gotenberg.md) |
+| `@5ss/ai-tools/cloudflare-browser` | [cloudflare-browser](./vendors/cloudflare-browser.md) |
+| `@5ss/ai-tools/cloudflare-sandbox` | [cloudflare-sandbox](./vendors/cloudflare-sandbox.md) |
+| `@5ss/ai-tools/woocommerce` | [woocommerce](./vendors/woocommerce.md) |
+| `@5ss/ai-tools/katana` | [katana](./vendors/katana.md) |
+| `@5ss/ai-tools/amazon-sp-api` | [amazon-sp-api](./vendors/amazon-sp-api.md) |
 
 ### Vertical kits (not published)
 

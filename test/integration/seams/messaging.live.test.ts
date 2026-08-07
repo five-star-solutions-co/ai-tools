@@ -11,11 +11,15 @@ const slackToken = env('AI_TOOLS_SLACK_BOT_TOKEN')
 const slackChannel = env('AI_TOOLS_SLACK_CHANNEL_ID')
 const runSlack = slackToken && slackChannel ? describe : describe.skip
 
-const imAddress = env('AI_TOOLS_IMESSAGE_HTTP_ADDRESS') ?? env('AI_TOOLS_IMESSAGE_PROXY_URL')
-const imToken = env('AI_TOOLS_IMESSAGE_TOKEN') ?? env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
+const imProjectId = env('AI_TOOLS_IMESSAGE_PROJECT_ID')
+const imProjectSecret = env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
+const imGrpcAddress = env('AI_TOOLS_IMESSAGE_GRPC_ADDRESS') ?? env('AI_TOOLS_IMESSAGE_ADDRESS')
+const imToken = env('AI_TOOLS_IMESSAGE_TOKEN')
 const imChat = env('AI_TOOLS_IMESSAGE_CHAT_ID')
 const imServer = env('AI_TOOLS_IMESSAGE_SERVER')
-const runIm = imAddress && imToken && imChat ? describe : describe.skip
+const imSpectrumCloudUrl = env('AI_TOOLS_IMESSAGE_SPECTRUM_CLOUD_URL')
+const imSharedGrpc = env('AI_TOOLS_IMESSAGE_SPECTRUM_IMESSAGE_ADDRESS')
+const runIm = imChat && ((imProjectId && imProjectSecret) || (imGrpcAddress && imToken)) ? describe : describe.skip
 
 const teamsApp = env('AI_TOOLS_TEAMS_APP_ID')
 const teamsPass = env('AI_TOOLS_TEAMS_APP_PASSWORD')
@@ -218,13 +222,23 @@ runIm('live seam messaging (imessage)', () => {
 	test(
 		'full surface: send edit typing stopTyping react clear media batch markRead',
 		async () => {
-			const client = MessagingClient.fromAuth({
-				provider: 'imessage',
-				address: imAddress!,
-				token: imToken!,
-				tls: imAddress!.startsWith('http://') ? false : undefined,
-				...(imServer ? { server: imServer } : {})
-			})
+			const client = MessagingClient.fromAuth(
+				imProjectId && imProjectSecret
+					? {
+							provider: 'imessage',
+							project_id: imProjectId,
+							project_secret: imProjectSecret,
+							...(imServer ? { server: imServer } : {}),
+							...(imSpectrumCloudUrl ? { spectrum_cloud_url: imSpectrumCloudUrl } : {}),
+							...(imSharedGrpc ? { spectrum_imessage_address: imSharedGrpc } : {})
+						}
+					: {
+							provider: 'imessage',
+							address: imGrpcAddress!,
+							token: imToken!,
+							...(imServer ? { server: imServer } : {})
+						}
+			)
 			const chat_id = imChat!
 
 			const msg = await client.sendText({

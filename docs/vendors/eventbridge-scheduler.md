@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/eventbridge-scheduler` |
+| **Import** | `@5ss/ai-tools/eventbridge-scheduler` |
 | **Kind** | vendor pack |
 | **Auth** | AWS keys + host-bound `target_arn` / `role_arn` (+ optional group, DLQ, retries) |
 | **Tools** | create / update / get / list / delete |

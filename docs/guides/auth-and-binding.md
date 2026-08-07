@@ -11,8 +11,8 @@
 ## Vendor pack
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { telegramModule, TelegramClient } from '@harryy/ai-tools/telegram'
+import { withAuth } from '@5ss/ai-tools/core'
+import { telegramModule, TelegramClient } from '@5ss/ai-tools/telegram'
 
 // Host client
 const client = new TelegramClient({ bot_token: '…' })
@@ -26,9 +26,9 @@ const bound = withAuth(telegramModule, { bot_token: '…' })
 When credentials depend on org/session per tool call:
 
 ```ts
-import { bindModule, withHooks } from '@harryy/ai-tools/core'
-import { emailModule } from '@harryy/ai-tools/email'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
+import { bindModule, withHooks } from '@5ss/ai-tools/core'
+import { emailModule } from '@5ss/ai-tools/email'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
 
 const bound = bindModule(emailModule, {
   resolveAuth: async (ctx) => {
@@ -72,8 +72,8 @@ const tools = createMastraTools(bound, {
 Hosts often enable a pack but not every tool. Filter by **stable kebab tool id** (order stays the module’s order). Unknown ids throw.
 
 ```ts
-import { onlyTools, exceptTools, withAuth, bindModule } from '@harryy/ai-tools/core'
-import { telegramModule } from '@harryy/ai-tools/telegram'
+import { onlyTools, exceptTools, withAuth, bindModule } from '@5ss/ai-tools/core'
+import { telegramModule } from '@5ss/ai-tools/telegram'
 
 // Preferred: compose with withAuth / bind / hooks
 const sendOnly = onlyTools(telegramModule, [
@@ -103,7 +103,7 @@ bindModule(telegramModule, {
 | `ToolSelection` | `{ only: string[] }` **or** `{ except: string[] }` — shared contract for host wrappers |
 
 ```ts
-import type { ToolSelection, BindModuleOptions } from '@harryy/ai-tools/core'
+import type { ToolSelection, BindModuleOptions } from '@5ss/ai-tools/core'
 
 function bindCustomModule<TAuth>(
   module: ModuleDefinition<TAuth>,
@@ -122,9 +122,9 @@ Names intentionally avoid security-policy jargon (`allow`/`deny`); hosts still o
 Capability modules use a **provider** discriminator on auth. Nested vendor fields stay snake_case.
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { emailModule } from '@harryy/ai-tools/email'
-import { s3Module } from '@harryy/ai-tools/s3'
+import { withAuth } from '@5ss/ai-tools/core'
+import { emailModule } from '@5ss/ai-tools/email'
+import { s3Module } from '@5ss/ai-tools/s3'
 
 const boundEmail = withAuth(emailModule, {
   provider: 'resend',

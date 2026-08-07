@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/scheduler` |
+| **Import** | `@5ss/ai-tools/scheduler` |
 | **Kind** | capability **seam** (`src/modules/scheduler`) |
 | **Module id** | `scheduler` |
 | **Provider** | `eventbridge` |

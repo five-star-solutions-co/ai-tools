@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/web-fetch` |
+| **Import** | `@5ss/ai-tools/web-fetch` |
 | **Module id** | `web-fetch` |
 | **Client** | [ofetch](https://github.com/unjs/ofetch) (Node / Bun / edge) |
 
@@ -35,8 +35,8 @@ GET/HEAD never take a body. Mutating tool defaults to `POST` when `method` is om
 ## Host binding
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { webFetchModule } from '@harryy/ai-tools/web-fetch'
+import { withAuth } from '@5ss/ai-tools/core'
+import { webFetchModule } from '@5ss/ai-tools/web-fetch'
 
 const bound = withAuth(webFetchModule, {
   allowed_origins: ['https://api.example.com'],

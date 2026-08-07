@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/messaging` |
+| **Import** | `@5ss/ai-tools/messaging` |
 | **Kind** | multi-provider **seam** (`src/modules/messaging`) |
 | **Module id** | `messaging` |
 | **Providers** | `telegram`, `slack`, `teams`, `imessage` |
@@ -12,13 +12,13 @@ Shared channel verbs over full vendor packs. Native-only APIs stay on the vendor
 ## Bind
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
+import { withAuth } from '@5ss/ai-tools/core'
 import {
   messagingModule,
   MessagingClient,
   isMessagingDefiniteRejection,
   isMessagingOutcomeUnknown,
-} from '@harryy/ai-tools/messaging'
+} from '@5ss/ai-tools/messaging'
 
 withAuth(messagingModule, { provider: 'telegram', bot_token: '…' })
 withAuth(messagingModule, { provider: 'slack', bot_token: 'xoxb-…' })
@@ -84,7 +84,7 @@ Host owns durable claims, authz, journaling of returned ids, Teams OneDrive/R2 a
 import {
   isMessagingDefiniteRejection,
   isMessagingOutcomeUnknown,
-} from '@harryy/ai-tools/messaging'
+} from '@5ss/ai-tools/messaging'
 
 try {
   await client.sendText({ chat_id, text })
@@ -123,7 +123,7 @@ import {
   MessagingClient,
   isMessagingDefiniteRejection,
   isMessagingOutcomeUnknown,
-} from '@harryy/ai-tools/messaging'
+} from '@5ss/ai-tools/messaging'
 
 const client = MessagingClient.fromAuth({ provider: 'telegram', bot_token: '…' })
 const live = createLiveMessage({

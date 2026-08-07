@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/presentation` |
+| **Import** | `@5ss/ai-tools/presentation` |
 | **Kind** | capability **seam** (`src/modules/presentation`) |
 | **Module id** | `presentation` |
 | **Runtime** | Node (ESM + CJS) |

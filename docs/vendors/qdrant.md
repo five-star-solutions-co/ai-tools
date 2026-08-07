@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/qdrant` |
+| **Import** | `@5ss/ai-tools/qdrant` |
 | **Kind** | **vendor** (`src/vendors/qdrant`) |
 | **Module id** | `qdrant` |
 | **Client** | `QdrantClient` |

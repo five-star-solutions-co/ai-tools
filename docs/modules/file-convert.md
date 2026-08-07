@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/file-convert` |
+| **Import** | `@5ss/ai-tools/file-convert` |
 | **Kind** | multi-provider **seam** (`src/modules/file-convert`) |
 | **Module id** | `file-convert` |
 | **Auth** | Host union: `provider: 'gotenberg'` + nested `storage` |

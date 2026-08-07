@@ -1,6 +1,6 @@
 # Codex handout — knowledge slice + how not to fuck up
 
-**Repo:** `/Users/harryy/Desktop/hariom/ai-tools` (`@harryy/ai-tools`)  
+**Repo:** `/Users/harryy/Desktop/hariom/ai-tools` (`@5ss/ai-tools`)  
 **Status:** knowledge/memory work is **uncommitted** (user reviews → then commit on request).  
 **Do not commit** unless the user explicitly says `commit`.
 
@@ -19,8 +19,8 @@ Read first, in order:
 
 | Root | What goes here | Public import |
 | --- | --- | --- |
-| `src/modules/<key>/` | **Seams we own** (capability contract, multi-provider) | `@harryy/ai-tools/<key>` |
-| `src/vendors/<key>/` | **3rd-party product** full pack (HTTP + tools) | `@harryy/ai-tools/<key>` |
+| `src/modules/<key>/` | **Seams we own** (capability contract, multi-provider) | `@5ss/ai-tools/<key>` |
+| `src/vendors/<key>/` | **3rd-party product** full pack (HTTP + tools) | `@5ss/ai-tools/<key>` |
 
 ### Vertical kits (underscore = not a pack)
 
@@ -136,11 +136,11 @@ src/modules/rag/
 ### Imports
 
 ```ts
-@harryy/ai-tools/vector-store
-@harryy/ai-tools/rag
-@harryy/ai-tools/qdrant
-@harryy/ai-tools/pinecone
-@harryy/ai-tools/supabase-vector
+@5ss/ai-tools/vector-store
+@5ss/ai-tools/rag
+@5ss/ai-tools/qdrant
+@5ss/ai-tools/pinecone
+@5ss/ai-tools/supabase-vector
 ```
 
 ### Auth shapes (summary)

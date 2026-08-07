@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/katana` |
+| **Import** | `@5ss/ai-tools/katana` |
 | **Kind** | **vendor** (`src/vendors/katana`) |
 | **Module id** | `katana` |
 | **Client** | `KatanaClient` |
@@ -64,8 +64,8 @@ Multi-scope union for reporting/reconciliation:
 ## Bind
 
 ```ts
-import { KatanaClient, katanaModule } from '@harryy/ai-tools/katana'
-import { withAuth } from '@harryy/ai-tools/core'
+import { KatanaClient, katanaModule } from '@5ss/ai-tools/katana'
+import { withAuth } from '@5ss/ai-tools/core'
 
 new KatanaClient({ api_key: '…' })
 withAuth(katanaModule, { api_key: '…' })

@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/textract` |
+| **Import** | `@5ss/ai-tools/textract` |
 | **Kind** | **vendor** (`src/vendors/textract`) |
 | **Module id** | `textract` |
 | **Client** | `TextractClient` |
@@ -37,8 +37,8 @@ Async document text detection. Source object must live in **AWS S3** (Textract `
 ## Bind
 
 ```ts
-import { TextractClient, textractModule } from '@harryy/ai-tools/textract'
-import { withAuth } from '@harryy/ai-tools/core'
+import { TextractClient, textractModule } from '@5ss/ai-tools/textract'
+import { withAuth } from '@5ss/ai-tools/core'
 
 new TextractClient({
   access_key_id: '…',

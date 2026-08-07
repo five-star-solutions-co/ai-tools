@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/tasks` |
+| **Import** | `@5ss/ai-tools/tasks` |
 | **Kind** | capability **seam** (`src/modules/tasks`) |
 | **Module id** | `tasks` |
 | **Provider** | `host` |

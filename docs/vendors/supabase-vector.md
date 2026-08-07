@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/supabase-vector` |
+| **Import** | `@5ss/ai-tools/supabase-vector` |
 | **Kind** | **vendor** (`src/vendors/supabase-vector`) |
 | **Module id** | `supabase-vector` |
 | **Client** | `SupabaseVectorClient` |

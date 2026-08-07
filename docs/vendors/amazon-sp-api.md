@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/amazon-sp-api` |
+| **Import** | `@5ss/ai-tools/amazon-sp-api` |
 | **Kind** | **vendor** (`src/vendors/amazon-sp-api`) |
 | **Module id** | `amazon-sp-api` |
 | **Client** | `AmazonSpApiClient` |
@@ -59,8 +59,8 @@ Never returns raw rows, order ids, SKUs, descriptions, or document URLs.
 ## Bind
 
 ```ts
-import { AmazonSpApiClient, amazonSpApiModule } from '@harryy/ai-tools/amazon-sp-api'
-import { withAuth } from '@harryy/ai-tools/core'
+import { AmazonSpApiClient, amazonSpApiModule } from '@5ss/ai-tools/amazon-sp-api'
+import { withAuth } from '@5ss/ai-tools/core'
 
 new AmazonSpApiClient({
   client_id: '…',

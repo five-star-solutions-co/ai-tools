@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/telegram` |
+| **Import** | `@5ss/ai-tools/telegram` |
 | **Kind** | **vendor** (`src/vendors/telegram`) |
 | **Module id** | `telegram` |
 | **Auth** | Host: `{ bot_token }` |
@@ -12,7 +12,7 @@ Telegram Bot API vendor pack. Same layout as Resend / Cloudflare Email: class cl
 ## Bind
 
 ```ts
-import { telegramModule, TelegramClient, createLiveMessage, withAuth } from '@harryy/ai-tools/telegram'
+import { telegramModule, TelegramClient, createLiveMessage, withAuth } from '@5ss/ai-tools/telegram'
 
 withAuth(telegramModule, { bot_token: '…' })
 const client = new TelegramClient({ bot_token: '…' })

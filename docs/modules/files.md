@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/files` |
+| **Import** | `@5ss/ai-tools/files` |
 | **Kind** | **seam** (`src/modules/files`) |
 | **Module id** | `files` |
 | **Auth** | Host: `root_prefix` + nested S3 `storage` (`s3AuthSchema`) |

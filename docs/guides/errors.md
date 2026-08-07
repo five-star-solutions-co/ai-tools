@@ -2,10 +2,10 @@
 
 ## `ToolError`
 
-All intentional tool failures should throw `ToolError` from `@harryy/ai-tools/core`.
+All intentional tool failures should throw `ToolError` from `@5ss/ai-tools/core`.
 
 ```ts
-import { ToolError, isToolError } from '@harryy/ai-tools/core'
+import { ToolError, isToolError } from '@5ss/ai-tools/core'
 
 throw new ToolError('Object not found', {
   code: 'not_found',

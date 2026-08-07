@@ -1,6 +1,6 @@
 # Repo review: standards, non-negotiables, and gap tasks
 
-**Package:** `@harryy/ai-tools`  
+**Package:** `@5ss/ai-tools`  
 **Repo:** `/Users/harryy/Desktop/hariom/ai-tools`  
 **Captured:** 2026-07-26  
 **Status:** knowledge + backlog only — **do not implement or commit** unless the user explicitly asks.
@@ -40,7 +40,7 @@ This document is the full dump from an end-to-end read of the package: architect
 | Layer | Path | Role |
 | --- | --- | --- |
 | **Kernel** | `src/core/` | Only place tools are *authored*: `defineTool` / `defineModule`, `withAuth`, `runTool`, `ToolError`, contracts, catalog |
-| **Transport** | `src/transport/` | Only HTTP stack: `HttpService` (ofetch) + `AwsService` (SigV4) → public `@harryy/ai-tools/http` |
+| **Transport** | `src/transport/` | Only HTTP stack: `HttpService` (ofetch) + `AwsService` (SigV4) → public `@5ss/ai-tools/http` |
 | **Adapters** | `src/adapters/*` | Projectors only (Mastra, AI SDK, TanStack, Cloudflare, MCP). No business logic |
 | **Modules (seams)** | `src/modules/*` | Capability contracts *we* own; multi-provider when 2+ backends share verbs |
 | **Vendors** | `src/vendors/*` | Full first-party API of one 3rd-party product; grow over time |
@@ -58,7 +58,7 @@ defineTool / defineModule  (kernel — only real tool definitions)
 ```
 
 - Auth is **host-bound only** (`constructor` / `withAuth` / `ctx.auth`). **Never** on tool inputs.
-- Public imports are **flat**: `@harryy/ai-tools/resend`, not `@harryy/ai-tools/vendors/resend`.
+- Public imports are **flat**: `@5ss/ai-tools/resend`, not `@5ss/ai-tools/vendors/resend`.
 - Codegen owns `package.json` exports, `generated/module-manifest.json`, `src/generated/module-keys.ts`. `tsdown.config.ts` is hand shell; entry from the manifest.
 
 ### 1.3 modules vs vendors
@@ -255,7 +255,7 @@ If public surface / build emit changed: also `bun run build` and `bun run typech
 - Fat multi-provider facades that shrink real vendor APIs into five toy tools (seams stay **thin wrappers** of full packs)
 - Fat single-vendor HTTP only under `modules/` as a fake seam
 - Secrets / vault language on model-facing tool inputs
-- Nested public imports (`@harryy/ai-tools/vendors/resend`)
+- Nested public imports (`@5ss/ai-tools/vendors/resend`)
 - Hand-edited codegen surface
 - New layout/naming schemes when a gold file exists
 - Public kit dumpster of parse helpers on `_storage` / `_vector` barrels (schemas/types only on barrel)
@@ -518,7 +518,7 @@ Kernel exports `defineProvider` / `resolveProvider`. No module registers provide
 
 ### G-09 — Storage seam tool surface vs partial provider capabilities (P2)
 
-**Status:** cancelled (2026-07-26) — **storage multi-provider seam removed**; `r2` + `supabase-storage` vendors removed. Object store is `@harryy/ai-tools/s3` only; `files` nests S3 auth.
+**Status:** cancelled (2026-07-26) — **storage multi-provider seam removed**; `r2` + `supabase-storage` vendors removed. Object store is `@5ss/ai-tools/s3` only; `files` nests S3 auth.
 
 ---
 
@@ -649,7 +649,7 @@ Full lock: [`docs/specs/host-integration-kernel.md`](../specs/host-integration-k
 | H-03 | Generic hooks | **Done** — `withHooks` / hooks on bind |
 | H-04 | Richer `ToolMeta` | **Done** — additive host hints + catalog |
 | H-05 | Registry + catalog discovery | **Tabled.** Search/read over registered tools; prefer names `catalog-search-tools` / `catalog-read-tool` (not “meta tools”) |
-| H-06 | Public artifacts surface | **Done**: `@harryy/ai-tools/artifacts` with object/host providers and bounded range/line/create tools |
+| H-06 | Public artifacts surface | **Done**: `@5ss/ai-tools/artifacts` with object/host providers and bounded range/line/create tools |
 | H-07 | Task contracts | **Done**: host-backed task-definition Zod contracts and CRUD tools; no host persistence code |
 | H-08 | Scheduler + EventBridge provider | **Done**: scheduler seam over the EventBridge vendor; single provider by explicit product decision |
 | H-09 | Bedrock AgentCore packs | **Done** — `bedrock-agentcore-code-interpreter` + `bedrock-agentcore-browser` vendors |

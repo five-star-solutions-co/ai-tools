@@ -193,21 +193,20 @@ describe('public package compatibility matrix', () => {
 		let documentMetafile: Bun.BuildMetafile | undefined
 
 		for (const surface of surfaces) {
+			const key = surfaceKey(surface)
+			// messaging may resolve imessage (gRPC / Node peers). Keep those external so browser
+			// packaging does not try to inline @grpc/grpc-js into an edge bundle.
+			const usesNodeOnlyImessagePeers = key === 'messaging' || key === 'imessage'
 			if (surface.runtime === 'edge' || surface.runtime === 'both') {
-				await buildConsumer(surface, 'browser', 'esm', 'bundle')
+				await buildConsumer(surface, 'browser', 'esm', usesNodeOnlyImessagePeers ? 'external' : 'bundle')
 			}
 
 			for (const format of surface.nodeFormats) {
-				const build = await buildConsumer(
-					surface,
-					'node',
-					format,
-					format === 'cjs' ? 'bundle' : 'external',
-					surfaceKey(surface) === 'document'
-				)
+				const packages = format === 'cjs' ? (usesNodeOnlyImessagePeers ? 'external' : 'bundle') : 'external'
+				const build = await buildConsumer(surface, 'node', format, packages, key === 'document')
 				if (format === 'cjs') nodeCjsEntries.push(build.output)
 				else nodeEsmEntries.push(build.output)
-				if (surfaceKey(surface) === 'document') documentMetafile = build.metafile
+				if (key === 'document') documentMetafile = build.metafile
 			}
 		}
 
@@ -233,7 +232,11 @@ describe('public package compatibility matrix', () => {
 		for (const surface of nodeSurfaces) {
 			// Bun CJS build throws on module-level top-level await (the lambda failure mode).
 			// Nested `await import` inside async methods (e.g. pdf.js workers) is fine.
-			const build = await buildConsumer(surface, 'node', 'cjs', 'bundle')
+			// iMessage gRPC peers (@grpc/grpc-js) must stay external — Node-native and hostile to
+			// full CJS inlining (import.meta). Messaging seam can load that vendor path too.
+			const key = surfaceKey(surface)
+			const packages = key === 'imessage' || key === 'messaging' ? 'external' : 'bundle'
+			const build = await buildConsumer(surface, 'node', 'cjs', packages)
 			outputs.push(build.output)
 		}
 

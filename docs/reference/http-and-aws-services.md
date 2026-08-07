@@ -7,7 +7,7 @@
 | `http-service.ts` | `HttpService` |
 | `aws-service.ts` | `AwsService extends HttpService` (signing fetch) |
 | `errors.ts` | Status / network → `ToolError` |
-| `index.ts` | Public `@harryy/ai-tools/http` re-exports |
+| `index.ts` | Public `@5ss/ai-tools/http` re-exports |
 
 Auth is just **headers** on the client (or SigV4 on AwsService):
 

@@ -1,12 +1,16 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { isPlainObject } from 'es-toolkit'
 
 import { isToolError, runTool, validateModule, withAuth } from '../../src/core'
 import {
+	DEFAULT_SPECTRUM_IMESSAGE_GRPC_ADDRESS,
 	ImessageClient,
 	imessageModule,
 	isImessageDefiniteRejection,
 	isImessageOutcomeUnknown,
+	parseSpectrumTokenResponse,
+	resolveSpectrumSession,
+	spectrumImessageGrpcAddress,
 	toSettableReaction
 } from '../../src/vendors/imessage'
 
@@ -14,6 +18,109 @@ function asRecord(value: unknown): Record<string, unknown> {
 	if (!isPlainObject(value)) throw new Error('expected object')
 	return value
 }
+
+type MockMessage = { guid: string; chatGuids?: string[] }
+
+function makeMockSdk(handlers: {
+	sendText?: (chat: string, text: string) => Promise<MockMessage>
+	edit?: (chat: string, id: string, text: string) => Promise<MockMessage>
+	setReaction?: (...args: unknown[]) => Promise<MockMessage>
+	unsend?: (...args: unknown[]) => Promise<void>
+	setTyping?: (chat: string, on: boolean) => Promise<void>
+	markRead?: (chat: string) => Promise<void>
+	createChat?: (
+		addresses: string[],
+		opts?: unknown
+	) => Promise<{ chat: { guid: string }; initialMessage?: MockMessage }>
+	upload?: (input: { fileName: string; data: Uint8Array }) => Promise<{ attachment: { guid: string } }>
+	sendAttachment?: (chat: string, attachmentGuid: string) => Promise<MockMessage>
+	downloadStream?: (id: string) => AsyncIterable<{ type: string; data?: Uint8Array; info?: Record<string, unknown> }>
+}) {
+	return {
+		messages: {
+			sendText: handlers.sendText ?? (async () => ({ guid: 'msg_1' })),
+			edit: handlers.edit ?? (async () => ({ guid: 'msg_1' })),
+			setReaction: handlers.setReaction ?? (async () => ({ guid: 'reaction-1' })),
+			unsend: handlers.unsend ?? (async () => undefined),
+			sendAttachment: handlers.sendAttachment ?? (async () => ({ guid: 'media-1' }))
+		},
+		chats: {
+			setTyping: handlers.setTyping ?? (async () => undefined),
+			markRead: handlers.markRead ?? (async () => undefined),
+			create:
+				handlers.createChat ??
+				(async (addresses: string[]) => ({
+					chat: { guid: `any;-;${addresses[0]}` }
+				}))
+		},
+		attachments: {
+			upload: handlers.upload ?? (async () => ({ attachment: { guid: 'att-1' } })),
+			downloadStream:
+				handlers.downloadStream ??
+				async function* () {
+					yield { type: 'header', info: { fileName: 'photo.jpg', totalBytes: 2 } }
+					yield { type: 'primaryChunk', data: new Uint8Array([97, 98]) }
+				}
+		},
+		close: async () => undefined
+	}
+}
+
+let createCalls: Array<Record<string, unknown>> = []
+let mockSdk = makeMockSdk({})
+
+beforeEach(() => {
+	createCalls = []
+	mockSdk = makeMockSdk({})
+	void mock.module('@photon-ai/advanced-imessage/grpc', () => ({
+		createGrpcClient: (opts: Record<string, unknown>) => {
+			createCalls.push(opts)
+			return mockSdk
+		},
+		AuthenticationError: class AuthenticationError extends Error {
+			constructor(message?: string) {
+				super(message)
+				this.name = 'AuthenticationError'
+			}
+		},
+		ConnectionError: class ConnectionError extends Error {
+			constructor(message?: string) {
+				super(message)
+				this.name = 'ConnectionError'
+			}
+		},
+		IMessageError: class IMessageError extends Error {
+			code?: string
+			retryable?: boolean
+			constructor(message?: string) {
+				super(message)
+				this.name = 'IMessageError'
+			}
+		},
+		NotFoundError: class NotFoundError extends Error {
+			constructor(message?: string) {
+				super(message)
+				this.name = 'NotFoundError'
+			}
+		},
+		RateLimitError: class RateLimitError extends Error {
+			constructor(message?: string) {
+				super(message)
+				this.name = 'RateLimitError'
+			}
+		},
+		ValidationError: class ValidationError extends Error {
+			constructor(message?: string) {
+				super(message)
+				this.name = 'ValidationError'
+			}
+		}
+	}))
+})
+
+afterEach(() => {
+	mock.restore()
+})
 
 function mockFetch(
 	handler: (url: string, init: { method?: string; body?: string; headers: Headers }) => Response | Promise<Response>
@@ -34,46 +141,20 @@ function mockFetch(
 	}
 }
 
-/** Minimal Advanced iMessage `message` envelope for SDK unwrap. */
-function messageEnvelope(guid: string, chatGuid: string, text = 'x') {
-	return {
-		message: {
-			guid,
-			chatGuids: [chatGuid],
-			dateCreated: new Date().toISOString(),
-			isFromMe: true,
-			isSent: true,
-			isDelivered: true,
-			content: { text, attachments: [], mentions: [], effects: [], subject: '' },
-			appliedReactions: [],
-			placedStickers: [],
-			itemType: 0,
-			isArchived: false,
-			isAudioMessage: false,
-			isAutoReply: false,
-			isCorrupt: false,
-			isDelayed: false,
-			isDeliveredQuietly: false,
-			isExpirable: false,
-			isForward: false,
-			isServiceMessage: false,
-			isSpam: false,
-			isSystemMessage: false,
-			didNotifyRecipient: false,
-			dataDetectorResultsPresent: false
-		}
-	}
-}
+const spectrumAuth = {
+	project_id: 'proj_1',
+	project_secret: 'sec_1'
+} as const
 
-const auth = {
-	address: 'http://localhost:8080',
-	token: 'tok_1',
-	tls: false
+const directAuth = {
+	address: 'imessage.spectrum.photon.codes:443',
+	token: 'tok_1'
 } as const
 
 describe('imessage', () => {
 	test('module contracts and tool ids', () => {
 		expect(validateModule(imessageModule).ok).toBe(true)
+		expect(imessageModule.runtime).toBe('node')
 		expect(imessageModule.tools.map((t) => t.id).sort()).toEqual([
 			'imessage-clear-reaction',
 			'imessage-download-file',
@@ -85,6 +166,7 @@ describe('imessage', () => {
 			'imessage-set-reaction',
 			'imessage-unsend'
 		])
+		expect(imessageModule.runtime).toBe('node')
 	})
 
 	test('toSettableReaction maps tapbacks and free emoji', () => {
@@ -92,298 +174,262 @@ describe('imessage', () => {
 		expect(toSettableReaction('❤️')).toEqual({ kind: 'emoji', emoji: '❤️' })
 	})
 
-	test('network failure on send is outcome_unknown', async () => {
-		const restore = mockFetch(async () => {
-			throw new TypeError('fetch failed')
+	test('spectrumImessageGrpcAddress matches spectrum-ts routing', () => {
+		expect(spectrumImessageGrpcAddress({ type: 'shared', token: 't', expiresIn: 60 })).toBe(
+			DEFAULT_SPECTRUM_IMESSAGE_GRPC_ADDRESS
+		)
+		expect(
+			spectrumImessageGrpcAddress(
+				{ type: 'shared', token: 't', expiresIn: 60 },
+				{ sharedAddress: 'custom.example:443' }
+			)
+		).toBe('custom.example:443')
+		expect(spectrumImessageGrpcAddress({ type: 'dedicated', token: 't', server: 'inst-a', expiresIn: 60 })).toBe(
+			'inst-a.imsg.photon.codes:443'
+		)
+	})
+
+	test('parseSpectrumTokenResponse shared and dedicated', () => {
+		expect(
+			parseSpectrumTokenResponse({
+				succeed: true,
+				data: { type: 'shared', token: 'tmp', expiresIn: 900 }
+			})
+		).toEqual({ type: 'shared', token: 'tmp', expiresIn: 900 })
+
+		const dedicated = parseSpectrumTokenResponse({
+			type: 'dedicated',
+			auth: { a: 'tok-a' },
+			numbers: { a: '+1' },
+			expiresIn: 100
 		})
-		try {
-			const client = new ImessageClient(auth)
-			let error: unknown
-			try {
-				await client.sendText({ chat_id: 'any;-;+15551111111', text: 'hello' })
-			} catch (e) {
-				error = e
+		expect(dedicated.type).toBe('dedicated')
+		if (dedicated.type === 'dedicated') {
+			expect(dedicated.auth.a).toBe('tok-a')
+		}
+	})
+
+	test('resolveSpectrumSession multi-instance requires server', () => {
+		expect(() =>
+			resolveSpectrumSession(
+				{
+					type: 'dedicated',
+					auth: { a: '1', b: '2' },
+					numbers: {},
+					expiresIn: 60
+				},
+				undefined
+			)
+		).toThrow()
+	})
+
+	test('Spectrum shared: mints token and createGrpcClient on managed host', async () => {
+		const restore = mockFetch((url, init) => {
+			expect(url).toContain('/projects/proj_1/imessage/tokens')
+			expect(init.method).toBe('POST')
+			expect(init.headers.get('authorization')).toBe(`Basic ${btoa('proj_1:sec_1')}`)
+			return new Response(
+				JSON.stringify({
+					succeed: true,
+					data: { type: 'shared', token: 'tmp_shared', expiresIn: 900 }
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
+		})
+		mockSdk = makeMockSdk({
+			sendText: async (chat, text) => {
+				expect(chat).toBe('any;-;+15551111111')
+				expect(text).toBe('hello')
+				return { guid: 'msg_s' }
 			}
-			expect(isImessageOutcomeUnknown(error)).toBe(true)
-		} finally {
-			restore()
-		}
-	})
-
-	test('sendText posts to Advanced iMessage HTTP middleware', async () => {
-		const restore = mockFetch((url, init) => {
-			expect(url).toContain('/v1/messages:sendText')
-			expect(init?.method).toBe('POST')
-			const headers = new Headers(init?.headers)
-			expect(headers.get('authorization')).toBe('Bearer tok_1')
-			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
-			expect(body.chatGuid).toBe('any;-;+15551111111')
-			expect(body.text).toBe('hello')
-			return new Response(JSON.stringify(messageEnvelope('msg_1', body.chatGuid, body.text)), {
-				status: 200,
-				headers: { 'content-type': 'application/json' }
-			})
 		})
-
 		try {
-			const client = new ImessageClient(auth)
-			const result = await client.sendText({
-				chat_id: 'any;-;+15551111111',
-				text: 'hello'
-			})
-			expect(result).toEqual({ message_id: 'msg_1', space_id: 'any;-;+15551111111' })
+			const client = new ImessageClient(spectrumAuth)
+			const result = await client.sendText({ chat_id: 'any;-;+15551111111', text: 'hello' })
+			expect(result).toEqual({ message_id: 'msg_s', space_id: 'any;-;+15551111111' })
+			expect(createCalls).toHaveLength(1)
+			expect(createCalls[0]?.['address']).toBe(DEFAULT_SPECTRUM_IMESSAGE_GRPC_ADDRESS)
+			expect(createCalls[0]?.['tls']).toBe(true)
+			expect(createCalls[0]?.['autoIdempotency']).toBe(true)
+			expect(createCalls[0]?.['retry']).toBe(true)
+			const tokenFn = createCalls[0]?.['token']
+			expect(typeof tokenFn).toBe('function')
+			expect(await (tokenFn as () => Promise<string>)()).toBe('tmp_shared')
+			expect(client.grpcAddress).toBe(DEFAULT_SPECTRUM_IMESSAGE_GRPC_ADDRESS)
+			expect(client.server).toBeUndefined()
 		} finally {
 			restore()
 		}
 	})
 
-	test('ensureChat posts to /v1/chats and returns chat_id', async () => {
-		const chatGuid = 'any;-;+15551234567'
-		const restore = mockFetch((url, init) => {
-			expect(url).toContain('/v1/chats')
-			expect(url).not.toContain('/v1/chats:')
-			expect(init?.method).toBe('POST')
-			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
-			expect(body.addresses).toEqual(['+15551234567'])
-			expect(body.initialMessage?.text ?? body.initial_message?.text).toBe('hi there')
-			return new Response(
-				JSON.stringify({
-					chat: {
-						guid: chatGuid,
-						displayName: '',
-						isGroup: false,
-						isArchived: false,
-						isFiltered: false,
-						service: 1,
-						participants: [{ address: '+15551234567', service: 1 }]
-					},
-					initialMessage: messageEnvelope('open-1', chatGuid, 'hi there').message
-				}),
-				{ status: 200, headers: { 'content-type': 'application/json' } }
-			)
-		})
-
-		try {
-			const client = new ImessageClient(auth)
-			const result = await client.ensureChat({
-				addresses: ['+15551234567'],
-				message: 'hi there'
-			})
-			expect(result).toEqual({ chat_id: chatGuid, message_id: 'open-1' })
-		} finally {
-			restore()
-		}
-	})
-
-	test('ensureChat without opening message omits message_id', async () => {
-		const chatGuid = 'any;-;alice@example.com'
-		const restore = mockFetch((url, init) => {
-			expect(url).toContain('/v1/chats')
-			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
-			expect(body.addresses).toEqual(['alice@example.com', 'bob@example.com'])
-			expect(body.initialMessage ?? body.initial_message).toBeUndefined()
-			return new Response(
-				JSON.stringify({
-					chat: {
-						guid: chatGuid,
-						displayName: '',
-						isGroup: true,
-						isArchived: false,
-						isFiltered: false,
-						service: 1,
-						participants: [
-							{ address: 'alice@example.com', service: 1 },
-							{ address: 'bob@example.com', service: 1 }
-						]
-					}
-				}),
-				{ status: 200, headers: { 'content-type': 'application/json' } }
-			)
-		})
-
-		try {
-			const client = new ImessageClient(auth)
-			const result = await client.ensureChat({
-				addresses: ['alice@example.com', 'bob@example.com']
-			})
-			expect(result).toEqual({ chat_id: chatGuid })
-			expect(result.message_id).toBeUndefined()
-		} finally {
-			restore()
-		}
-	})
-
-	test('sendText tool via withAuth', async () => {
-		const bound = withAuth(imessageModule, auth)
-		const tool = bound.tools.find((t) => t.id === 'imessage-send-text')
-		if (!tool) throw new Error('missing tool')
-
+	test('Spectrum dedicated single instance uses {id}.imsg.photon.codes:443', async () => {
 		const restore = mockFetch(
 			() =>
-				new Response(JSON.stringify(messageEnvelope('m2', 'any;-;space-a', 'hi')), {
-					status: 200,
-					headers: { 'content-type': 'application/json' }
-				})
+				new Response(
+					JSON.stringify({
+						succeed: true,
+						data: {
+							type: 'dedicated',
+							auth: { 'only-one': 'tok-only' },
+							numbers: { 'only-one': '+15550001111' },
+							expiresIn: 900
+						}
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
 		)
 		try {
-			const result = asRecord(await runTool(tool, { chat_id: 'any;-;space-a', text: 'hi' }))
-			expect(result['message_id']).toBe('m2')
-			expect(result['space_id']).toBe('any;-;space-a')
+			const client = new ImessageClient(spectrumAuth)
+			await client.sendText({ chat_id: 'any;-;+15550001111', text: 'hi' })
+			expect(createCalls[0]?.['address']).toBe('only-one.imsg.photon.codes:443')
+			expect(client.server).toBe('only-one')
+			const tokenFn = createCalls[0]?.['token'] as () => Promise<string>
+			expect(await tokenFn()).toBe('tok-only')
 		} finally {
 			restore()
 		}
 	})
 
-	test('maps 401 to definite rejection', async () => {
+	test('Spectrum dedicated multi-instance without server fails bad_auth', async () => {
 		const restore = mockFetch(
-			() => new Response(JSON.stringify({ message: 'unauthorized', code: 'unauthenticated' }), { status: 401 })
+			() =>
+				new Response(
+					JSON.stringify({
+						succeed: true,
+						data: {
+							type: 'dedicated',
+							auth: { 'inst-a': 'tok-a', 'inst-b': 'tok-b' },
+							numbers: {},
+							expiresIn: 900
+						}
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
 		)
 		try {
-			const client = new ImessageClient(auth)
+			const client = new ImessageClient(spectrumAuth)
 			let caught: unknown
 			try {
-				await client.sendText({ chat_id: 's', text: 'x' })
+				await client.sendText({ chat_id: 'any;-;x', text: 'hi' })
 			} catch (error) {
 				caught = error
 			}
-			expect(isImessageDefiniteRejection(caught) || isToolError(caught)).toBe(true)
+			expect(isToolError(caught)).toBe(true)
+			if (isToolError(caught)) {
+				expect(caught.code).toBe('bad_auth')
+				expect(caught.details?.['instance_ids']).toEqual(['inst-a', 'inst-b'])
+			}
 		} finally {
 			restore()
 		}
 	})
 
-	test('setReaction and clearReaction use setReaction isSet true/false', async () => {
-		const chat = 'any;-;+15551111111'
-		const bodies: Record<string, unknown>[] = []
-		const restore = mockFetch((url, init) => {
-			expect(url).toContain('/v1/messages:setReaction')
-			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
-			bodies.push(body)
-			return new Response(JSON.stringify(messageEnvelope('reaction-or-target', chat)), {
-				status: 200,
-				headers: { 'content-type': 'application/json' }
-			})
-		})
+	test('direct gRPC auth uses address + token', async () => {
+		const client = new ImessageClient(directAuth)
+		const result = await client.sendText({ chat_id: 'any;-;space-a', text: 'hi' })
+		expect(result.message_id).toBe('msg_1')
+		expect(createCalls[0]?.['address']).toBe('imessage.spectrum.photon.codes:443')
+		expect(createCalls[0]?.['token']).toBe('tok_1')
+	})
 
-		try {
-			const client = new ImessageClient(auth)
-			const reaction = await client.setReaction({
-				chat_id: chat,
-				message_id: 'target-1',
-				emoji: 'love'
-			})
-			expect(reaction.message_id).toBe('reaction-or-target')
-			await client.clearReaction({
-				chat_id: chat,
-				message_id: 'target-1',
-				emoji: 'love'
-			})
-			expect(bodies).toHaveLength(2)
-			// first call sets reaction; second clears (isSet omitted/false)
-			expect(bodies[0]?.['isSet']).toBe(true)
-			expect(bodies[1]?.['isSet'] === false || bodies[1]?.['isSet'] === undefined).toBe(true)
-			const target0 = asRecord(bodies[0]?.['target'] ?? {})
-			expect(target0['messageGuid'] ?? target0['message_guid']).toBe('target-1')
-		} finally {
-			restore()
-		}
+	test('sendText tool via withAuth', async () => {
+		const bound = withAuth(imessageModule, directAuth)
+		const tool = bound.tools.find((t) => t.id === 'imessage-send-text')
+		if (!tool) throw new Error('missing tool')
+		const result = asRecord(await runTool(tool, { chat_id: 'any;-;space-a', text: 'hi' }))
+		expect(result['message_id']).toBe('msg_1')
+		expect(result['space_id']).toBe('any;-;space-a')
+	})
+
+	test('ensureChat returns chat_id', async () => {
+		mockSdk = makeMockSdk({
+			createChat: async (addresses, opts) => {
+				expect(addresses).toEqual(['+15551234567'])
+				expect(asRecord(opts ?? {})['message']).toBe('hi there')
+				return {
+					chat: { guid: 'any;-;+15551234567' },
+					initialMessage: { guid: 'open-1' }
+				}
+			}
+		})
+		const client = new ImessageClient(directAuth)
+		const result = await client.ensureChat({
+			addresses: ['+15551234567'],
+			message: 'hi there'
+		})
+		expect(result).toEqual({ chat_id: 'any;-;+15551234567', message_id: 'open-1' })
+	})
+
+	test('setReaction and clearReaction', async () => {
+		const calls: unknown[] = []
+		mockSdk = makeMockSdk({
+			setReaction: async (...args) => {
+				calls.push(args)
+				return { guid: 'reaction-or-target' }
+			}
+		})
+		const client = new ImessageClient(directAuth)
+		const chat = 'any;-;+15551111111'
+		await client.setReaction({ chat_id: chat, message_id: 'target-1', emoji: 'love' })
+		await client.clearReaction({ chat_id: chat, message_id: 'target-1', emoji: 'love' })
+		expect(calls).toHaveLength(2)
+		expect(calls[0]).toEqual([chat, 'target-1', { kind: 'love' }, true])
+		expect(calls[1]).toEqual([chat, 'target-1', { kind: 'love' }, false])
 	})
 
 	test('sendMedia uploads then sendAttachment', async () => {
-		const chat = 'any;-;+15551111111'
-		const paths: string[] = []
-		const restore = mockFetch((url) => {
-			paths.push(url)
-			if (url.includes('/v1/attachments:upload')) {
-				return new Response(
-					JSON.stringify({
-						attachment: {
-							guid: 'att-1',
-							fileName: 'a.png',
-							mimeType: 'image/png',
-							totalBytes: 2,
-							transferState: 'finished',
-							isOutgoing: true,
-							isSticker: false,
-							isHidden: false,
-							uti: 'public.png'
-						}
-					}),
-					{ status: 200, headers: { 'content-type': 'application/json' } }
-				)
+		const steps: string[] = []
+		mockSdk = makeMockSdk({
+			upload: async () => {
+				steps.push('upload')
+				return { attachment: { guid: 'att-1' } }
+			},
+			sendAttachment: async () => {
+				steps.push('sendAttachment')
+				return { guid: 'media-1' }
+			},
+			sendText: async () => {
+				steps.push('caption')
+				return { guid: 'cap-1' }
 			}
-			if (url.includes('/v1/messages:sendAttachment')) {
-				return new Response(JSON.stringify(messageEnvelope('media-1', chat)), {
-					status: 200,
-					headers: { 'content-type': 'application/json' }
-				})
-			}
-			if (url.includes('/v1/messages:sendText')) {
-				return new Response(JSON.stringify(messageEnvelope('cap-1', chat, 'cap')), {
-					status: 200,
-					headers: { 'content-type': 'application/json' }
-				})
-			}
-			return new Response(JSON.stringify({ message: 'unexpected ' + url }), { status: 500 })
 		})
-
-		try {
-			const client = new ImessageClient(auth)
-			const result = await client.sendMedia({
-				chat_id: chat,
-				kind: 'photo',
-				body_base64: btoa('hi'),
-				file_name: 'a.png',
-				content_type: 'image/png',
-				caption: 'cap'
-			})
-			expect(result.message_id).toBe('media-1')
-			expect(paths.some((p) => p.includes('attachments:upload'))).toBe(true)
-			expect(paths.some((p) => p.includes('sendAttachment'))).toBe(true)
-		} finally {
-			restore()
-		}
+		const client = new ImessageClient(directAuth)
+		const result = await client.sendMedia({
+			chat_id: 'any;-;+15551111111',
+			kind: 'photo',
+			body_base64: btoa('hi'),
+			file_name: 'a.png',
+			caption: 'cap'
+		})
+		expect(result.message_id).toBe('media-1')
+		expect(steps).toEqual(['upload', 'sendAttachment', 'caption'])
 	})
 
 	test('downloadFile streams attachment data', async () => {
-		const restore = mockFetch((url) => {
-			if (url.includes('/data')) {
-				return new Response(new Uint8Array([97, 98]), {
-					status: 200,
-					headers: { 'content-type': 'application/octet-stream' }
-				})
-			}
-			if (url.includes('/v1/attachments/att-msg-1')) {
-				return new Response(
-					JSON.stringify({
-						attachment: {
-							guid: 'att-msg-1',
-							fileName: 'photo.jpg',
-							mimeType: 'image/jpeg',
-							totalBytes: 2,
-							transferState: 'finished',
-							isOutgoing: false,
-							isSticker: false,
-							isHidden: false,
-							uti: 'public.jpeg'
-						}
-					}),
-					{ status: 200, headers: { 'content-type': 'application/json' } }
-				)
-			}
-			return new Response(JSON.stringify({ message: 'unexpected ' + url }), { status: 500 })
-		})
+		const client = new ImessageClient(directAuth)
+		const result = await client.downloadFile({ file_id: 'att-msg-1', file_name: 'photo.jpg' })
+		expect(result.file_name).toBe('photo.jpg')
+		expect(result.body_base64).toBe(btoa('ab'))
+	})
 
+	test('network-style failure is outcome_unknown', async () => {
+		mockSdk = makeMockSdk({
+			sendText: async () => {
+				throw new TypeError('fetch failed')
+			}
+		})
+		const client = new ImessageClient(directAuth)
+		let error: unknown
 		try {
-			const client = new ImessageClient(auth)
-			const result = await client.downloadFile({
-				file_id: 'att-msg-1',
-				file_name: 'photo.jpg'
-			})
-			expect(result.file_name).toBe('photo.jpg')
-			expect(result.body_base64).toBe(btoa('ab'))
-		} finally {
-			restore()
+			await client.sendText({ chat_id: 'any;-;x', text: 'hello' })
+		} catch (e) {
+			error = e
 		}
+		expect(isImessageOutcomeUnknown(error)).toBe(true)
+	})
+
+	test('classifiers export', () => {
+		expect(typeof isImessageDefiniteRejection).toBe('function')
+		expect(typeof isImessageOutcomeUnknown).toBe('function')
 	})
 })

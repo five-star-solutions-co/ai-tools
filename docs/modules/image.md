@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/image` |
+| **Import** | `@5ss/ai-tools/image` |
 | **Kind** | capability module |
 | **Engine** | `sharp` |
 
@@ -19,7 +19,7 @@ Artifact-backed image inspection and transforms.
 The package delegates image decoding and encoding to `sharp`. Content types and extensions are resolved through the shared MIME library.
 
 ```ts
-import { ImageClient } from '@harryy/ai-tools/image'
+import { ImageClient } from '@5ss/ai-tools/image'
 
 const image = ImageClient.fromAuth({ storage })
 const result = await image.thumbnail({

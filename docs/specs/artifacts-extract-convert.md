@@ -1,7 +1,7 @@
 # Spec: Artifacts, document extract, file convert
 
 Status: **locked for implementation**  
-Package: `@harryy/ai-tools`
+Package: `@5ss/ai-tools`
 
 ## Goals
 
@@ -32,7 +32,7 @@ Package: `@harryy/ai-tools`
 
 Mime: prefer object head / `Content-Type`; otherwise filename extension; otherwise leave unset.
 
-## Document extract (`@harryy/ai-tools/document-extract`)
+## Document extract (`@5ss/ai-tools/document-extract`)
 
 **Backend:** AWS Textract via **aws4fetch** (no Node PDF libraries).
 
@@ -116,7 +116,7 @@ One `GetDocumentTextDetection` call (paginate tokens if needed for full text). *
 
 `both` (HTTP + aws4fetch).
 
-## File convert (`@harryy/ai-tools/file-convert`)
+## File convert (`@5ss/ai-tools/file-convert`)
 
 **Backend:** self-hosted **[Gotenberg](https://gotenberg.dev/)** LibreOffice module.  
 Closed path: **`office-to-pdf`** (docx, pptx, xlsx, odt, rtf, … → PDF).  

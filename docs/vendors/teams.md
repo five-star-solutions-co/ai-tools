@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/teams` |
+| **Import** | `@5ss/ai-tools/teams` |
 | **Kind** | **vendor** (`src/vendors/teams`) |
 | **Module id** | `teams` |
 | **Auth** | Host: `{ app_id, app_password, tenant_id? }` |
@@ -12,7 +12,7 @@ Microsoft Teams / Bot Framework vendor pack. Same layout as Telegram / Resend: c
 ## Bind
 
 ```ts
-import { teamsModule, TeamsClient, createLiveMessage, withAuth } from '@harryy/ai-tools/teams'
+import { teamsModule, TeamsClient, createLiveMessage, withAuth } from '@5ss/ai-tools/teams'
 
 withAuth(teamsModule, { app_id: '…', app_password: '…' })
 // optional tenant_id; omit for multi-tenant botframework.com token endpoint

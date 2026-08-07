@@ -1,4 +1,4 @@
-# @harryy/ai-tools
+# @5ss/ai-tools
 
 Reusable **AI tools** with strict Zod schemas and model-facing contracts. Define once in the kernel; project to **Mastra**, **Vercel AI SDK**, **TanStack AI**, **Cloudflare Workers AI**, **MCP**, or call via class clients / `runTool`.
 
@@ -20,7 +20,7 @@ Reusable **AI tools** with strict Zod schemas and model-facing contracts. Define
 ## Install
 
 ```bash
-bun add @harryy/ai-tools
+bun add @5ss/ai-tools
 
 # optional peers for adapters you use:
 bun add @mastra/core
@@ -34,9 +34,9 @@ Requires **Bun ≥ 1.3.14** or **Node ≥ 24**.
 ## Quick start
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { resendModule, ResendClient } from '@harryy/ai-tools/resend'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
+import { withAuth } from '@5ss/ai-tools/core'
+import { resendModule, ResendClient } from '@5ss/ai-tools/resend'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
 
 // Host DX (class client)
 const resend = new ResendClient({ api_key: process.env.RESEND_API_KEY! })
@@ -50,8 +50,8 @@ export const tools = createMastraTools(bound)
 Multi-provider **seam** (host picks provider on auth):
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { emailModule } from '@harryy/ai-tools/email'
+import { withAuth } from '@5ss/ai-tools/core'
+import { emailModule } from '@5ss/ai-tools/email'
 
 const bound = withAuth(emailModule, {
   provider: 'resend',
@@ -63,8 +63,8 @@ const bound = withAuth(emailModule, {
 No-auth pure helpers:
 
 ```ts
-import { emailMessageModule } from '@harryy/ai-tools/email-message'
-import { createAiSdkTools } from '@harryy/ai-tools/ai-sdk'
+import { emailMessageModule } from '@5ss/ai-tools/email-message'
+import { createAiSdkTools } from '@5ss/ai-tools/ai-sdk'
 
 export const tools = createAiSdkTools(emailMessageModule)
 ```
@@ -74,7 +74,7 @@ export const tools = createAiSdkTools(emailMessageModule)
 ```text
 src/
   core/          kernel (defineTool, withAuth, runTool, …)
-  transport/     HttpService / AwsService  →  @harryy/ai-tools/http
+  transport/     HttpService / AwsService  →  @5ss/ai-tools/http
   adapters/      mastra · ai-sdk · tanstack · cloudflare · mcp
   modules/       our seams (email, messaging, files, …)
   vendors/       3rd-party packs (resend, telegram, s3, …)
@@ -88,7 +88,7 @@ src/
 | **`vendors/`** | Full first-party API of one product; grow tools over time |
 | **`vendors/_…`** | Vertical kits (codegen-skipped); shared by packs in that category |
 
-Public imports are **flat**: `@harryy/ai-tools/resend`, not `@harryy/ai-tools/vendors/resend`.
+Public imports are **flat**: `@5ss/ai-tools/resend`, not `@5ss/ai-tools/vendors/resend`.
 
 ```text
 defineTool / defineModule
@@ -104,68 +104,68 @@ defineTool / defineModule
 
 | Import | Role | Docs |
 | --- | --- | --- |
-| `@harryy/ai-tools/core` | Kernel, contracts, `withAuth`, `runTool` | [core](./docs/packages/core.md) |
-| `@harryy/ai-tools/http` | `HttpService` / `AwsService` | [http transport](./docs/reference/http-and-aws-services.md) |
-| `@harryy/ai-tools/mastra` | Mastra projector | [mastra](./docs/packages/mastra.md) |
-| `@harryy/ai-tools/ai-sdk` | Vercel AI SDK projector | [ai-sdk](./docs/packages/ai-sdk.md) |
-| `@harryy/ai-tools/tanstack` | TanStack AI projector | [tanstack](./docs/packages/tanstack.md) |
-| `@harryy/ai-tools/cloudflare` | Workers AI tool defs | [cloudflare](./docs/packages/cloudflare.md) |
-| `@harryy/ai-tools/mcp` | MCP list/call + register | [mcp](./docs/packages/mcp.md) |
+| `@5ss/ai-tools/core` | Kernel, contracts, `withAuth`, `runTool` | [core](./docs/packages/core.md) |
+| `@5ss/ai-tools/http` | `HttpService` / `AwsService` | [http transport](./docs/reference/http-and-aws-services.md) |
+| `@5ss/ai-tools/mastra` | Mastra projector | [mastra](./docs/packages/mastra.md) |
+| `@5ss/ai-tools/ai-sdk` | Vercel AI SDK projector | [ai-sdk](./docs/packages/ai-sdk.md) |
+| `@5ss/ai-tools/tanstack` | TanStack AI projector | [tanstack](./docs/packages/tanstack.md) |
+| `@5ss/ai-tools/cloudflare` | Workers AI tool defs | [cloudflare](./docs/packages/cloudflare.md) |
+| `@5ss/ai-tools/mcp` | MCP list/call + register | [mcp](./docs/packages/mcp.md) |
 
 ### Seams (`modules/`)
 
 | Import | Kind | Tools (ids) | Docs |
 | --- | --- | --- | --- |
-| `@harryy/ai-tools/email` | multi-provider | `email-send`, `email-send-batch` | [email](./docs/modules/email.md) |
-| `@harryy/ai-tools/messaging` | multi-provider | `messaging-send-text`, edit, media, reactions, … (telegram/slack/teams/imessage) | [messaging](./docs/modules/messaging.md) |
-| `@harryy/ai-tools/files` | path root over nested S3 | `files-*` | [files](./docs/modules/files.md) |
-| `@harryy/ai-tools/artifacts` | object + host providers | `artifacts-create`, `-read-range`, `-read-lines` | [artifacts](./docs/modules/artifacts.md) |
-| `@harryy/ai-tools/vector-store` | qdrant, pinecone, supabase, mastra | `vector-store-*` | [vector-store](./docs/modules/vector-store.md) |
-| `@harryy/ai-tools/rag` | embed + nested vector-store | `rag-*` | [rag](./docs/modules/rag.md) |
-| `@harryy/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
-| `@harryy/ai-tools/document-render` | multi-provider | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
-| `@harryy/ai-tools/file-convert` | gotenberg LO | `file-convert` (`office-to-pdf`), batch | [file-convert](./docs/modules/file-convert.md) |
-| `@harryy/ai-tools/document` | core reader/builder/editor | read text/PDF/DOCX/XLSX/images; build text/DOCX/XLSX; edit text/DOCX/XLSX/CSV | [document](./docs/modules/document.md) |
-| `@harryy/ai-tools/presentation` | PPTX reader/builder/editor | read, build, and edit PPTX presentations; Node ESM only | [presentation](./docs/modules/presentation.md) |
-| `@harryy/ai-tools/web-fetch` | host policy | `web-fetch-get`, `web-fetch-request` | [web-fetch](./docs/modules/web-fetch.md) |
-| `@harryy/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
-| `@harryy/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
-| `@harryy/ai-tools/skills` | host-bound catalog | `skills-list`, `skills-get`, `skills-search` | [skills](./docs/modules/skills.md) |
-| `@harryy/ai-tools/tasks` | host-backed definitions | `tasks-create`, `-get`, `-list`, `-update`, `-delete` | [tasks](./docs/modules/tasks.md) |
-| `@harryy/ai-tools/scheduler` | eventbridge provider | `scheduler-create`, `-update`, `-get`, `-list`, `-delete` | [scheduler](./docs/modules/scheduler.md) |
-| `@harryy/ai-tools/pdf` | artifact utilities | inspect, merge, extract, split, rotate | [pdf](./docs/modules/pdf.md) |
-| `@harryy/ai-tools/image` | artifact transforms | metadata, resize, crop, thumbnail, convert | [image](./docs/modules/image.md) |
-| `@harryy/ai-tools/crypto` | Web Crypto | hash, HMAC sign/verify, random bytes | [crypto](./docs/modules/crypto.md) |
-| `@harryy/ai-tools/calendar` | pure iCalendar | build and parse ICS | [calendar](./docs/modules/calendar.md) |
-| `@harryy/ai-tools/queue` | sqs provider | enqueue, receive, acknowledge, extend visibility | [queue](./docs/modules/queue.md) |
-| `@harryy/ai-tools/browser` | AgentCore + Cloudflare providers | start, get, stop | [browser](./docs/modules/browser.md) |
+| `@5ss/ai-tools/email` | multi-provider | `email-send`, `email-send-batch` | [email](./docs/modules/email.md) |
+| `@5ss/ai-tools/messaging` | multi-provider | `messaging-send-text`, edit, media, reactions, … (telegram/slack/teams/imessage) | [messaging](./docs/modules/messaging.md) |
+| `@5ss/ai-tools/files` | path root over nested S3 | `files-*` | [files](./docs/modules/files.md) |
+| `@5ss/ai-tools/artifacts` | object + host providers | `artifacts-create`, `-read-range`, `-read-lines` | [artifacts](./docs/modules/artifacts.md) |
+| `@5ss/ai-tools/vector-store` | qdrant, pinecone, supabase, mastra | `vector-store-*` | [vector-store](./docs/modules/vector-store.md) |
+| `@5ss/ai-tools/rag` | embed + nested vector-store | `rag-*` | [rag](./docs/modules/rag.md) |
+| `@5ss/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
+| `@5ss/ai-tools/document-render` | multi-provider | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
+| `@5ss/ai-tools/file-convert` | gotenberg LO | `file-convert` (`office-to-pdf`), batch | [file-convert](./docs/modules/file-convert.md) |
+| `@5ss/ai-tools/document` | core reader/builder/editor | read text/PDF/DOCX/XLSX/images; build text/DOCX/XLSX; edit text/DOCX/XLSX/CSV | [document](./docs/modules/document.md) |
+| `@5ss/ai-tools/presentation` | PPTX reader/builder/editor | read, build, and edit PPTX presentations; Node ESM only | [presentation](./docs/modules/presentation.md) |
+| `@5ss/ai-tools/web-fetch` | host policy | `web-fetch-get`, `web-fetch-request` | [web-fetch](./docs/modules/web-fetch.md) |
+| `@5ss/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
+| `@5ss/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
+| `@5ss/ai-tools/skills` | host-bound catalog | `skills-list`, `skills-get`, `skills-search` | [skills](./docs/modules/skills.md) |
+| `@5ss/ai-tools/tasks` | host-backed definitions | `tasks-create`, `-get`, `-list`, `-update`, `-delete` | [tasks](./docs/modules/tasks.md) |
+| `@5ss/ai-tools/scheduler` | eventbridge provider | `scheduler-create`, `-update`, `-get`, `-list`, `-delete` | [scheduler](./docs/modules/scheduler.md) |
+| `@5ss/ai-tools/pdf` | artifact utilities | inspect, merge, extract, split, rotate | [pdf](./docs/modules/pdf.md) |
+| `@5ss/ai-tools/image` | artifact transforms | metadata, resize, crop, thumbnail, convert | [image](./docs/modules/image.md) |
+| `@5ss/ai-tools/crypto` | Web Crypto | hash, HMAC sign/verify, random bytes | [crypto](./docs/modules/crypto.md) |
+| `@5ss/ai-tools/calendar` | pure iCalendar | build and parse ICS | [calendar](./docs/modules/calendar.md) |
+| `@5ss/ai-tools/queue` | sqs provider | enqueue, receive, acknowledge, extend visibility | [queue](./docs/modules/queue.md) |
+| `@5ss/ai-tools/browser` | AgentCore + Cloudflare providers | start, get, stop | [browser](./docs/modules/browser.md) |
 
 ### Vendors (`vendors/`)
 
 | Import | Tools (ids) | Docs |
 | --- | --- | --- |
-| `@harryy/ai-tools/resend` | `resend-send`, `resend-send-batch` | [resend](./docs/vendors/resend.md) |
-| `@harryy/ai-tools/cloudflare-email` | `cloudflare-email-send`, `-send-batch` | [cloudflare-email](./docs/vendors/cloudflare-email.md) |
-| `@harryy/ai-tools/telegram` | `telegram-send-text`, `-edit-text`, media, reactions, … | [telegram](./docs/vendors/telegram.md) |
-| `@harryy/ai-tools/slack` | `slack-send-text`, edit, media, reactions, files, … | [slack](./docs/vendors/slack.md) |
-| `@harryy/ai-tools/teams` | `teams-send-text`, edit, media, Bot Framework activities | [teams](./docs/vendors/teams.md) |
-| `@harryy/ai-tools/imessage` | send/edit/react/unsend/read via Photon Advanced iMessage HTTP | [imessage](./docs/vendors/imessage.md) |
-| `@harryy/ai-tools/s3` | `s3-*` (+ signed URL, multipart) | [s3](./docs/vendors/s3.md) |
-| `@harryy/ai-tools/sqs` | `sqs-send`, `-receive`, `-delete`, `-change-visibility` | [sqs](./docs/vendors/sqs.md) |
-| `@harryy/ai-tools/qdrant` | `qdrant-upsert`, `-query`, `-delete` | [qdrant](./docs/vendors/qdrant.md) |
-| `@harryy/ai-tools/pinecone` | `pinecone-upsert`, `-query`, `-delete` | [pinecone](./docs/vendors/pinecone.md) |
-| `@harryy/ai-tools/supabase-vector` | `supabase-vector-*` (pgvector/PostgREST) | [supabase-vector](./docs/vendors/supabase-vector.md) |
-| `@harryy/ai-tools/mastra-vector` | `mastra-vector-*` (PgVector, node) | [mastra-vector](./docs/vendors/mastra-vector.md) |
-| `@harryy/ai-tools/textract` | `textract-extract-text`, `-get-status`, `-extract-text-batch` | [textract](./docs/vendors/textract.md) |
-| `@harryy/ai-tools/eventbridge-scheduler` | create/update/get/list/delete (task_ref) | [eventbridge-scheduler](./docs/vendors/eventbridge-scheduler.md) |
-| `@harryy/ai-tools/bedrock-agentcore-code-interpreter` | session + execute + files | [bedrock-agentcore-code-interpreter](./docs/vendors/bedrock-agentcore-code-interpreter.md) |
-| `@harryy/ai-tools/bedrock-agentcore-browser` | start/stop/get session + stream endpoints | [bedrock-agentcore-browser](./docs/vendors/bedrock-agentcore-browser.md) |
+| `@5ss/ai-tools/resend` | `resend-send`, `resend-send-batch` | [resend](./docs/vendors/resend.md) |
+| `@5ss/ai-tools/cloudflare-email` | `cloudflare-email-send`, `-send-batch` | [cloudflare-email](./docs/vendors/cloudflare-email.md) |
+| `@5ss/ai-tools/telegram` | `telegram-send-text`, `-edit-text`, media, reactions, … | [telegram](./docs/vendors/telegram.md) |
+| `@5ss/ai-tools/slack` | `slack-send-text`, edit, media, reactions, files, … | [slack](./docs/vendors/slack.md) |
+| `@5ss/ai-tools/teams` | `teams-send-text`, edit, media, Bot Framework activities | [teams](./docs/vendors/teams.md) |
+| `@5ss/ai-tools/imessage` | send/edit/react/unsend/read via Photon Advanced iMessage HTTP | [imessage](./docs/vendors/imessage.md) |
+| `@5ss/ai-tools/s3` | `s3-*` (+ signed URL, multipart) | [s3](./docs/vendors/s3.md) |
+| `@5ss/ai-tools/sqs` | `sqs-send`, `-receive`, `-delete`, `-change-visibility` | [sqs](./docs/vendors/sqs.md) |
+| `@5ss/ai-tools/qdrant` | `qdrant-upsert`, `-query`, `-delete` | [qdrant](./docs/vendors/qdrant.md) |
+| `@5ss/ai-tools/pinecone` | `pinecone-upsert`, `-query`, `-delete` | [pinecone](./docs/vendors/pinecone.md) |
+| `@5ss/ai-tools/supabase-vector` | `supabase-vector-*` (pgvector/PostgREST) | [supabase-vector](./docs/vendors/supabase-vector.md) |
+| `@5ss/ai-tools/mastra-vector` | `mastra-vector-*` (PgVector, node) | [mastra-vector](./docs/vendors/mastra-vector.md) |
+| `@5ss/ai-tools/textract` | `textract-extract-text`, `-get-status`, `-extract-text-batch` | [textract](./docs/vendors/textract.md) |
+| `@5ss/ai-tools/eventbridge-scheduler` | create/update/get/list/delete (task_ref) | [eventbridge-scheduler](./docs/vendors/eventbridge-scheduler.md) |
+| `@5ss/ai-tools/bedrock-agentcore-code-interpreter` | session + execute + files | [bedrock-agentcore-code-interpreter](./docs/vendors/bedrock-agentcore-code-interpreter.md) |
+| `@5ss/ai-tools/bedrock-agentcore-browser` | start/stop/get session + stream endpoints | [bedrock-agentcore-browser](./docs/vendors/bedrock-agentcore-browser.md) |
 
-| `@harryy/ai-tools/gotenberg` | render PDF/screenshot + `office-to-pdf` convert | [gotenberg](./docs/vendors/gotenberg.md) |
-| `@harryy/ai-tools/cloudflare-browser` | sessions + PDF/screenshot quick actions | [cloudflare-browser](./docs/vendors/cloudflare-browser.md) |
-| `@harryy/ai-tools/woocommerce` | orders, notes, refunds, products, variations, customers, coupons, categories | [woocommerce](./docs/vendors/woocommerce.md) |
-| `@harryy/ai-tools/katana` | sales/purchase/manufacturing orders, products, materials, customers, suppliers, inventory | [katana](./docs/vendors/katana.md) |
-| `@harryy/ai-tools/amazon-sp-api` | orders + items, FBA inventory, reports + documents, catalog search | [amazon-sp-api](./docs/vendors/amazon-sp-api.md) |
+| `@5ss/ai-tools/gotenberg` | render PDF/screenshot + `office-to-pdf` convert | [gotenberg](./docs/vendors/gotenberg.md) |
+| `@5ss/ai-tools/cloudflare-browser` | sessions + PDF/screenshot quick actions | [cloudflare-browser](./docs/vendors/cloudflare-browser.md) |
+| `@5ss/ai-tools/woocommerce` | orders, notes, refunds, products, variations, customers, coupons, categories | [woocommerce](./docs/vendors/woocommerce.md) |
+| `@5ss/ai-tools/katana` | sales/purchase/manufacturing orders, products, materials, customers, suppliers, inventory | [katana](./docs/vendors/katana.md) |
+| `@5ss/ai-tools/amazon-sp-api` | orders + items, FBA inventory, reports + documents, catalog search | [amazon-sp-api](./docs/vendors/amazon-sp-api.md) |
 
 Auth fields are **snake_case** (`api_key`, `bot_token`, `access_key_id`, …).
 

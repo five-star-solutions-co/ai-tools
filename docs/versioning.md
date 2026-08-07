@@ -1,6 +1,6 @@
 # Versioning and release
 
-Package: `@harryy/ai-tools`  
+Package: `@5ss/ai-tools`  
 Tool: **[semantic-release](https://semantic-release.gitbook.io/)** on `main`.
 
 ## How it works
@@ -30,7 +30,7 @@ If nothing releasable has landed since the last tag, semantic-release exits 0 an
 
 ### npm Trusted Publisher
 
-1. npm package **`@harryy/ai-tools`** → **Trusted Publisher**
+1. npm package **`@5ss/ai-tools`** → **Trusted Publisher**
 2. GitHub repo: **`harryy2510/ai-tools`** (exact)
 3. Workflow file: **`release.yml`** (exact — not `ci.yml`, not `publish.yml`)
 4. Permission: `npm publish`

@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/content-type` |
+| **Import** | `@5ss/ai-tools/content-type` |
 | **Module id** | `content-type` |
 | **Runtime** | `both` |
 | **Auth** | **none** |
@@ -18,7 +18,7 @@ import {
   contentTypeGetTool,
   contentTypeExtensionTool,
   contentTypeExtensionsTool
-} from '@harryy/ai-tools/content-type'
+} from '@5ss/ai-tools/content-type'
 ```
 
 No `withAuth` required.

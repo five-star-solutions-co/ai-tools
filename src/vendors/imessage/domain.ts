@@ -1,19 +1,15 @@
 /**
- * Advanced iMessage helpers (no HTTP).
- * Maps package shapes ↔ @photon-ai/advanced-imessage HTTP SDK types.
+ * Advanced iMessage helpers (no transport).
+ * Maps package shapes ↔ Advanced iMessage SDK types.
+ *
+ * Error classes are matched by name (not `instanceof`) so this module does not
+ * statically import `@photon-ai/advanced-imessage/grpc` (Node-only peers).
  */
 
-import type { SettableMessageReaction } from '@photon-ai/advanced-imessage/http'
-import {
-	AuthenticationError,
-	ConnectionError,
-	IMessageError,
-	NotFoundError,
-	RateLimitError,
-	ValidationError
-} from '@photon-ai/advanced-imessage/http'
+import type { SettableMessageReaction } from '@photon-ai/advanced-imessage/grpc'
 
-import { ToolError } from '../../core/errors'
+import { isToolError, ToolError } from '../../core/errors'
+import { isPlainObject } from 'es-toolkit'
 import { base64ToBytes, bytesToBase64 } from '../../shared/bytes'
 import type { ImessageDownloadFileInput, ImessageDownloadFileOutput, ImessageMessageOutput } from './contracts'
 import { MAX_MEDIA_BYTES } from './contracts'
@@ -139,58 +135,77 @@ export function parseDownloadChunks(
 	}
 }
 
+function errorName(error: unknown): string | undefined {
+	return error instanceof Error ? error.name : undefined
+}
+
+function sdkCode(error: unknown): string | undefined {
+	if (!isPlainObject(error)) return undefined
+	const code = error['code']
+	return typeof code === 'string' ? code : undefined
+}
+
+function sdkRetryable(error: unknown): boolean | undefined {
+	if (!isPlainObject(error)) return undefined
+	const retryable = error['retryable']
+	return typeof retryable === 'boolean' ? retryable : undefined
+}
+
 /** Map Photon SDK errors to ImessageClientError (definite vs unknown). */
 export function mapSdkError(label: string, error: unknown): never {
 	if (error instanceof ImessageClientError) throw error
+	// Preserve Spectrum / auth preflight ToolErrors (do not reclassify as SDK upstream).
+	if (isToolError(error)) throw error
 
-	if (error instanceof AuthenticationError) {
+	const name = errorName(error)
+	if (name === 'AuthenticationError') {
 		throw new ImessageClientError({
-			message: error.message || `${label}: authentication failed`,
+			message: (error instanceof Error && error.message) || `${label}: authentication failed`,
 			failureKind: 'definite_rejection',
 			code: 'bad_auth',
 			cause: error
 		})
 	}
-	if (error instanceof NotFoundError) {
+	if (name === 'NotFoundError') {
 		throw new ImessageClientError({
-			message: error.message || `${label}: not found`,
+			message: (error instanceof Error && error.message) || `${label}: not found`,
 			failureKind: 'definite_rejection',
 			code: 'not_found',
 			cause: error
 		})
 	}
-	if (error instanceof ValidationError) {
+	if (name === 'ValidationError') {
 		throw new ImessageClientError({
-			message: error.message || `${label}: invalid request`,
+			message: (error instanceof Error && error.message) || `${label}: invalid request`,
 			failureKind: 'definite_rejection',
 			code: 'bad_input',
 			cause: error
 		})
 	}
-	if (error instanceof RateLimitError) {
+	if (name === 'RateLimitError') {
 		throw new ImessageClientError({
-			message: error.message || `${label}: rate limited`,
+			message: (error instanceof Error && error.message) || `${label}: rate limited`,
 			failureKind: 'outcome_unknown',
 			code: 'rate_limited',
 			cause: error
 		})
 	}
-	if (error instanceof ConnectionError) {
+	if (name === 'ConnectionError') {
 		throw new ImessageClientError({
-			message: error.message || `${label}: connection failed`,
+			message: (error instanceof Error && error.message) || `${label}: connection failed`,
 			failureKind: 'outcome_unknown',
 			code: 'upstream',
 			cause: error
 		})
 	}
-	if (error instanceof IMessageError) {
-		const retryable = error.retryable === true
+	if (name === 'IMessageError' || sdkCode(error) !== undefined) {
+		const retryable = sdkRetryable(error) === true
 		throw new ImessageClientError({
-			message: error.message || `${label} failed`,
+			message: (error instanceof Error && error.message) || `${label} failed`,
 			failureKind: retryable ? 'outcome_unknown' : 'definite_rejection',
 			code: 'upstream',
 			cause: error,
-			details: { sdk_code: error.code }
+			details: { ...(sdkCode(error) && { sdk_code: sdkCode(error) }) }
 		})
 	}
 

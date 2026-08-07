@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/skills` |
+| **Import** | `@5ss/ai-tools/skills` |
 | **Kind** | capability **module** (`src/modules/skills`) |
 | **Module id** | `skills` |
 | **Auth** | Host: `{ skills: SkillDefinition[] }` — resolved catalog for this bind |

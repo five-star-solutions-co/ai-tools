@@ -1,7 +1,7 @@
 # Spec: Agent document plane
 
 Status: **locked product direction**  
-Package: `@harryy/ai-tools`  
+Package: `@5ss/ai-tools`  
 Date: 2026-07-26
 
 Related:
@@ -80,8 +80,8 @@ The product remains one package with flat subpath exports, but document and pres
 
 | Import | Capability | Packaging |
 | --- | --- | --- |
-| `@harryy/ai-tools/document` | Text, PDF, DOCX, XLSX/CSV, images | Node ESM and CommonJS consumer bundles |
-| `@harryy/ai-tools/presentation` | PPTX | Node ESM only until the PPTX dependency graph is CommonJS-compatible |
+| `@5ss/ai-tools/document` | Text, PDF, DOCX, XLSX/CSV, images | Node ESM and CommonJS consumer bundles |
+| `@5ss/ai-tools/presentation` | PPTX | Node ESM only until the PPTX dependency graph is CommonJS-compatible |
 
 The document entry must never transitively import the PPTX parser or its core package. Filtering presentation tools after importing a shared client is not sufficient.
 

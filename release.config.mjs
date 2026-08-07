@@ -39,7 +39,7 @@ export default {
 			{
 				changelogFile: 'CHANGELOG.md',
 				changelogTitle:
-					'# Changelog\n\nAll notable changes to `@harryy/ai-tools` are documented here.\n\nFormat follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).'
+					'# Changelog\n\nAll notable changes to `@5ss/ai-tools` are documented here.\n\nFormat follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).'
 			}
 		],
 		[

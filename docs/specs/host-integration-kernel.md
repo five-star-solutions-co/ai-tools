@@ -1,7 +1,7 @@
 # Spec: Host-integration kernel (bind · context · hooks · catalog)
 
 Status: **locked direction** (implementation slices land separately)  
-Package: `@harryy/ai-tools`  
+Package: `@5ss/ai-tools`  
 Date: 2026-07-26  
 
 Related:
@@ -82,7 +82,7 @@ Composio / Nango (and similar) solve a **different** problem:
 | Huge multi-app **SaaS OAuth** surface (Gmail, Sheets, CRMs, …) | First-party packs **this package owns** (or host registered) |
 | Logical tools + connection intents + PHI routing path | No tenant OAuth product; no PHI router |
 | “Search the world’s connectors” | “Search the tools I already enabled for this agent” |
-| Host + Composio/Nango seam | Host + `@harryy/ai-tools` registry helpers |
+| Host + Composio/Nango seam | Host + `@5ss/ai-tools` registry helpers |
 
 **Locked:** do **not** reimplement Composio meta tools, connection catalogs, or OAuth app search in this package. Those stay host + Composio/Nango ([package-surface-architecture](./package-surface-architecture.md)).
 

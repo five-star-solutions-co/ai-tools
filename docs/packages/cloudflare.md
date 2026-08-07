@@ -1,4 +1,4 @@
-# `@harryy/ai-tools/cloudflare`
+# `@5ss/ai-tools/cloudflare`
 
 Project kernel tools into **Cloudflare Workers AI–style tool definitions** (JSON Schema + execute wiring). This is a definition projector, not a Cloudflare API client for email/R2 (see product modules).
 
@@ -8,8 +8,8 @@ Project kernel tools into **Cloudflare Workers AI–style tool definitions** (JS
 import {
   createCloudflareAiToolDefinition,
   createCloudflareAiTools,
-} from '@harryy/ai-tools/cloudflare'
-import type { CloudflareAiToolDefinition, CloudflareAiToolset } from '@harryy/ai-tools/cloudflare'
+} from '@5ss/ai-tools/cloudflare'
+import type { CloudflareAiToolDefinition, CloudflareAiToolset } from '@5ss/ai-tools/cloudflare'
 ```
 
 | Helper | Use |

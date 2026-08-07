@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/woocommerce` |
+| **Import** | `@5ss/ai-tools/woocommerce` |
 | **Kind** | **vendor** (`src/vendors/woocommerce`) |
 | **Module id** | `woocommerce` |
 | **Client** | `WoocommerceClient` |
@@ -80,8 +80,8 @@ List endpoints accept `cursor` (page number string) and `limit` (1–100, defaul
 ## Bind
 
 ```ts
-import { WoocommerceClient, woocommerceModule } from '@harryy/ai-tools/woocommerce'
-import { withAuth } from '@harryy/ai-tools/core'
+import { WoocommerceClient, woocommerceModule } from '@5ss/ai-tools/woocommerce'
+import { withAuth } from '@5ss/ai-tools/core'
 
 new WoocommerceClient({
   store_url: 'https://shop.example.com',

@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/artifacts` |
+| **Import** | `@5ss/ai-tools/artifacts` |
 | **Kind** | capability **seam** (`src/modules/artifacts`) |
 | **Module id** | `artifacts` |
 | **Providers** | `object`, `host` |

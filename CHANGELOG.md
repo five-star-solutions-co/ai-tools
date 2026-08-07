@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@harryy/ai-tools` are documented here.
+All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).
 
@@ -60,7 +60,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Release
 
 # Changelog
 
-All notable changes to `@harryy/ai-tools` are documented here.
+All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are cut by semantic-release from conventional commits. See [docs/versioning.md](./docs/versioning.md).
@@ -75,11 +75,11 @@ Public surfaces removed or renamed since **v1.6.1** — next release **must** be
 
 | Removed / changed | Migration |
 | --- | --- |
-| `@harryy/ai-tools/mime` | Use `@harryy/ai-tools/email-message` (parse/build) and/or `content-type` |
-| `@harryy/ai-tools/storage` | Use `@harryy/ai-tools/s3` (or nested S3 auth on `files` / messaging media) |
-| `@harryy/ai-tools/r2` | Use `s3` with R2 S3-compatible `endpoint` |
-| `@harryy/ai-tools/supabase-storage` | Use S3-compatible storage or host Supabase client |
-| `messaging-unsend` tool / seam `unsend` | Use `@harryy/ai-tools/imessage` `imessage-unsend` (or channel vendor) |
+| `@5ss/ai-tools/mime` | Use `@5ss/ai-tools/email-message` (parse/build) and/or `content-type` |
+| `@5ss/ai-tools/storage` | Use `@5ss/ai-tools/s3` (or nested S3 auth on `files` / messaging media) |
+| `@5ss/ai-tools/r2` | Use `s3` with R2 S3-compatible `endpoint` |
+| `@5ss/ai-tools/supabase-storage` | Use S3-compatible storage or host Supabase client |
+| `messaging-unsend` tool / seam `unsend` | Use `@5ss/ai-tools/imessage` `imessage-unsend` (or channel vendor) |
 | email-message attachment `mimeType` | Renamed to **`mime_type`** |
 | messaging media `source.store: 'host'` | Not accepted; use `store: 'object'` + nested `storage` auth |
 | `messaging-download-file` output | When `destination_key` is set, response may include **`artifact`** and omit `body_base64` — handle both shapes |
@@ -104,7 +104,7 @@ Initial public package surface (archival).
 
 ### Added
 
-- **Kernel (`@harryy/ai-tools/core`)** — `defineTool`, `defineModule`, `withAuth`, `runTool`, contracts, catalog, JSON Schema projection, stable `ToolError` codes.
+- **Kernel (`@5ss/ai-tools/core`)** — `defineTool`, `defineModule`, `withAuth`, `runTool`, contracts, catalog, JSON Schema projection, stable `ToolError` codes.
 - **HTTP** surface and framework adapters (Mastra, AI SDK, TanStack, Cloudflare, MCP).
 - Early product modules and tooling (see git history for full evolution).
 

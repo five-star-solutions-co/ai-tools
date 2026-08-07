@@ -1,28 +1,43 @@
 import { describe, expect, test } from 'bun:test'
 
 import { ImessageClient } from '../../../src/vendors/imessage'
+import type { ImessageAuth } from '../../../src/vendors/imessage'
 import { env } from '../env'
 
-/** Photon Advanced iMessage HTTP middleware origin (or bare host). */
-const address = env('AI_TOOLS_IMESSAGE_HTTP_ADDRESS') ?? env('AI_TOOLS_IMESSAGE_PROXY_URL')
-const token = env('AI_TOOLS_IMESSAGE_TOKEN') ?? env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
+/** Spectrum Cloud project credentials (preferred) or direct gRPC address+token. */
+const projectId = env('AI_TOOLS_IMESSAGE_PROJECT_ID')
+const projectSecret = env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
+const address = env('AI_TOOLS_IMESSAGE_GRPC_ADDRESS') ?? env('AI_TOOLS_IMESSAGE_ADDRESS')
+const token = env('AI_TOOLS_IMESSAGE_TOKEN')
 const chatId = env('AI_TOOLS_IMESSAGE_CHAT_ID')
-/** Optional dedicated instance id (x-photon-server). */
+/** Optional dedicated instance id. */
 const server = env('AI_TOOLS_IMESSAGE_SERVER')
-/** Optional: attachment guid for downloadFile. */
 const inboundFileId = env('AI_TOOLS_IMESSAGE_FILE_ID')
-const run = address && token && chatId ? describe : describe.skip
+const spectrumCloudUrl = env('AI_TOOLS_IMESSAGE_SPECTRUM_CLOUD_URL')
+const sharedGrpcOverride = env('AI_TOOLS_IMESSAGE_SPECTRUM_IMESSAGE_ADDRESS')
+
+const hasSpectrum = Boolean(projectId && projectSecret)
+const hasDirect = Boolean(address && token)
+const run = chatId && (hasSpectrum || hasDirect) ? describe : describe.skip
 
 function client() {
-	return new ImessageClient({
-		address: address!,
-		token: token!,
-		tls: address!.startsWith('http://') ? false : undefined,
-		...(server ? { server } : {})
-	})
+	const auth: ImessageAuth = hasSpectrum
+		? {
+				project_id: projectId!,
+				project_secret: projectSecret!,
+				...(server ? { server } : {}),
+				...(spectrumCloudUrl ? { spectrum_cloud_url: spectrumCloudUrl } : {}),
+				...(sharedGrpcOverride ? { spectrum_imessage_address: sharedGrpcOverride } : {})
+			}
+		: {
+				address: address!,
+				token: token!,
+				...(server ? { server } : {})
+			}
+	return new ImessageClient(auth)
 }
 
-run('live vendor imessage', () => {
+run('live vendor imessage (gRPC / Spectrum)', () => {
 	test(
 		'send edit typing react media unsend; markRead',
 		async () => {
@@ -33,6 +48,7 @@ run('live vendor imessage', () => {
 			})
 			expect(sent.space_id).toBeTruthy()
 			expect(sent.message_id).toBeTruthy()
+			expect(c.grpcAddress).toBeTruthy()
 
 			const edited = await c.editText({
 				chat_id: chatId!,
@@ -55,7 +71,6 @@ run('live vendor imessage', () => {
 				emoji: 'love'
 			})
 
-			// Advanced iMessage marks the whole chat read (message_id optional).
 			await c.read({ chat_id: chatId! })
 
 			const media = await c.sendMedia({
@@ -79,8 +94,8 @@ run('live vendor imessage', () => {
 				await c.unsend({ chat_id: chatId!, message_id: media.message_id })
 			}
 
-			await c.answerCallback({})
+			await c.close()
 		},
-		{ timeout: 90_000 }
+		{ timeout: 120_000 }
 	)
 })

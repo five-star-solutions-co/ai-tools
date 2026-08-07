@@ -5,13 +5,13 @@ Adapters **project** kernel tools into framework shapes. They do not implement p
 ## Pattern
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { s3Module } from '@harryy/ai-tools/s3'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
-import { createAiSdkTools } from '@harryy/ai-tools/ai-sdk'
-import { createTanStackTools } from '@harryy/ai-tools/tanstack'
-import { createCloudflareAiTools } from '@harryy/ai-tools/cloudflare'
-import { createMcpTools, registerMcpTools } from '@harryy/ai-tools/mcp'
+import { withAuth } from '@5ss/ai-tools/core'
+import { s3Module } from '@5ss/ai-tools/s3'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
+import { createAiSdkTools } from '@5ss/ai-tools/ai-sdk'
+import { createTanStackTools } from '@5ss/ai-tools/tanstack'
+import { createCloudflareAiTools } from '@5ss/ai-tools/cloudflare'
+import { createMcpTools, registerMcpTools } from '@5ss/ai-tools/mcp'
 
 const bound = withAuth(s3Module, {
   access_key_id: '…',
@@ -48,11 +48,11 @@ Same merge rules on AI SDK, TanStack, Cloudflare. MCP `registerMcpTools`: `conte
 
 | Adapter | Import | Notes |
 | --- | --- | --- |
-| Mastra | `@harryy/ai-tools/mastra` | [mastra.md](../packages/mastra.md) — tool `id` is the stable name |
-| AI SDK | `@harryy/ai-tools/ai-sdk` | [ai-sdk.md](../packages/ai-sdk.md) — uses dynamic tools for Zod 4 |
-| TanStack AI | `@harryy/ai-tools/tanstack` | [tanstack.md](../packages/tanstack.md) |
-| Cloudflare Workers AI | `@harryy/ai-tools/cloudflare` | [cloudflare.md](../packages/cloudflare.md) — definition objects, not a runtime |
-| MCP | `@harryy/ai-tools/mcp` | [mcp.md](../packages/mcp.md) — list/call shapes + optional register |
+| Mastra | `@5ss/ai-tools/mastra` | [mastra.md](../packages/mastra.md) — tool `id` is the stable name |
+| AI SDK | `@5ss/ai-tools/ai-sdk` | [ai-sdk.md](../packages/ai-sdk.md) — uses dynamic tools for Zod 4 |
+| TanStack AI | `@5ss/ai-tools/tanstack` | [tanstack.md](../packages/tanstack.md) |
+| Cloudflare Workers AI | `@5ss/ai-tools/cloudflare` | [cloudflare.md](../packages/cloudflare.md) — definition objects, not a runtime |
+| MCP | `@5ss/ai-tools/mcp` | [mcp.md](../packages/mcp.md) — list/call shapes + optional register |
 
 ## Rules
 
@@ -62,4 +62,4 @@ Same merge rules on AI SDK, TanStack, Cloudflare. MCP `registerMcpTools`: `conte
 
 ## Direct call without an adapter
 
-Use `runTool` from `@harryy/ai-tools/core` for scripts, tests, and custom hosts.
+Use `runTool` from `@5ss/ai-tools/core` for scripts, tests, and custom hosts.

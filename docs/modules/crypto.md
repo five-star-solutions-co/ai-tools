@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/crypto` |
+| **Import** | `@5ss/ai-tools/crypto` |
 | **Kind** | capability module |
 | **Engine** | Web Crypto |
 

@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/email` |
+| **Import** | `@5ss/ai-tools/email` |
 | **Kind** | multi-provider **seam** (`src/modules/email`) |
 | **Module id** | `email` |
 | **Providers** | `resend`, `cloudflare` |
@@ -13,9 +13,9 @@ Thin **send/batch only** seam over [Resend](../vendors/resend.md) and [Cloudflar
 ## Bind
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { emailModule } from '@harryy/ai-tools/email'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
+import { withAuth } from '@5ss/ai-tools/core'
+import { emailModule } from '@5ss/ai-tools/email'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
 
 const bound = withAuth(emailModule, {
   provider: 'resend',

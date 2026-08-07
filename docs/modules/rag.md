@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/rag` |
+| **Import** | `@5ss/ai-tools/rag` |
 | **Kind** | **seam** (`src/modules/rag`) |
 | **Module id** | `rag` |
 | **Client** | `RagClient` |
@@ -54,7 +54,7 @@ Chunk ids are `{document_id}#{index}`. Ingest stores `text`, `document_id`, and 
 ## Pure helpers
 
 ```ts
-import { chunkText, chunkId } from '@harryy/ai-tools/rag'
+import { chunkText, chunkId } from '@5ss/ai-tools/rag'
 
 chunkText(longText, { max_chars: 1200, overlap: 200 })
 ```
@@ -62,8 +62,8 @@ chunkText(longText, { max_chars: 1200, overlap: 200 })
 ## Bind
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { RagClient, ragModule } from '@harryy/ai-tools/rag'
+import { withAuth } from '@5ss/ai-tools/core'
+import { RagClient, ragModule } from '@5ss/ai-tools/rag'
 
 const rag = RagClient.fromAuth({
   vector_store: {

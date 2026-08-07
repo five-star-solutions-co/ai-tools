@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/calendar` |
+| **Import** | `@5ss/ai-tools/calendar` |
 | **Kind** | pure capability module |
 | **Engine** | `ical.js` |
 

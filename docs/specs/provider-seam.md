@@ -1,7 +1,7 @@
 # Spec: Provider seam for capability modules
 
 Status: **locked**  
-Package: `@harryy/ai-tools`  
+Package: `@5ss/ai-tools`  
 Scope: **modules only** (`src/modules/*`). Vendors: [package-surface-architecture.md](./package-surface-architecture.md).
 
 ## Goals

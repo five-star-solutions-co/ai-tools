@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/document` |
+| **Import** | `@5ss/ai-tools/document` |
 | **Kind** | capability **seam** (`src/modules/document`) |
 | **Module id** | `document` |
 | **Runtime** | Node |

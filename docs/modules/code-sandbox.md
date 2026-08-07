@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/code-sandbox` |
+| **Import** | `@5ss/ai-tools/code-sandbox` |
 | **Kind** | capability seam |
 | **Providers** | `cloudflare`, `bedrock-agentcore` |
 

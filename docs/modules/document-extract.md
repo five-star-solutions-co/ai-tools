@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/document-extract` |
+| **Import** | `@5ss/ai-tools/document-extract` |
 | **Kind** | multi-provider **seam** (`src/modules/document-extract`) |
 | **Module id** | `document-extract` |
 | **Auth** | Host union: `provider: 'textract'` (+ more later) |

@@ -1,4 +1,4 @@
-# `@harryy/ai-tools/mcp`
+# `@5ss/ai-tools/mcp`
 
 Project kernel tools to [Model Context Protocol](https://modelcontextprotocol.io) list/call shapes, with optional registration onto a host-owned MCP server.
 
@@ -16,7 +16,7 @@ import {
   createMcpToolListItem,
   createMcpTools,
   registerMcpTools,
-} from '@harryy/ai-tools/mcp'
+} from '@5ss/ai-tools/mcp'
 ```
 
 | Helper | Use |
@@ -30,8 +30,8 @@ Tool **names** use kernel tool `id` values.
 ## Example
 
 ```ts
-import { emailMessageModule } from '@harryy/ai-tools/email-message'
-import { createMcpTools, registerMcpTools } from '@harryy/ai-tools/mcp'
+import { emailMessageModule } from '@5ss/ai-tools/email-message'
+import { createMcpTools, registerMcpTools } from '@5ss/ai-tools/mcp'
 
 const mcp = createMcpTools(emailMessageModule)
 // expose mcp.tools to ListTools; route CallTool through mcp.call

@@ -3,7 +3,7 @@
 ## Install
 
 ```bash
-bun add @harryy/ai-tools
+bun add @5ss/ai-tools
 ```
 
 Optional peer packages (only if you use the matching adapter):
@@ -23,16 +23,16 @@ There is **no root barrel**. Import by subpath. Full tables: [root README](../..
 
 | Kind | Examples |
 | --- | --- |
-| Brain | `@harryy/ai-tools/core`, `/http`, `/mastra`, `/ai-sdk`, … |
-| Seams | `@harryy/ai-tools/email`, `/storage`, `/files`, … |
-| Vendors | `@harryy/ai-tools/resend`, `/telegram`, `/s3`, … |
+| Brain | `@5ss/ai-tools/core`, `/http`, `/mastra`, `/ai-sdk`, … |
+| Seams | `@5ss/ai-tools/email`, `/storage`, `/files`, … |
+| Vendors | `@5ss/ai-tools/resend`, `/telegram`, `/s3`, … |
 
 ## Vendor pack (class client + tools)
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { ResendClient, resendModule } from '@harryy/ai-tools/resend'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
+import { withAuth } from '@5ss/ai-tools/core'
+import { ResendClient, resendModule } from '@5ss/ai-tools/resend'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
 
 // Host
 const resend = new ResendClient({ api_key: process.env.RESEND_API_KEY! })
@@ -46,9 +46,9 @@ export const tools = createMastraTools(bound)
 ## Multi-provider seam
 
 ```ts
-import { withAuth } from '@harryy/ai-tools/core'
-import { emailModule } from '@harryy/ai-tools/email'
-import { createMastraTools } from '@harryy/ai-tools/mastra'
+import { withAuth } from '@5ss/ai-tools/core'
+import { emailModule } from '@5ss/ai-tools/email'
+import { createMastraTools } from '@5ss/ai-tools/mastra'
 
 const bound = withAuth(emailModule, {
   provider: 'cloudflare',
@@ -65,8 +65,8 @@ Host chooses the backend with `provider` on auth. Tool inputs never include cred
 ## Pure packs (no auth)
 
 ```ts
-import { emailMessageModule } from '@harryy/ai-tools/email-message'
-import { createAiSdkTools } from '@harryy/ai-tools/ai-sdk'
+import { emailMessageModule } from '@5ss/ai-tools/email-message'
+import { createAiSdkTools } from '@5ss/ai-tools/ai-sdk'
 
 export const tools = createAiSdkTools(emailMessageModule)
 ```
@@ -75,7 +75,7 @@ export const tools = createAiSdkTools(emailMessageModule)
 
 ```ts
 import { z } from 'zod'
-import { defineModule, defineTool, runTool } from '@harryy/ai-tools/core'
+import { defineModule, defineTool, runTool } from '@5ss/ai-tools/core'
 
 const ping = defineTool({
   id: 'demo-ping',
@@ -100,8 +100,8 @@ await runTool(ping, {})
 ## Direct execution (tests / scripts)
 
 ```ts
-import { runTool, withAuth } from '@harryy/ai-tools/core'
-import { emailModule, emailSendTool } from '@harryy/ai-tools/email'
+import { runTool, withAuth } from '@5ss/ai-tools/core'
+import { emailModule, emailSendTool } from '@5ss/ai-tools/email'
 
 const bound = withAuth(emailModule, {
   provider: 'resend',

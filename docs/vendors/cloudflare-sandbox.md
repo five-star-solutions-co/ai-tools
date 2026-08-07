@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/cloudflare-sandbox` |
+| **Import** | `@5ss/ai-tools/cloudflare-sandbox` |
 | **Kind** | **vendor** (`src/vendors/cloudflare-sandbox`) |
 | **Module id** | `cloudflare-sandbox` |
 | **Client** | `CloudflareSandboxClient` |
@@ -23,7 +23,7 @@ The host **deploys** the bridge Worker and supplies its URL + `SANDBOX_API_KEY`.
 Bridge: `POST /v1/sandbox/:id/mount` and `POST /v1/sandbox/:id/unmount`.
 
 ```ts
-import { CloudflareSandboxClient } from '@harryy/ai-tools/cloudflare-sandbox'
+import { CloudflareSandboxClient } from '@5ss/ai-tools/cloudflare-sandbox'
 
 const client = new CloudflareSandboxClient({
   base_url: process.env.SANDBOX_API_URL!,
@@ -106,8 +106,8 @@ Bridge file PUT/GET is raw bytes (max **32 MiB**). Prefer `body_base64` + `encod
 ## Bind
 
 ```ts
-import { CloudflareSandboxClient, cloudflareSandboxModule } from '@harryy/ai-tools/cloudflare-sandbox'
-import { withAuth } from '@harryy/ai-tools/core'
+import { CloudflareSandboxClient, cloudflareSandboxModule } from '@5ss/ai-tools/cloudflare-sandbox'
+import { withAuth } from '@5ss/ai-tools/core'
 
 withAuth(cloudflareSandboxModule, {
   base_url: process.env.SANDBOX_API_URL!,
@@ -124,7 +124,7 @@ const out = await client.executeCode({ sandbox_id, code: 'print(40+2)', language
 await client.destroy({ sandbox_id })
 ```
 
-Seam: `@harryy/ai-tools/code-sandbox` with `provider: 'cloudflare'`.
+Seam: `@5ss/ai-tools/code-sandbox` with `provider: 'cloudflare'`.
 
 ## Live IT
 

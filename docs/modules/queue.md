@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Import** | `@harryy/ai-tools/queue` |
+| **Import** | `@5ss/ai-tools/queue` |
 | **Kind** | capability seam |
 | **Provider** | `sqs` |
 
@@ -16,7 +16,7 @@
 Receipt handles are opaque and must come from `queue-receive`. Consumers must remain idempotent because queue delivery can repeat.
 
 ```ts
-import { QueueClient } from '@harryy/ai-tools/queue'
+import { QueueClient } from '@5ss/ai-tools/queue'
 
 const queue = QueueClient.fromAuth({
   provider: 'sqs',

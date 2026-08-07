@@ -1,4 +1,4 @@
-# @harryy/ai-tools
+# @5ss/ai-tools
 
 Reusable AI tools: one package, subpath exports, kernel-first tools, host-bound auth, optional framework adapters.
 
@@ -98,16 +98,16 @@ If TypeScript complains about `undefined` on an optional prop, fix the **type** 
 | Public import path | **No different style** — flat kebab name only |
 
 ```ts
-import { emailModule } from '@harryy/ai-tools/email'                 // seam (module)
-import { ResendClient, resendModule } from '@harryy/ai-tools/resend' // vendor
-import { telegramModule } from '@harryy/ai-tools/telegram'           // vendor (chat)
-import { S3Client, s3Module } from '@harryy/ai-tools/s3'             // vendor (object store)
+import { emailModule } from '@5ss/ai-tools/email'                 // seam (module)
+import { ResendClient, resendModule } from '@5ss/ai-tools/resend' // vendor
+import { telegramModule } from '@5ss/ai-tools/telegram'           // vendor (chat)
+import { S3Client, s3Module } from '@5ss/ai-tools/s3'             // vendor (object store)
 ```
 
 - Codegen owns `package.json` `exports`, `generated/*` (including `module-manifest.json`), `src/generated/module-keys.ts`.
 - `tsdown.config.ts` is hand-maintained for build options; its **entry map is loaded from** `generated/module-manifest.json` at build time — do not paste pack paths into it.
 - Never hand-edit codegen-owned files; run `bun run codegen` after adding a pack under `src/modules|vendors/<key>/` with `index.ts`.
-- Do **not** nest public imports (`@harryy/ai-tools/vendors/resend`).
+- Do **not** nest public imports (`@5ss/ai-tools/vendors/resend`).
 
 ### R4 — Client + tools + adapters (not “everything is a class”)
 

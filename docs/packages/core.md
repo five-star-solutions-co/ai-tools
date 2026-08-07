@@ -1,4 +1,4 @@
-# `@harryy/ai-tools/core`
+# `@5ss/ai-tools/core`
 
 Kernel: define tools/modules, validate contracts, bind auth, run tools, catalog, JSON Schema.
 
@@ -21,7 +21,7 @@ import {
   filterToolsByRuntime,
   ToolError,
   isToolError,
-} from '@harryy/ai-tools/core'
+} from '@5ss/ai-tools/core'
 ```
 
 ## `defineTool`
