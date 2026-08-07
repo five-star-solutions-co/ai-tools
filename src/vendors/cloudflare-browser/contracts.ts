@@ -5,9 +5,26 @@ import { s3AuthSchema } from '../s3'
 
 export const MAX_HTML_CHARS = 2_000_000
 
+/**
+ * Cloudflare Browser Run engine (`?browser=`).
+ * `chromium` is the product default (omit query). `kitesurf` is the lightweight Workers engine.
+ */
+export const cloudflareBrowserEngineSchema = z
+	.enum(['chromium', 'kitesurf'])
+	.describe(
+		'Browser engine: kitesurf for cheaper agent screenshots/HTML extraction; chromium for pixel-perfect or complex sites (default)'
+	)
+
+export type CloudflareBrowserEngine = z.infer<typeof cloudflareBrowserEngineSchema>
+
 export const cloudflareBrowserSessionAuthSchema = z.object({
 	account_id: z.string().min(1).describe('Cloudflare account id'),
-	api_token: z.string().min(1).describe('Cloudflare API token with Browser Rendering permission')
+	api_token: z.string().min(1).describe('Cloudflare API token with Browser Rendering permission'),
+	browser: cloudflareBrowserEngineSchema
+		.optional()
+		.describe(
+			'Default Browser Run engine for sessions and quick actions (chromium | kitesurf). Per-call browser overrides this when set.'
+		)
 })
 
 export const cloudflareBrowserClientAuthSchema = cloudflareBrowserSessionAuthSchema.extend({
@@ -28,7 +45,8 @@ export const cloudflareBrowserStartSessionInputSchema = z.object({
 		.min(60)
 		.max(600)
 		.optional()
-		.describe('How long the browser session remains available, from 60 to 600 seconds')
+		.describe('How long the browser session remains available, from 60 to 600 seconds'),
+	browser: cloudflareBrowserEngineSchema.optional().describe('Override auth default engine for this session')
 })
 
 export const cloudflareBrowserSessionIdInputSchema = z.object({
@@ -67,14 +85,16 @@ export const cloudflareBrowserRenderSourceSchema = z
 export const cloudflareBrowserRenderPdfInputSchema = z.object({
 	source: cloudflareBrowserRenderSourceSchema.describe('HTML string or URL to print'),
 	output_key: z.string().min(1).optional().describe('Object key for the PDF. Defaults under renders/'),
-	filename: z.string().min(1).optional().describe('Display filename for the result ArtifactRef')
+	filename: z.string().min(1).optional().describe('Display filename for the result ArtifactRef'),
+	browser: cloudflareBrowserEngineSchema.optional().describe('Override auth default engine for this render')
 })
 
 export const cloudflareBrowserRenderScreenshotInputSchema = z.object({
 	source: cloudflareBrowserRenderSourceSchema.describe('HTML string or URL to capture'),
 	output_key: z.string().min(1).optional().describe('Object key for the PNG. Defaults under renders/'),
 	filename: z.string().min(1).optional().describe('Display filename for the result ArtifactRef'),
-	viewport: cloudflareBrowserViewportSchema.optional().describe('Optional screenshot viewport')
+	viewport: cloudflareBrowserViewportSchema.optional().describe('Optional screenshot viewport'),
+	browser: cloudflareBrowserEngineSchema.optional().describe('Override auth default engine for this capture')
 })
 
 export const cloudflareBrowserRenderOutputSchema = z.object({

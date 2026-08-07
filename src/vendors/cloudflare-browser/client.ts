@@ -13,6 +13,7 @@ import type { HttpServiceOptions } from '../../transport/http-service'
 import { S3Client } from '../s3'
 import type {
 	CloudflareBrowserClientAuth,
+	CloudflareBrowserEngine,
 	CloudflareBrowserRenderOutput,
 	CloudflareBrowserRenderPdfInput,
 	CloudflareBrowserRenderScreenshotInput,
@@ -25,7 +26,14 @@ import {
 	cloudflareBrowserRenderOutputSchema,
 	cloudflareBrowserSessionOutputSchema
 } from './contracts'
-import { assertBinaryPrefix, defaultRenderKey, sourceBody, titleFromHtml } from './domain'
+import {
+	assertBinaryPrefix,
+	browserEngineQuery,
+	defaultRenderKey,
+	resolveBrowserEngine,
+	sourceBody,
+	titleFromHtml
+} from './domain'
 
 export type CloudflareBrowserClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -64,8 +72,12 @@ export class CloudflareBrowserClient {
 	}
 
 	async startSession(input: CloudflareBrowserStartSessionInput = {}): Promise<CloudflareBrowserSessionOutput> {
-		const query = input.keep_alive_seconds ? `?keep_alive=${input.keep_alive_seconds * 1_000}` : ''
-		const { data } = await this.#http.post(`/browser-rendering/devtools/browser${query}`)
+		const { data } = await this.#http.post('/browser-rendering/devtools/browser', undefined, {
+			query: {
+				...(input.keep_alive_seconds !== undefined && { keep_alive: input.keep_alive_seconds * 1_000 }),
+				...browserEngineQuery(this.#engine(input.browser))
+			}
+		})
 		return this.#mapSession(data, undefined, 'active')
 	}
 
@@ -95,7 +107,11 @@ export class CloudflareBrowserClient {
 	 * One-shot rendered HTML for a URL or HTML source (Browser Rendering content API).
 	 * Not session-bound CDP; used for seam navigate/snapshot on Cloudflare.
 	 */
-	async fetchContent(input: { url?: string; html?: string }): Promise<{ html: string; title?: string }> {
+	async fetchContent(input: {
+		url?: string
+		html?: string
+		browser?: CloudflareBrowserEngine
+	}): Promise<{ html: string; title?: string }> {
 		const body: Record<string, unknown> = {
 			...sourceBody({
 				...(input.url && { url: input.url }),
@@ -105,7 +121,8 @@ export class CloudflareBrowserClient {
 		}
 		const { data } = await this.#http.post('/browser-rendering/content', body, {
 			label: 'Cloudflare Browser content',
-			headers: { 'Content-Type': 'application/json', Accept: 'text/html, application/json' }
+			headers: { 'Content-Type': 'application/json', Accept: 'text/html, application/json' },
+			query: browserEngineQuery(this.#engine(input.browser))
 		})
 		if (isString(data)) {
 			const out: { html: string; title?: string } = { html: data }
@@ -160,7 +177,8 @@ export class CloudflareBrowserClient {
 			headers: {
 				'Content-Type': 'application/json',
 				Accept: accept
-			}
+			},
+			query: browserEngineQuery(this.#engine(input.browser))
 		})
 		assertBinaryPrefix(bytes, kind)
 
@@ -181,6 +199,10 @@ export class CloudflareBrowserClient {
 			byte_length: bytes.byteLength
 		})
 		return cloudflareBrowserRenderOutputSchema.parse({ result, kind })
+	}
+
+	#engine(override?: CloudflareBrowserEngine): CloudflareBrowserEngine | undefined {
+		return resolveBrowserEngine(override, this.#auth.browser)
 	}
 
 	#mapSession(data: unknown, fallbackSessionId?: string, fallbackStatus?: string): CloudflareBrowserSessionOutput {

@@ -29,6 +29,8 @@ await http.post('/emails', body)
 await http.bytes('GET', '/file')
 await http.bytes('GET', '/bounded-file', { maxBytes: 5 * 1024 * 1024 })
 await http.get('/x', { noThrow: true })
+// Query string via ofetch `query` (not path string concat)
+await http.post('/browser-rendering/screenshot', body, { query: { browser: 'kitesurf' } })
 ```
 
 ```ts

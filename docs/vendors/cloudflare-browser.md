@@ -15,6 +15,8 @@ Cloudflare Browser Run sessions plus PDF and screenshot quick actions. Rendered 
 {
   account_id: string
   api_token: string
+  /** Optional default engine for all sessions + quick actions (default chromium) */
+  browser?: 'chromium' | 'kitesurf'
   storage?: {
     access_key_id: string
     secret_access_key: string
@@ -26,6 +28,12 @@ Cloudflare Browser Run sessions plus PDF and screenshot quick actions. Rendered 
 }
 ```
 
+### Kitesurf (`browser: 'kitesurf'`)
+
+Cloudflare’s lightweight Workers browser ([docs](https://developers.cloudflare.com/browser-run/kitesurf/)). Lower CPU/memory than Chromium; good for agent screenshots, HTML extraction, and bursty one-shots. Not ideal for pixel-perfect print, WebGL/video, or bot-challenge TLS.
+
+This pack sends `?browser=kitesurf` on Quick Actions and session create via `HttpService` `query` (same ofetch query bag as every other pack). Per-call `browser` on start-session / render tools overrides the auth default. CDP hosts can pass `browser: 'kitesurf'` to `mintCloudflareBrowserCdpConnection` so the WebSocket URL carries the param if upstream omitted it.
+
 ## Tools
 
 | Tool | Purpose |
@@ -36,7 +44,7 @@ Cloudflare Browser Run sessions plus PDF and screenshot quick actions. Rendered 
 | `cloudflare-browser-render-pdf` | Render HTML or URL to a stored PDF |
 | `cloudflare-browser-render-screenshot` | Render HTML or URL to a stored PNG |
 
-`storage` is required for the two render tools and optional for session lifecycle.
+`storage` is required for the two render tools and optional for session lifecycle. Render and start-session tools accept optional `browser` to override the auth default.
 
 ## Bind
 

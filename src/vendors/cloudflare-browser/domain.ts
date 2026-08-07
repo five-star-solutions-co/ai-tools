@@ -6,7 +6,26 @@
 import { compile } from 'html-to-text'
 
 import { ToolError } from '../../core/errors'
-import type { CloudflareBrowserRenderSource } from './contracts'
+import type { CloudflareBrowserEngine, CloudflareBrowserRenderSource } from './contracts'
+
+/**
+ * Query bag for Browser Run `?browser=`.
+ * Only emits when non-default (kitesurf); chromium is the API default when omitted.
+ */
+export function browserEngineQuery(
+	engine: CloudflareBrowserEngine | undefined
+): { browser: 'kitesurf' } | Record<string, never> {
+	if (engine === 'kitesurf') return { browser: 'kitesurf' }
+	return {}
+}
+
+/** Prefer per-call engine, then host auth default. */
+export function resolveBrowserEngine(
+	override: CloudflareBrowserEngine | undefined,
+	authDefault: CloudflareBrowserEngine | undefined
+): CloudflareBrowserEngine | undefined {
+	return override ?? authDefault
+}
 
 /** Resource types blocked by default (no network subresources). */
 export const blockedBrowserResourceTypes = [

@@ -5,6 +5,7 @@ export type { CloudflareBrowserCdpConnection, MintCloudflareBrowserCdpOptions } 
 export {
 	cloudflareBrowserAuthSchema,
 	cloudflareBrowserClientAuthSchema,
+	cloudflareBrowserEngineSchema,
 	cloudflareBrowserRenderOutputSchema,
 	cloudflareBrowserRenderPdfInputSchema,
 	cloudflareBrowserRenderScreenshotInputSchema,
@@ -19,6 +20,7 @@ export {
 export type {
 	CloudflareBrowserAuth,
 	CloudflareBrowserClientAuth,
+	CloudflareBrowserEngine,
 	CloudflareBrowserRenderOutput,
 	CloudflareBrowserRenderPdfInput,
 	CloudflareBrowserRenderScreenshotInput,

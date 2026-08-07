@@ -15,7 +15,7 @@ HTML or URL → PDF / PNG via a browser/print engine. **Not** office format conv
 | provider | Transport | Notes |
 | --- | --- | --- |
 | `gotenberg` | self-hosted Gotenberg | Preferred self-host |
-| `cloudflare-browser` | CF Browser Rendering | Managed |
+| `cloudflare-browser` | CF Browser Run (optional auth `browser: 'kitesurf'`) | Managed |
 
 Both write results to nested **S3-compatible** storage and return `ArtifactRef`.
 

@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-07T01:02:32.689Z",
+	"generatedAt": "2026-08-07T01:13:27.308Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -388,6 +388,7 @@
 				"CloudflareBrowserClient",
 				"CloudflareBrowserClientAuth",
 				"CloudflareBrowserClientOptions",
+				"CloudflareBrowserEngine",
 				"CloudflareBrowserRenderOutput",
 				"CloudflareBrowserRenderPdfInput",
 				"CloudflareBrowserRenderScreenshotInput",
@@ -401,6 +402,7 @@
 				"MintCloudflareBrowserCdpOptions",
 				"cloudflareBrowserAuthSchema",
 				"cloudflareBrowserClientAuthSchema",
+				"cloudflareBrowserEngineSchema",
 				"cloudflareBrowserGetSessionTool",
 				"cloudflareBrowserModule",
 				"cloudflareBrowserRenderOutputSchema",

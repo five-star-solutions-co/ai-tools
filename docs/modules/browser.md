@@ -25,7 +25,9 @@ const cdp = mintBrowserCdpConnection(session)
 // host: connect Playwright / AgentBrowser to cdp.websocket_url (+ cdp.headers)
 ```
 
-Cloudflare vendor helper: `mintCloudflareBrowserCdpConnection` from `@harryy/ai-tools/cloudflare-browser` (optional `api_token` → Authorization header).
+Cloudflare vendor helper: `mintCloudflareBrowserCdpConnection` from `@harryy/ai-tools/cloudflare-browser` (optional `api_token` → Authorization header; optional `browser: 'kitesurf'` to ensure the WebSocket URL carries the engine query).
+
+Cloudflare host auth may set `browser: 'kitesurf'` for the lightweight Workers engine on sessions, one-shot navigate/snapshot/screenshot (via vendor client). Default is Chromium when omitted.
 
 REST interactive tools (`click` / `type` / `wait`) stay for migration; do not remove until host CDP path is live.
 
