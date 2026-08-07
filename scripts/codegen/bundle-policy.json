@@ -1,0 +1,18 @@
+{
+	"neverBundle": [
+		"@mastra/core",
+		"@modelcontextprotocol/sdk",
+		"@tanstack/ai",
+		"ai",
+		"aws4fetch",
+		"es-toolkit",
+		"mime",
+		"mimetext",
+		"ofetch",
+		"p-map",
+		"p-retry",
+		"postal-mime",
+		"zod"
+	],
+	"alwaysBundle": ["@office-open/**", "fflate", "@noble/hashes", "@noble/hashes/**"]
+}

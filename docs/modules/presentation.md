@@ -19,9 +19,9 @@ PPTX reader, builder, and editor. This is intentionally separate from [`document
 | PPTX build | PptxGenJS |
 | PPTX slide-content edit | `pptx-automizer` |
 
-`@office-open/core@0.10.13` ships top-level `await import("node:zlib")` in its compression util, which breaks Bun → CJS lambda bundlers. This package:
+`@office-open/core@0.10.15` ships top-level `await import("node:zlib")` in its compression util, which breaks Bun → CJS lambda bundlers. This package:
 
-1. Applies a Bun patch (`patches/@office-open%2Fcore@0.10.13.patch`) that drops the optional native-zlib init (fflate-only fallback).
+1. Applies a Bun patch (`patches/@office-open%2Fcore@0.10.15.patch`) that drops the optional native-zlib init (fflate-only fallback).
 2. Force-bundles `@office-open/*` into the presentation pack dist so consumers do not re-resolve the broken module graph.
 
 Public emit is Node ESM; the package-compatibility suite also forces a Node **CommonJS** consumer bundle+`require` for every Node pack (including presentation) so top-level-await regressions cannot ship.

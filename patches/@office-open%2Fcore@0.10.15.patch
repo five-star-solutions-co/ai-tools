@@ -1,6 +1,3 @@
-diff --git a/node_modules/@office-open/core/.bun-tag-780560b7edcbe95a b/.bun-tag-780560b7edcbe95a
-new file mode 100644
-index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/util-Tq9PSjK0.mjs b/dist/util-Tq9PSjK0.mjs
 index 0b3f7132e789de375511d449e7e9ad2f378d7038..05884f5c2a600d173ed8fbdd6b9c01a4f65ee121 100644
 --- a/dist/util-Tq9PSjK0.mjs

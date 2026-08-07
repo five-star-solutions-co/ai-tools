@@ -1,4 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -13,9 +14,10 @@ export type CodegenResult = {
 	dirty: string[]
 }
 
-async function formatPaths(relativePaths: string[]): Promise<void> {
-	if (relativePaths.length === 0) return
-	const proc = Bun.spawn(['bun', 'x', 'oxfmt', '--write', ...relativePaths], {
+async function formatPaths(absolutePaths: string[]): Promise<void> {
+	if (absolutePaths.length === 0) return
+	// oxfmt ≥0.62 honors .gitignore; pass absolute paths so check-tmp under OS temp still formats.
+	const proc = Bun.spawn(['bun', 'x', 'oxfmt', '--write', ...absolutePaths], {
 		cwd: repoRoot,
 		stdout: 'pipe',
 		stderr: 'pipe'
@@ -58,9 +60,8 @@ export async function runCodegen(options: { checkOnly?: boolean } = {}): Promise
 
 	if (checkOnly) {
 		const dirty: string[] = []
-		const tmpRoot = path.join(repoRoot, '.codegen-check-tmp')
-		await rm(tmpRoot, { recursive: true, force: true })
-		await mkdir(tmpRoot, { recursive: true })
+		// Outside the repo so oxfmt does not skip paths listed in .gitignore (e.g. .codegen-check-tmp).
+		const tmpRoot = await mkdtemp(path.join(tmpdir(), 'ai-tools-codegen-'))
 
 		try {
 			for (const target of targets) {
@@ -68,7 +69,7 @@ export async function runCodegen(options: { checkOnly?: boolean } = {}): Promise
 				await mkdir(path.dirname(tmpPath), { recursive: true })
 				await writeFile(tmpPath, target.content, 'utf8')
 			}
-			await formatPaths(targets.map((t) => path.join('.codegen-check-tmp', t.relative)))
+			await formatPaths(targets.map((t) => path.join(tmpRoot, t.relative)))
 
 			for (const target of targets) {
 				const expected = await readFile(path.join(tmpRoot, target.relative), 'utf8')
@@ -110,7 +111,7 @@ export async function runCodegen(options: { checkOnly?: boolean } = {}): Promise
 		wrote.push(target.relative)
 	}
 
-	await formatPaths(targets.map((t) => t.relative))
+	await formatPaths(targets.map((t) => path.join(repoRoot, t.relative)))
 
 	return { moduleCount: modules.length, wrote, dirty: [] }
 }

@@ -3,7 +3,7 @@
  *
  * Entry map is **not** listed here — it is loaded from
  * `generated/module-manifest.json` (written by `bun run codegen`).
- * Bundle policy lists live in `scripts/codegen/brain.ts` (shared with docs of intent).
+ * Bundle policy lists live in `scripts/codegen/bundle-policy.json` (also re-exported from brain.ts).
  *
  * Hand-edit: format / dts / deps only. Do not paste pack entry paths.
  */
@@ -13,15 +13,19 @@ import { fileURLToPath } from 'node:url'
 
 import { defineConfig } from 'tsdown'
 
-import { ALWAYS_BUNDLE, NEVER_BUNDLE } from './scripts/codegen/brain'
-
 type ModuleManifest = {
 	brain: Array<{ entryKey: string; source: string }>
 	modules: Array<{ entryKey: string; entry: string }>
 }
 
+type BundlePolicy = {
+	neverBundle: string[]
+	alwaysBundle: string[]
+}
+
+const root = dirname(fileURLToPath(import.meta.url))
+
 function entryFromManifest(): Record<string, string> {
-	const root = dirname(fileURLToPath(import.meta.url))
 	const raw = readFileSync(join(root, 'generated/module-manifest.json'), 'utf8')
 	const manifest = JSON.parse(raw) as ModuleManifest
 	const entry: Record<string, string> = {}
@@ -34,6 +38,13 @@ function entryFromManifest(): Record<string, string> {
 	return entry
 }
 
+function loadBundlePolicy(): BundlePolicy {
+	const raw = readFileSync(join(root, 'scripts/codegen/bundle-policy.json'), 'utf8')
+	return JSON.parse(raw) as BundlePolicy
+}
+
+const bundlePolicy = loadBundlePolicy()
+
 export default defineConfig({
 	entry: entryFromManifest(),
 	format: ['esm'],
@@ -42,7 +53,7 @@ export default defineConfig({
 	dts: true,
 	sourcemap: true,
 	deps: {
-		neverBundle: [...NEVER_BUNDLE],
-		alwaysBundle: [...ALWAYS_BUNDLE]
+		neverBundle: [...bundlePolicy.neverBundle],
+		alwaysBundle: [...bundlePolicy.alwaysBundle]
 	}
 })

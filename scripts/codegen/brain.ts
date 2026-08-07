@@ -1,5 +1,7 @@
 /** Fixed brain packages (not under src/modules). */
 
+import bundlePolicy from './bundle-policy.json' with { type: 'json' }
+
 export type BrainPackage = {
 	/** package.json exports key without leading ./ */
 	exportKey: string
@@ -30,31 +32,16 @@ export const BRAIN_PACKAGES: readonly BrainPackage[] = [
 	{ exportKey: 'mcp', entryKey: 'mcp/index', source: 'src/adapters/mcp/index.ts', runtime: 'both' }
 ]
 
-export const NEVER_BUNDLE = [
-	'@mastra/core',
-	'@modelcontextprotocol/sdk',
-	'@tanstack/ai',
-	'ai',
-	'aws4fetch',
-	'es-toolkit',
-	'mime',
-	'mimetext',
-	'ofetch',
-	'p-map',
-	'p-retry',
-	'postal-mime',
-	'zod'
-] as const
+/**
+ * Bundle policy shared with `tsdown.config.ts` via JSON so the native tsdown
+ * config loader does not need extensionless TypeScript imports.
+ */
+export const NEVER_BUNDLE = bundlePolicy.neverBundle
 
 /**
  * Force-inline into pack dist so consumers (esp. Bun → CJS lambda) never resolve
  * `@office-open/core`'s broken top-level-await zlib path from node_modules.
  * Source is patched via `patchedDependencies` before build.
+ * picomatch: bare package names only match exact ids; use slash-star-star subpath globs.
  */
-export const ALWAYS_BUNDLE = [
-	// picomatch: bare package names only match exact ids; include /** for subpaths
-	'@office-open/**',
-	'fflate',
-	'@noble/hashes',
-	'@noble/hashes/**'
-] as const
+export const ALWAYS_BUNDLE = bundlePolicy.alwaysBundle
