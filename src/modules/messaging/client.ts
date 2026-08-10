@@ -1,5 +1,5 @@
 /**
- * Messaging seam client — picks telegram / slack / teams / imessage from host auth.
+ * Messaging seam client — picks telegram / slack / teams / imessage (proxy) from host auth.
  * Resolves ArtifactRef media via optional nested S3 storage before channel calls.
  */
 

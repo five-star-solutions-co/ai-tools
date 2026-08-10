@@ -1,18 +1,13 @@
 {
 	"neverBundle": [
-		"@grpc/grpc-js",
 		"@mastra/core",
 		"@modelcontextprotocol/sdk",
-		"@photon-ai/advanced-imessage",
-		"@photon-ai/advanced-imessage/**",
 		"@tanstack/ai",
 		"ai",
 		"aws4fetch",
 		"es-toolkit",
 		"mime",
 		"mimetext",
-		"nice-grpc",
-		"nice-grpc-common",
 		"ofetch",
 		"p-map",
 		"p-retry",

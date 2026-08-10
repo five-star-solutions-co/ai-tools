@@ -145,7 +145,7 @@ defineTool / defineModule
 | `@5ss/ai-tools/telegram` | `telegram-send-text`, `-edit-text`, media, reactions, … | [telegram](./docs/vendors/telegram.md) |
 | `@5ss/ai-tools/slack` | `slack-send-text`, edit, media, reactions, files, … | [slack](./docs/vendors/slack.md) |
 | `@5ss/ai-tools/teams` | `teams-send-text`, edit, media, Bot Framework activities | [teams](./docs/vendors/teams.md) |
-| `@5ss/ai-tools/imessage` | send/edit/react/unsend/read via Photon Advanced iMessage HTTP | [imessage](./docs/vendors/imessage.md) |
+| `@5ss/ai-tools/imessage` | send/edit/react/unsend/read via photon-rest-proxy (HTTP) | [imessage](./docs/vendors/imessage.md) |
 | `@5ss/ai-tools/s3` | `s3-*` (+ signed URL, multipart) | [s3](./docs/vendors/s3.md) |
 | `@5ss/ai-tools/sqs` | `sqs-send`, `-receive`, `-delete`, `-change-visibility` | [sqs](./docs/vendors/sqs.md) |
 | `@5ss/ai-tools/qdrant` | `qdrant-upsert`, `-query`, `-delete` | [qdrant](./docs/vendors/qdrant.md) |

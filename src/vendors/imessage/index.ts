@@ -1,22 +1,6 @@
 export { ImessageClient } from './client'
 export type { ImessageClientOptions } from './client'
 export { isImessageDefiniteRejection, isImessageOutcomeUnknown, ImessageClientError } from './client'
-export { toSettableReaction } from './domain'
-export {
-	DEFAULT_SPECTRUM_CLOUD_URL,
-	DEFAULT_SPECTRUM_IMESSAGE_GRPC_ADDRESS,
-	SpectrumImessageTokenSource,
-	issueImessageTokens,
-	parseSpectrumTokenResponse,
-	resolveSpectrumSession,
-	spectrumImessageGrpcAddress
-} from './spectrum-cloud'
-export type {
-	ResolvedSpectrumSession,
-	SpectrumDedicatedTokenData,
-	SpectrumImessageTokenData,
-	SpectrumSharedTokenData
-} from './spectrum-cloud'
 export {
 	MAX_MEDIA_BYTES,
 	imessageAuthSchema,
@@ -27,17 +11,13 @@ export {
 	imessageEnsureChatInputSchema,
 	imessageEnsureChatOutputSchema,
 	imessageMessageOutputSchema,
-	imessageGrpcAuthSchema,
-	imessageMiddlewareAuthSchema,
 	imessageOkOutputSchema,
 	imessageReadInputSchema,
 	imessageSendChatActionInputSchema,
 	imessageSendMediaInputSchema,
 	imessageSendTextInputSchema,
 	imessageSetReactionInputSchema,
-	imessageSpectrumAuthSchema,
-	imessageUnsendInputSchema,
-	isImessageSpectrumAuth
+	imessageUnsendInputSchema
 } from './contracts'
 export type {
 	ImessageAuth,
@@ -47,14 +27,12 @@ export type {
 	ImessageEditTextInput,
 	ImessageEnsureChatInput,
 	ImessageEnsureChatOutput,
-	ImessageGrpcAuth,
 	ImessageMessageOutput,
 	ImessageReadInput,
 	ImessageSendChatActionInput,
 	ImessageSendMediaInput,
 	ImessageSendTextInput,
 	ImessageSetReactionInput,
-	ImessageSpectrumAuth,
 	ImessageUnsendInput
 } from './contracts'
 export {

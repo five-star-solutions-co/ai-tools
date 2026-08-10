@@ -132,16 +132,12 @@ describe('public package compatibility matrix', () => {
 		const nodeEsmEntries: string[] = []
 
 		for (const surface of surfaces) {
-			const key = surfaceKey(surface)
-			// messaging may resolve imessage (gRPC / Node peers). Keep those external so browser
-			// packaging does not try to inline @grpc/grpc-js into an edge bundle.
-			const usesNodeOnlyImessagePeers = key === 'messaging' || key === 'imessage'
 			if (surface.runtime === 'edge' || surface.runtime === 'both') {
-				await buildConsumer(surface, 'browser', 'esm', usesNodeOnlyImessagePeers ? 'external' : 'bundle')
+				await buildConsumer(surface, 'browser', 'esm', 'bundle')
 			}
 
 			for (const format of surface.nodeFormats) {
-				const packages = format === 'cjs' ? (usesNodeOnlyImessagePeers ? 'external' : 'bundle') : 'external'
+				const packages = format === 'cjs' ? 'bundle' : 'external'
 				const build = await buildConsumer(surface, 'node', format, packages)
 				if (format === 'cjs') nodeCjsEntries.push(build.output)
 				else nodeEsmEntries.push(build.output)
@@ -166,11 +162,7 @@ describe('public package compatibility matrix', () => {
 		for (const surface of nodeSurfaces) {
 			// Bun CJS build throws on module-level top-level await (the lambda failure mode).
 			// Nested `await import` inside async methods is fine.
-			// iMessage gRPC peers (@grpc/grpc-js) must stay external — Node-native and hostile to
-			// full CJS inlining (import.meta). Messaging seam can load that vendor path too.
-			const key = surfaceKey(surface)
-			const packages = key === 'imessage' || key === 'messaging' ? 'external' : 'bundle'
-			const build = await buildConsumer(surface, 'node', 'cjs', packages)
+			const build = await buildConsumer(surface, 'node', 'cjs', 'bundle')
 			outputs.push(build.output)
 		}
 

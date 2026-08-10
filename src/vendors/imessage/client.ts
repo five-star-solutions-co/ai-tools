@@ -1,21 +1,17 @@
 /**
- * iMessage vendor client via @photon-ai/advanced-imessage **gRPC** (Node/Bun only).
+ * iMessage vendor client via hosted photon-rest-proxy (REST → Spectrum gRPC).
  * Host: `new ImessageClient(auth)`. Agent tools: `fromContext(ctx)`.
  *
- * Auth (spectrum-ts cloud shape):
- * - Spectrum Cloud: `project_id` + `project_secret` → temporary tokens → managed gRPC hosts
- * - Direct gRPC: `address` + `token` (explicit line, spectrum-ts `clients[]` shape)
- *
- * Requires optional peers: `nice-grpc`, `nice-grpc-common`, `@grpc/grpc-js`.
- * @see https://github.com/photon-hq/spectrum-ts/blob/main/packages/imessage/src/auth.ts
- * @see https://github.com/photon-hq/advanced-imessage-ts
+ * Workers-safe: only HTTP to the proxy. No Photon SDK / gRPC in this package.
  */
 
-import type { AdvancedIMessage } from '@photon-ai/advanced-imessage/grpc'
+import { isPlainObject, isString } from 'es-toolkit'
 
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
-import type { FetchLike, ToolContext } from '../../core/types'
+import type { ToolContext } from '../../core/types'
+import { HttpService } from '../../transport/http-service'
+import type { HttpServiceOptions } from '../../transport/http-service'
 import type {
 	ImessageAuth,
 	ImessageClearReactionInput,
@@ -32,35 +28,25 @@ import type {
 	ImessageSetReactionInput,
 	ImessageUnsendInput
 } from './contracts'
-import { imessageAuthSchema, isImessageSpectrumAuth } from './contracts'
+import { imessageAuthSchema } from './contracts'
 import {
-	decodeMediaBytes,
+	assertProxyOk,
 	isImessageDefiniteRejection,
 	isImessageOutcomeUnknown,
 	ImessageClientError,
-	mapSdkError,
-	messageToOutput,
-	parseDownloadChunks,
-	toSettableReaction
+	mediaBody,
+	parseDownloadResult,
+	parseEnsureChatResult,
+	parseMessageResult,
+	parseOkResult,
+	spaceBody
 } from './domain'
-import { spectrumImessageGrpcAddress, SpectrumImessageTokenSource } from './spectrum-cloud'
 
-/**
- * Spectrum Cloud token HTTP uses injectable `fetch` (tests).
- * gRPC plane uses native Node/Bun channels (not Workers/edge).
- */
-export type ImessageClientOptions = {
-	fetch?: FetchLike | undefined
-	signal?: AbortSignal | undefined
-}
+export type ImessageClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
 export class ImessageClient {
-	readonly #auth: ImessageAuth
-	readonly #options: ImessageClientOptions
-	#im: AdvancedIMessage | undefined
-	#ready: Promise<AdvancedIMessage> | undefined
-	#spectrum: SpectrumImessageTokenSource | undefined
-	#grpcAddress: string | undefined
+	readonly #http: HttpService
+	readonly #defaultPhone: string | undefined
 
 	constructor(auth: ImessageAuth, options: ImessageClientOptions = {}) {
 		const parsed = imessageAuthSchema.safeParse(auth)
@@ -70,8 +56,18 @@ export class ImessageClient {
 				details: { issues: parsed.error.issues.map((issue) => issue.message) }
 			})
 		}
-		this.#auth = parsed.data
-		this.#options = options
+		const { base_url, project_id, project_secret, phone } = parsed.data
+		this.#defaultPhone = phone
+		this.#http = new HttpService({
+			...options,
+			baseURL: base_url,
+			headers: {
+				'Content-Type': 'application/json',
+				'x-spectrum-project-id': project_id,
+				'x-spectrum-project-secret': project_secret
+			},
+			label: 'iMessage'
+		})
 	}
 
 	static fromContext(ctx: ToolContext): ImessageClient {
@@ -82,248 +78,151 @@ export class ImessageClient {
 		})
 	}
 
-	/**
-	 * Dedicated instance id after Spectrum mint (undefined for shared / direct gRPC).
-	 * Available after the first outbound call (or after `ready()`).
-	 */
-	get server(): string | undefined {
-		if (this.#spectrum) return this.#spectrum.server
-		if (!isImessageSpectrumAuth(this.#auth)) return this.#auth.server
-		return undefined
+	#phone(override: string | undefined): string | undefined {
+		return override ?? this.#defaultPhone
 	}
 
-	/** Resolved gRPC host:port after `ready()` / first call. */
-	get grpcAddress(): string | undefined {
-		return this.#grpcAddress ?? this.#spectrum?.grpcAddress
-	}
-
-	/** Resolve Spectrum tokens (if needed) and construct the gRPC SDK client. */
-	async ready(): Promise<void> {
-		await this.#sdk()
-	}
-
-	/** Release SDK resources. */
-	async close(): Promise<void> {
-		if (this.#im) await this.#im.close()
-	}
-
-	async #sdk(): Promise<AdvancedIMessage> {
-		if (this.#im) return this.#im
-		// Clear a failed init so a later call can retry (transient mint/network errors).
-		this.#ready ??= this.#createSdk().catch((error: unknown) => {
-			this.#ready = undefined
-			throw error
-		})
-		this.#im = await this.#ready
-		return this.#im
-	}
-
-	async #createSdk(): Promise<AdvancedIMessage> {
-		// Dynamic import keeps messaging/edge graphs free of gRPC Node peers until call time.
-		const { createGrpcClient } = await import('@photon-ai/advanced-imessage/grpc')
-		const auth = this.#auth
-		const tls = auth.tls !== false
-
-		if (isImessageSpectrumAuth(auth)) {
-			const spectrum = new SpectrumImessageTokenSource({
-				auth,
-				...(this.#options.fetch && { fetch: this.#options.fetch }),
-				...(this.#options.signal && { signal: this.#options.signal })
-			})
-			this.#spectrum = spectrum
-			const session = await spectrum.ensureReady()
-			const address = spectrumImessageGrpcAddress(session, {
-				sharedAddress: auth.spectrum_imessage_address
-			})
-			this.#grpcAddress = address
-			// Same options spectrum-ts uses for cloud lines.
-			return createGrpcClient({
-				address,
-				token: async () => spectrum.getBearer(),
-				tls: true,
-				autoIdempotency: true,
-				retry: true
-			})
-		}
-
-		const token = auth.token
-		const address = auth.address
-		if (!token || !address) {
-			throw new ToolError(
-				'iMessage direct gRPC auth requires address and token when Spectrum credentials are omitted',
-				{
-					code: 'bad_auth'
-				}
-			)
-		}
-		this.#grpcAddress = address
-		return createGrpcClient({
-			address,
-			token,
-			tls,
-			autoIdempotency: true,
-			retry: true
-		})
+	async #post(path: string, body: Record<string, unknown>, label: string): Promise<unknown> {
+		const res = await this.#http.post(path, body, { label, noThrow: true })
+		assertProxyOk(label, res.status, res.data)
+		return res.data
 	}
 
 	/**
-	 * Create a chat (1:1 or group) via Photon `chats.create`.
-	 * Host-only: call once for contact / proactive delivery, store `chat_id`, then sendText.
-	 * Does **not** run automatically before sendText — most threads already exist from inbound user messages.
+	 * Create a chat (1:1 or group). Host-only; not an agent tool.
+	 * Proxy: POST /v1/ensure-chat (fill on proxy if not yet shipped).
 	 */
 	async ensureChat(input: ImessageEnsureChatInput): Promise<ImessageEnsureChatOutput> {
-		try {
-			const im = await this.#sdk()
-			const created = await im.chats.create(input.addresses, {
+		const data = await this.#post(
+			'/v1/ensure-chat',
+			spaceBody(undefined, this.#phone(input.phone), {
+				addresses: input.addresses,
 				...(input.message && { message: input.message }),
-				...(input.client_message_id && { clientMessageId: input.client_message_id })
-			})
-			const out: ImessageEnsureChatOutput = { chat_id: created.chat.guid }
-			if (created.initialMessage?.guid) {
-				out.message_id = created.initialMessage.guid
-			}
-			return out
-		} catch (error) {
-			mapSdkError('iMessage ensureChat', error)
-		}
+				...(input.client_message_id && { client_message_id: input.client_message_id })
+			}),
+			'iMessage ensureChat'
+		)
+		return parseEnsureChatResult(data)
 	}
 
+	/** POST /v1/send */
 	async sendText(input: ImessageSendTextInput): Promise<ImessageMessageOutput> {
-		try {
-			const im = await this.#sdk()
-			const message = await im.messages.sendText(input.chat_id, input.text)
-			return messageToOutput(input.chat_id, message)
-		} catch (error) {
-			mapSdkError('iMessage sendText', error)
-		}
+		const data = await this.#post(
+			'/v1/send',
+			spaceBody(input.chat_id, this.#phone(input.phone), { text: input.text }),
+			'iMessage send'
+		)
+		return parseMessageResult(data, 'send')
 	}
 
+	/** POST /v1/edit */
 	async editText(input: ImessageEditTextInput): Promise<ImessageMessageOutput> {
-		try {
-			const im = await this.#sdk()
-			const message = await im.messages.edit(input.chat_id, input.message_id, input.text)
-			return messageToOutput(input.chat_id, message)
-		} catch (error) {
-			mapSdkError('iMessage editText', error)
+		const data = await this.#post(
+			'/v1/edit',
+			spaceBody(input.chat_id, this.#phone(input.phone), {
+				message_id: input.message_id,
+				text: input.text
+			}),
+			'iMessage edit'
+		)
+		// Prefer full message payload; fall back to ok + input message_id when proxy only returns ok.
+		if (isPlainObject(data) && data['ok'] === true && isString(data['message_id']) && data['message_id'].length > 0) {
+			return parseMessageResult(data, 'edit')
+		}
+		const ok = parseOkResult(data)
+		return {
+			space_id: ok.space_id ?? input.chat_id,
+			message_id: input.message_id
 		}
 	}
 
 	/**
+	 * POST /v1/typing.
 	 * Non-typing chat actions map to typing start (presentation parity with other channels).
 	 */
 	async sendChatAction(input: ImessageSendChatActionInput): Promise<void> {
-		try {
-			const im = await this.#sdk()
-			await im.chats.setTyping(input.chat_id, true)
-		} catch (error) {
-			mapSdkError('iMessage sendChatAction', error)
-		}
+		await this.#post(
+			'/v1/typing',
+			spaceBody(input.chat_id, this.#phone(input.phone), { action: 'start' }),
+			'iMessage typing'
+		)
 	}
 
-	async stopTyping(input: { chat_id: string }): Promise<void> {
-		try {
-			const im = await this.#sdk()
-			await im.chats.setTyping(input.chat_id, false)
-		} catch (error) {
-			mapSdkError('iMessage stopTyping', error)
-		}
+	/** Stop typing indicator. */
+	async stopTyping(input: { chat_id: string; phone?: string }): Promise<void> {
+		await this.#post(
+			'/v1/typing',
+			spaceBody(input.chat_id, this.#phone(input.phone), { action: 'stop' }),
+			'iMessage typing stop'
+		)
 	}
 
-	/**
-	 * Add a tapback/emoji reaction. Returns the resulting message guid (store for journaling).
-	 * Clear with clearReaction using the **same target message_id + emoji** (setReaction isSet=false).
-	 */
+	/** POST /v1/react — returns reaction/message guid for journaling. */
 	async setReaction(input: ImessageSetReactionInput): Promise<ImessageMessageOutput> {
-		try {
-			const im = await this.#sdk()
-			const message = await im.messages.setReaction(
-				input.chat_id,
-				input.message_id,
-				toSettableReaction(input.emoji),
-				true
-			)
-			return messageToOutput(input.chat_id, message)
-		} catch (error) {
-			mapSdkError('iMessage setReaction', error)
-		}
+		const data = await this.#post(
+			'/v1/react',
+			spaceBody(input.chat_id, this.#phone(input.phone), {
+				message_id: input.message_id,
+				emoji: input.emoji
+			}),
+			'iMessage react'
+		)
+		return parseMessageResult(data, 'react')
 	}
 
 	/**
-	 * Remove a reaction. `message_id` is the **target** message; `emoji` must match setReaction.
+	 * POST /v1/clear-reaction.
+	 * Package contract: target message_id + emoji (same as setReaction).
+	 * Proxy should clear by target+emoji; older proxies that only accept reaction message ids need a gap fill.
 	 */
 	async clearReaction(input: ImessageClearReactionInput): Promise<void> {
-		try {
-			const im = await this.#sdk()
-			await im.messages.setReaction(input.chat_id, input.message_id, toSettableReaction(input.emoji), false)
-		} catch (error) {
-			mapSdkError('iMessage clearReaction', error)
-		}
+		await this.#post(
+			'/v1/clear-reaction',
+			spaceBody(input.chat_id, this.#phone(input.phone), {
+				message_id: input.message_id,
+				emoji: input.emoji
+			}),
+			'iMessage clearReaction'
+		)
 	}
 
+	/** POST /v1/unsend */
 	async unsend(input: ImessageUnsendInput): Promise<void> {
-		try {
-			const im = await this.#sdk()
-			await im.messages.unsend(input.chat_id, input.message_id)
-		} catch (error) {
-			mapSdkError('iMessage unsend', error)
-		}
+		await this.#post(
+			'/v1/unsend',
+			spaceBody(input.chat_id, this.#phone(input.phone), { message_id: input.message_id }),
+			'iMessage unsend'
+		)
 	}
 
-	/** Mark the chat read (Advanced iMessage marks the whole conversation). */
+	/** POST /v1/read */
 	async read(input: ImessageReadInput): Promise<void> {
-		try {
-			const im = await this.#sdk()
-			await im.chats.markRead(input.chat_id)
-		} catch (error) {
-			mapSdkError('iMessage read', error)
-		}
+		await this.#post(
+			'/v1/read',
+			spaceBody(input.chat_id, this.#phone(input.phone), {
+				...(input.message_id && { message_id: input.message_id })
+			}),
+			'iMessage read'
+		)
 	}
 
-	/**
-	 * Upload bytes then send attachment by GUID. Optional caption as follow-up text.
-	 */
+	/** POST /v1/media */
 	async sendMedia(input: ImessageSendMediaInput): Promise<ImessageMessageOutput> {
-		try {
-			const im = await this.#sdk()
-			const data = decodeMediaBytes(input.body_base64)
-			const uploaded = await im.attachments.upload({
-				fileName: input.file_name,
-				data
-			})
-			const message = await im.messages.sendAttachment(input.chat_id, uploaded.attachment.guid)
-			if (input.caption) {
-				await im.messages.sendText(input.chat_id, input.caption)
-			}
-			return messageToOutput(input.chat_id, message)
-		} catch (error) {
-			mapSdkError('iMessage sendMedia', error)
-		}
+		const data = await this.#post('/v1/media', mediaBody(input, this.#phone(input.phone)), 'iMessage sendMedia')
+		return parseMessageResult(data, 'media')
 	}
 
 	/**
-	 * Download attachment bytes by attachment guid (`file_id`).
+	 * POST /v1/download.
+	 * Prefer attachment guid alone; pass chat_id when the proxy still requires a space.
 	 */
 	async downloadFile(input: ImessageDownloadFileInput): Promise<ImessageDownloadFileOutput> {
-		try {
-			const im = await this.#sdk()
-			const frames: { type: string; data?: Uint8Array; info?: { fileName?: string; totalBytes?: number } }[] = []
-			for await (const frame of im.attachments.downloadStream(input.file_id)) {
-				if (frame.type === 'header') {
-					frames.push({
-						type: 'header',
-						info: {
-							...(frame.info.fileName && { fileName: frame.info.fileName }),
-							...(typeof frame.info.totalBytes === 'number' && { totalBytes: frame.info.totalBytes })
-						}
-					})
-				} else if (frame.type === 'primaryChunk') {
-					frames.push({ type: 'primaryChunk', data: frame.data })
-				}
-			}
-			return parseDownloadChunks(input, frames)
-		} catch (error) {
-			mapSdkError('iMessage downloadFile', error)
-		}
+		const data = await this.#post(
+			'/v1/download',
+			spaceBody(input.chat_id, this.#phone(input.phone), { file_id: input.file_id }),
+			'iMessage downloadFile'
+		)
+		return parseDownloadResult(input, data)
 	}
 
 	async answerCallback(_input: unknown): Promise<void> {

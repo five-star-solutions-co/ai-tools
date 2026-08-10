@@ -1,17 +1,18 @@
 /**
- * Advanced iMessage helpers (no transport).
- * Maps package shapes ↔ Advanced iMessage SDK types.
- *
- * Error classes are matched by name (not `instanceof`) so this module does not
- * statically import `@photon-ai/advanced-imessage/grpc` (Node-only peers).
+ * photon-rest-proxy response parse + failure helpers (no HTTP).
  */
 
-import type { SettableMessageReaction } from '@photon-ai/advanced-imessage/grpc'
+import { isPlainObject, isString } from 'es-toolkit'
 
-import { isToolError, ToolError } from '../../core/errors'
-import { isPlainObject } from 'es-toolkit'
-import { base64ToBytes, bytesToBase64 } from '../../shared/bytes'
-import type { ImessageDownloadFileInput, ImessageDownloadFileOutput, ImessageMessageOutput } from './contracts'
+import { ToolError } from '../../core/errors'
+import { base64ToBytes } from '../../shared/bytes'
+import type {
+	ImessageDownloadFileInput,
+	ImessageDownloadFileOutput,
+	ImessageEnsureChatOutput,
+	ImessageMessageOutput,
+	ImessageSendMediaInput
+} from './contracts'
 import { MAX_MEDIA_BYTES } from './contracts'
 
 export type ImessageFailureKind = 'definite_rejection' | 'outcome_unknown'
@@ -22,17 +23,18 @@ export class ImessageClientError extends ToolError {
 	constructor(input: {
 		message: string
 		failureKind: ImessageFailureKind
-		code?: ToolError['code']
+		status?: number
+		code?: string
 		cause?: unknown
-		details?: Record<string, unknown>
 	}) {
 		super(input.message, {
-			code: input.code ?? 'upstream',
+			code: mapStatusToToolCode(input.status, input.code),
 			retryable: input.failureKind === 'outcome_unknown',
 			cause: input.cause,
 			details: {
 				failure_kind: input.failureKind,
-				...input.details
+				status: input.status,
+				proxy_error: input.code
 			}
 		})
 		this.name = 'ImessageClientError'
@@ -48,45 +50,116 @@ export function isImessageOutcomeUnknown(error: unknown): boolean {
 	return error instanceof ImessageClientError && error.failureKind === 'outcome_unknown'
 }
 
-/**
- * Map free-form emoji / tapback string to Photon SettableMessageReaction.
- * Known tapback names → kind; anything else → { kind: 'emoji', emoji }.
- */
-export function toSettableReaction(emoji: string): SettableMessageReaction {
-	const trimmed = emoji.trim()
-	const lower = trimmed.toLowerCase()
-	switch (lower) {
-		case 'love':
-			return { kind: 'love' }
-		case 'like':
-			return { kind: 'like' }
-		case 'dislike':
-			return { kind: 'dislike' }
-		case 'laugh':
-			return { kind: 'laugh' }
-		case 'emphasize':
-			return { kind: 'emphasize' }
-		case 'question':
-			return { kind: 'question' }
-		default:
-			return { kind: 'emoji', emoji: trimmed }
+function mapStatusToToolCode(status: number | undefined, proxyCode: string | undefined): ToolError['code'] {
+	if (status === 401) return 'bad_auth'
+	if (status === 403) return 'forbidden'
+	if (status === 404) return 'not_found'
+	if (status === 400) return 'bad_input'
+	if (status === 429) return 'rate_limited'
+	if (proxyCode === 'unauthorized') return 'bad_auth'
+	if (proxyCode === 'message_not_found' || proxyCode === 'not_found') return 'not_found'
+	if (proxyCode === 'unsupported' || proxyCode === 'not_implemented') return 'unsupported'
+	return 'upstream'
+}
+
+function isDefiniteStatus(status: number): boolean {
+	return status === 400 || status === 401 || status === 403 || status === 404
+}
+
+/** Parse photon-rest-proxy JSON error body or throw on non-2xx. */
+export function assertProxyOk(label: string, status: number, data: unknown): void {
+	if (status >= 200 && status < 300) return
+
+	let message = `${label} failed with HTTP ${status}`
+	let code: string | undefined
+	if (isPlainObject(data)) {
+		const err = data['error']
+		const detail = data['detail']
+		if (isString(err) && err.length > 0) {
+			code = err
+			message = isString(detail) && detail.length > 0 ? `${err}: ${detail}` : err
+		} else if (isString(detail) && detail.length > 0) {
+			message = detail
+		}
+	}
+
+	throw new ImessageClientError({
+		message,
+		failureKind: isDefiniteStatus(status) ? 'definite_rejection' : 'outcome_unknown',
+		status,
+		...(code && { code })
+	})
+}
+
+function requireString(data: Record<string, unknown>, key: string, label: string): string {
+	const value = data[key]
+	if (!isString(value) || value.length === 0) {
+		throw new ToolError(`iMessage proxy ${label} missing ${key}`, { code: 'upstream' })
+	}
+	return value
+}
+
+/** Prefer space_id; accept chat_id alias from newer proxy shapes. */
+function spaceOrChatId(data: Record<string, unknown>, label: string): string {
+	const spaceId = data['space_id']
+	if (isString(spaceId) && spaceId.length > 0) return spaceId
+	const chatId = data['chat_id']
+	if (isString(chatId) && chatId.length > 0) return chatId
+	throw new ToolError(`iMessage proxy ${label} missing space_id`, { code: 'upstream' })
+}
+
+export function parseMessageResult(data: unknown, label = 'send'): ImessageMessageOutput {
+	if (!isPlainObject(data) || data['ok'] !== true) {
+		throw new ToolError(`iMessage proxy returned an unexpected ${label} payload`, { code: 'upstream' })
+	}
+	return {
+		space_id: spaceOrChatId(data, label),
+		message_id: requireString(data, 'message_id', label)
 	}
 }
 
-export function messageToOutput(
-	chatId: string,
-	message: { guid: string; chatGuids?: readonly string[] }
-): ImessageMessageOutput {
-	const space =
-		message.chatGuids && message.chatGuids.length > 0 && message.chatGuids[0] ? message.chatGuids[0] : chatId
+export function parseOkResult(data: unknown): { ok: true; space_id?: string } {
+	if (!isPlainObject(data) || data['ok'] !== true) {
+		throw new ToolError('iMessage proxy returned an unexpected ok payload', { code: 'upstream' })
+	}
+	const spaceId = data['space_id']
+	const chatId = data['chat_id']
+	const id =
+		isString(spaceId) && spaceId.length > 0 ? spaceId : isString(chatId) && chatId.length > 0 ? chatId : undefined
 	return {
-		message_id: message.guid,
-		space_id: space
+		ok: true,
+		...(id && { space_id: id })
+	}
+}
+
+export function parseEnsureChatResult(data: unknown): ImessageEnsureChatOutput {
+	if (!isPlainObject(data) || data['ok'] !== true) {
+		throw new ToolError('iMessage proxy returned an unexpected ensure-chat payload', { code: 'upstream' })
+	}
+	const chatId = spaceOrChatId(data, 'ensure-chat')
+	const messageId = data['message_id']
+	return {
+		chat_id: chatId,
+		...(isString(messageId) && messageId.length > 0 && { message_id: messageId })
+	}
+}
+
+/** Map messaging-style chat_id to proxy space_id body fields. */
+export function spaceBody(
+	chatId: string | undefined,
+	phone: string | undefined,
+	extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+	return {
+		platform: 'imessage',
+		...extra,
+		...(chatId && { space_id: chatId }),
+		...(phone && { phone })
 	}
 }
 
 /** Decode and size-check media base64 for sendMedia. */
-export function decodeMediaBytes(bodyBase64: string): Uint8Array {
+export function decodeMediaBody(bodyBase64: string): void {
 	let bytes: Uint8Array
 	try {
 		bytes = base64ToBytes(bodyBase64)
@@ -102,117 +175,32 @@ export function decodeMediaBytes(bodyBase64: string): Uint8Array {
 			details: { max_bytes: MAX_MEDIA_BYTES, content_length: bytes.byteLength }
 		})
 	}
-	return bytes
 }
 
-export function parseDownloadChunks(
-	input: ImessageDownloadFileInput,
-	chunks: readonly { type: string; data?: Uint8Array; info?: { fileName?: string; totalBytes?: number } }[]
-): ImessageDownloadFileOutput {
-	const parts: Uint8Array[] = []
-	let fileName: string | undefined
-	let totalBytes: number | undefined
-	for (const frame of chunks) {
-		if (frame.type === 'header' && frame.info) {
-			if (frame.info.fileName) fileName = frame.info.fileName
-			if (typeof frame.info.totalBytes === 'number') totalBytes = frame.info.totalBytes
-		}
-		if (frame.type === 'primaryChunk' && frame.data) {
-			parts.push(frame.data)
-		}
-	}
-	const total = parts.reduce((n, p) => n + p.byteLength, 0)
-	const merged = new Uint8Array(total)
-	let offset = 0
-	for (const p of parts) {
-		merged.set(p, offset)
-		offset += p.byteLength
-	}
-	return {
-		file_name: input.file_name ?? fileName ?? input.file_id,
-		...(totalBytes !== undefined ? { file_size: totalBytes } : total > 0 ? { file_size: total } : {}),
-		body_base64: bytesToBase64(merged)
-	}
-}
-
-function errorName(error: unknown): string | undefined {
-	return error instanceof Error ? error.name : undefined
-}
-
-function sdkCode(error: unknown): string | undefined {
-	if (!isPlainObject(error)) return undefined
-	const code = error['code']
-	return typeof code === 'string' ? code : undefined
-}
-
-function sdkRetryable(error: unknown): boolean | undefined {
-	if (!isPlainObject(error)) return undefined
-	const retryable = error['retryable']
-	return typeof retryable === 'boolean' ? retryable : undefined
-}
-
-/** Map Photon SDK errors to ImessageClientError (definite vs unknown). */
-export function mapSdkError(label: string, error: unknown): never {
-	if (error instanceof ImessageClientError) throw error
-	// Preserve Spectrum / auth preflight ToolErrors (do not reclassify as SDK upstream).
-	if (isToolError(error)) throw error
-
-	const name = errorName(error)
-	if (name === 'AuthenticationError') {
-		throw new ImessageClientError({
-			message: (error instanceof Error && error.message) || `${label}: authentication failed`,
-			failureKind: 'definite_rejection',
-			code: 'bad_auth',
-			cause: error
-		})
-	}
-	if (name === 'NotFoundError') {
-		throw new ImessageClientError({
-			message: (error instanceof Error && error.message) || `${label}: not found`,
-			failureKind: 'definite_rejection',
-			code: 'not_found',
-			cause: error
-		})
-	}
-	if (name === 'ValidationError') {
-		throw new ImessageClientError({
-			message: (error instanceof Error && error.message) || `${label}: invalid request`,
-			failureKind: 'definite_rejection',
-			code: 'bad_input',
-			cause: error
-		})
-	}
-	if (name === 'RateLimitError') {
-		throw new ImessageClientError({
-			message: (error instanceof Error && error.message) || `${label}: rate limited`,
-			failureKind: 'outcome_unknown',
-			code: 'rate_limited',
-			cause: error
-		})
-	}
-	if (name === 'ConnectionError') {
-		throw new ImessageClientError({
-			message: (error instanceof Error && error.message) || `${label}: connection failed`,
-			failureKind: 'outcome_unknown',
-			code: 'upstream',
-			cause: error
-		})
-	}
-	if (name === 'IMessageError' || sdkCode(error) !== undefined) {
-		const retryable = sdkRetryable(error) === true
-		throw new ImessageClientError({
-			message: (error instanceof Error && error.message) || `${label} failed`,
-			failureKind: retryable ? 'outcome_unknown' : 'definite_rejection',
-			code: 'upstream',
-			cause: error,
-			details: { ...(sdkCode(error) && { sdk_code: sdkCode(error) }) }
-		})
-	}
-
-	const message = error instanceof Error ? error.message : `${label} request failed`
-	throw new ImessageClientError({
-		message,
-		failureKind: 'outcome_unknown',
-		cause: error
+/** Build POST /v1/media JSON body (base64 already validated). */
+export function mediaBody(input: ImessageSendMediaInput, phone: string | undefined): Record<string, unknown> {
+	decodeMediaBody(input.body_base64)
+	return spaceBody(input.chat_id, phone, {
+		body_base64: input.body_base64,
+		file_name: input.file_name,
+		...(input.content_type && { mime_type: input.content_type }),
+		...(input.caption && { caption: input.caption })
 	})
+}
+
+export function parseDownloadResult(input: ImessageDownloadFileInput, data: unknown): ImessageDownloadFileOutput {
+	if (!isPlainObject(data) || data['ok'] !== true) {
+		throw new ToolError('iMessage proxy returned an unexpected download payload', { code: 'upstream' })
+	}
+	const bodyBase64 = data['body_base64']
+	if (!isString(bodyBase64) || bodyBase64.length === 0) {
+		throw new ToolError('iMessage proxy download missing body_base64', { code: 'upstream' })
+	}
+	const name = data['file_name']
+	const size = data['file_size']
+	return {
+		file_name: input.file_name ?? (isString(name) && name.length > 0 ? name : input.file_id),
+		...(typeof size === 'number' && Number.isFinite(size) && { file_size: size }),
+		body_base64: bodyBase64
+	}
 }

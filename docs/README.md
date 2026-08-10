@@ -67,7 +67,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@5ss/ai-tools/telegram` | [telegram](./vendors/telegram.md) |
 | `@5ss/ai-tools/slack` | [slack](./vendors/slack.md) |
 | `@5ss/ai-tools/teams` | [teams](./vendors/teams.md) |
-| `@5ss/ai-tools/imessage` | [imessage](./vendors/imessage.md) — Photon Advanced iMessage HTTP |
+| `@5ss/ai-tools/imessage` | [imessage](./vendors/imessage.md) — photon-rest-proxy HTTP |
 | `@5ss/ai-tools/s3` | [s3](./vendors/s3.md) |
 | `@5ss/ai-tools/sqs` | [sqs](./vendors/sqs.md) |
 

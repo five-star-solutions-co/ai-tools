@@ -24,7 +24,7 @@ export const imessageSendTextTool = defineTool({
 	inputSchema: imessageSendTextInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'send',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => ImessageClient.fromContext(ctx).sendText(input)
 })
@@ -36,7 +36,7 @@ export const imessageEditTextTool = defineTool({
 	inputSchema: imessageEditTextInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'write',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => ImessageClient.fromContext(ctx).editText(input)
 })
@@ -48,7 +48,7 @@ export const imessageSendChatActionTool = defineTool({
 	inputSchema: imessageSendChatActionInputSchema,
 	outputSchema: imessageOkOutputSchema,
 	sideEffect: 'none',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => {
 		await ImessageClient.fromContext(ctx).sendChatAction(input)
@@ -64,7 +64,7 @@ export const imessageSetReactionTool = defineTool({
 	inputSchema: imessageSetReactionInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'write',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => ImessageClient.fromContext(ctx).setReaction(input)
 })
@@ -77,7 +77,7 @@ export const imessageClearReactionTool = defineTool({
 	inputSchema: imessageClearReactionInputSchema,
 	outputSchema: imessageOkOutputSchema,
 	sideEffect: 'delete',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => {
 		await ImessageClient.fromContext(ctx).clearReaction(input)
@@ -92,7 +92,7 @@ export const imessageUnsendTool = defineTool({
 	inputSchema: imessageUnsendInputSchema,
 	outputSchema: imessageOkOutputSchema,
 	sideEffect: 'delete',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => {
 		await ImessageClient.fromContext(ctx).unsend(input)
@@ -107,7 +107,7 @@ export const imessageReadTool = defineTool({
 	inputSchema: imessageReadInputSchema,
 	outputSchema: imessageOkOutputSchema,
 	sideEffect: 'write',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => {
 		await ImessageClient.fromContext(ctx).read(input)
@@ -123,7 +123,7 @@ export const imessageSendMediaTool = defineTool({
 	inputSchema: imessageSendMediaInputSchema,
 	outputSchema: imessageMessageOutputSchema,
 	sideEffect: 'send',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => ImessageClient.fromContext(ctx).sendMedia(input)
 })
@@ -135,7 +135,7 @@ export const imessageDownloadFileTool = defineTool({
 	inputSchema: imessageDownloadFileInputSchema,
 	outputSchema: imessageDownloadFileOutputSchema,
 	sideEffect: 'none',
-	runtime: 'node',
+	runtime: 'both',
 	network: true,
 	execute: async (input, ctx) => ImessageClient.fromContext(ctx).downloadFile(input)
 })
@@ -144,8 +144,8 @@ export const imessageModule = defineModule({
 	id: 'imessage',
 	title: 'iMessage',
 	description:
-		'iMessage tools for sending and editing text or media, typing indicators, reactions, unsend, read state, and attachment download via Photon Spectrum Cloud + Advanced iMessage gRPC (Node only).',
-	runtime: 'node',
+		'iMessage tools for sending and editing text or media, typing indicators, reactions, unsend, read state, and attachment download via a bound photon-rest-proxy.',
+	runtime: 'both',
 	auth: { type: 'custom', schema: imessageAuthSchema },
 	categories: ['messaging', 'chat'],
 	classification: 'pii',

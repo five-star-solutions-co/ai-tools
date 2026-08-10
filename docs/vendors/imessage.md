@@ -1,4 +1,4 @@
-# iMessage (Photon Spectrum Cloud + gRPC)
+# iMessage (photon-rest-proxy)
 
 | | |
 | --- | --- |
@@ -6,69 +6,69 @@
 | **Kind** | **vendor** (`src/vendors/imessage`) |
 | **Module id** | `imessage` |
 | **Client** | `ImessageClient` |
-| **Runtime** | **`node` only** (gRPC — not Workers/edge) |
-| **SDK** | [`@photon-ai/advanced-imessage/grpc`](https://github.com/photon-hq/advanced-imessage-ts) `createGrpcClient` |
-| **Peers** | `nice-grpc`, `nice-grpc-common`, `@grpc/grpc-js` (optional peers; required for this pack) |
+| **Runtime** | **`both`** (HTTP only — Workers-safe) |
+| **Transport** | Hosted **photon-rest-proxy** → Spectrum gRPC (proxy owns Photon/SDK) |
 
-Outbound iMessage aligned with [spectrum-ts cloud auth](https://github.com/photon-hq/spectrum-ts/blob/main/packages/imessage/src/auth.ts): Spectrum Cloud token mint → Photon’s **managed gRPC** hosts. There is **no** public HTTP middleware in Spectrum Cloud.
-
-## Two layers (do not conflate)
-
-| Layer | Role | Credentials |
-| --- | --- | --- |
-| **Spectrum Cloud** | Mints temporary iMessage tokens | `project_id` + `project_secret` |
-| **Advanced iMessage gRPC** | Talks to the iMessage plane | gRPC `address` + temporary bearer |
+Outbound iMessage goes through your **REST proxy**. This package does **not** embed `@photon-ai/advanced-imessage` or gRPC.
 
 ```text
-project_id + project_secret
-        ↓  POST https://spectrum.photon.codes/projects/{id}/imessage/tokens
-temporary token (+ dedicated instance map)
-        ↓  createGrpcClient
-shared:  imessage.spectrum.photon.codes:443
-dedicated: {instanceId}.imsg.photon.codes:443
-        ↓
+host auth (base_url + project_id + project_secret)
+        ↓  HttpService JSON
+photon-rest-proxy  /v1/*
+        ↓  Spectrum gRPC (inside proxy)
 Apple Messages
 ```
 
-Inbound can use gRPC event streams on the host, or Spectrum webhooks — this pack does not export `webhook.ts`.
+Inbound webhooks stay on the host (no pack `webhook.ts`).
 
 ## Auth
 
-### Preferred: Spectrum Cloud
-
 ```ts
 {
-  project_id: string
-  project_secret: string
-  server?: string                    // required if Spectrum returns multiple dedicated instances
-  spectrum_cloud_url?: string        // default https://spectrum.photon.codes
-  spectrum_imessage_address?: string // shared gRPC host override (SPECTRUM_IMESSAGE_ADDRESS)
+  base_url: string          // proxy origin, e.g. https://photon-proxy.example.com
+  project_id: string        // x-spectrum-project-id
+  project_secret: string    // x-spectrum-project-secret
+  phone?: string            // default line when the project has multiple numbers
 }
 ```
 
-### Direct gRPC (spectrum-ts `clients[]` shape)
+## Proxy routes
 
-```ts
-{
-  address: string  // e.g. imessage.spectrum.photon.codes:443
-  token: string    // temporary bearer — not project secret
-  tls?: boolean    // default true
-}
-```
+| Client method | HTTP |
+| --- | --- |
+| `sendText` | `POST /v1/send` |
+| `editText` | `POST /v1/edit` |
+| `sendChatAction` / `stopTyping` | `POST /v1/typing` (`action: start\|stop`) |
+| `setReaction` | `POST /v1/react` |
+| `clearReaction` | `POST /v1/clear-reaction` (**target** `message_id` + `emoji`) |
+| `unsend` | `POST /v1/unsend` |
+| `read` | `POST /v1/read` |
+| `sendMedia` | `POST /v1/media` |
+| `downloadFile` | `POST /v1/download` (`file_id`; `space_id` optional) |
+| `ensureChat` (host-only) | `POST /v1/ensure-chat` |
+
+Request bodies use `platform: 'imessage'` and `space_id` for the chat guid (except ensure-chat, which sends `addresses`).
+
+### Proxy gaps to fill (package already calls these contracts)
+
+1. **`/v1/ensure-chat`** — create/resolve 1:1 or group; return `{ ok, space_id|chat_id, message_id? }`  
+2. **`/v1/clear-reaction`** — clear by **target message_id + emoji** (not reaction message id)  
+3. **`/v1/download`** — prefer attachment guid alone (`space_id` optional)  
+4. **Stable `message_id`** on send / react / media when Spectrum returns one  
 
 ## Tools
 
-| id | SDK |
+| id | Notes |
 | --- | --- |
-| `imessage-send-text` | `messages.sendText` |
-| `imessage-edit-text` | `messages.edit` |
-| `imessage-send-chat-action` | `chats.setTyping(true)` |
-| `imessage-set-reaction` | `messages.setReaction(..., true)` |
-| `imessage-clear-reaction` | `messages.setReaction(..., false)` |
-| `imessage-unsend` | `messages.unsend` |
-| `imessage-read` | `chats.markRead` |
-| `imessage-send-media` | `attachments.upload` + `messages.sendAttachment` |
-| `imessage-download-file` | `attachments.downloadStream` |
+| `imessage-send-text` | Returns required `message_id` |
+| `imessage-edit-text` | |
+| `imessage-send-chat-action` | Typing start |
+| `imessage-set-reaction` | Tapback name or emoji |
+| `imessage-clear-reaction` | Same target + emoji as set |
+| `imessage-unsend` | |
+| `imessage-read` | Whole chat |
+| `imessage-send-media` | Base64 body |
+| `imessage-download-file` | Attachment guid |
 
 `chat_id` is the iMessage **chat guid** (e.g. `any;-;+15551111111`).
 
@@ -85,6 +85,7 @@ import { ImessageClient, imessageModule } from '@5ss/ai-tools/imessage'
 import { withAuth } from '@5ss/ai-tools/core'
 
 const client = new ImessageClient({
+  base_url: process.env.IMESSAGE_PROXY_URL!,
   project_id: process.env.IMESSAGE_PROJECT_ID!,
   project_secret: process.env.IMESSAGE_PROJECT_SECRET!,
 })
@@ -95,29 +96,20 @@ await client.sendText({
 })
 
 withAuth(imessageModule, {
+  base_url: process.env.IMESSAGE_PROXY_URL!,
   project_id: process.env.IMESSAGE_PROJECT_ID!,
   project_secret: process.env.IMESSAGE_PROJECT_SECRET!,
 })
 ```
 
-## Messaging seam
+## Live IT env
 
-```ts
-withAuth(messagingModule, {
-  provider: 'imessage',
-  project_id: '…',
-  project_secret: '…',
-})
-```
+| Env | Role |
+| --- | --- |
+| `AI_TOOLS_IMESSAGE_BASE_URL` (or `AI_TOOLS_IMESSAGE_PROXY_URL`) | Proxy origin |
+| `AI_TOOLS_IMESSAGE_PROJECT_ID` / `PROJECT_SECRET` | Spectrum headers |
+| `AI_TOOLS_IMESSAGE_CHAT_ID` | Chat guid for smoke |
+| `AI_TOOLS_IMESSAGE_PHONE` | Optional multi-line |
+| `AI_TOOLS_IMESSAGE_FILE_ID` | Optional download smoke |
 
-Messaging `clearReaction` for iMessage **requires** `emoji`.
-
-## Install peers
-
-```bash
-bun add nice-grpc nice-grpc-common @grpc/grpc-js
-```
-
-## Live progressive text
-
-Use `createLiveMessage` with `isImessageDefiniteRejection` / `isImessageOutcomeUnknown`.
+Seam: [messaging](../modules/messaging.md) with `provider: 'imessage'`.

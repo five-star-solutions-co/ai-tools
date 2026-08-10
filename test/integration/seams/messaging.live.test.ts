@@ -11,15 +11,12 @@ const slackToken = env('AI_TOOLS_SLACK_BOT_TOKEN')
 const slackChannel = env('AI_TOOLS_SLACK_CHANNEL_ID')
 const runSlack = slackToken && slackChannel ? describe : describe.skip
 
+const imBaseUrl = env('AI_TOOLS_IMESSAGE_BASE_URL') ?? env('AI_TOOLS_IMESSAGE_PROXY_URL')
 const imProjectId = env('AI_TOOLS_IMESSAGE_PROJECT_ID')
 const imProjectSecret = env('AI_TOOLS_IMESSAGE_PROJECT_SECRET')
-const imGrpcAddress = env('AI_TOOLS_IMESSAGE_GRPC_ADDRESS') ?? env('AI_TOOLS_IMESSAGE_ADDRESS')
-const imToken = env('AI_TOOLS_IMESSAGE_TOKEN')
 const imChat = env('AI_TOOLS_IMESSAGE_CHAT_ID')
-const imServer = env('AI_TOOLS_IMESSAGE_SERVER')
-const imSpectrumCloudUrl = env('AI_TOOLS_IMESSAGE_SPECTRUM_CLOUD_URL')
-const imSharedGrpc = env('AI_TOOLS_IMESSAGE_SPECTRUM_IMESSAGE_ADDRESS')
-const runIm = imChat && ((imProjectId && imProjectSecret) || (imGrpcAddress && imToken)) ? describe : describe.skip
+const imPhone = env('AI_TOOLS_IMESSAGE_PHONE')
+const runIm = imBaseUrl && imProjectId && imProjectSecret && imChat ? describe : describe.skip
 
 const teamsApp = env('AI_TOOLS_TEAMS_APP_ID')
 const teamsPass = env('AI_TOOLS_TEAMS_APP_PASSWORD')
@@ -222,23 +219,13 @@ runIm('live seam messaging (imessage)', () => {
 	test(
 		'full surface: send edit typing stopTyping react clear media batch markRead',
 		async () => {
-			const client = MessagingClient.fromAuth(
-				imProjectId && imProjectSecret
-					? {
-							provider: 'imessage',
-							project_id: imProjectId,
-							project_secret: imProjectSecret,
-							...(imServer ? { server: imServer } : {}),
-							...(imSpectrumCloudUrl ? { spectrum_cloud_url: imSpectrumCloudUrl } : {}),
-							...(imSharedGrpc ? { spectrum_imessage_address: imSharedGrpc } : {})
-						}
-					: {
-							provider: 'imessage',
-							address: imGrpcAddress!,
-							token: imToken!,
-							...(imServer ? { server: imServer } : {})
-						}
-			)
+			const client = MessagingClient.fromAuth({
+				provider: 'imessage',
+				base_url: imBaseUrl!,
+				project_id: imProjectId!,
+				project_secret: imProjectSecret!,
+				...(imPhone ? { phone: imPhone } : {})
+			})
 			const chat_id = imChat!
 
 			const msg = await client.sendText({
@@ -262,14 +249,13 @@ runIm('live seam messaging (imessage)', () => {
 				message_id: msg.message_id,
 				emoji: 'love'
 			})
-			// Clear uses target message + same emoji (Photon setReaction isSet=false).
+			// Clear uses target message + same emoji (proxy contract).
 			await client.clearReaction({
 				chat_id,
 				message_id: msg.message_id,
 				emoji: 'love'
 			})
 
-			// Advanced iMessage marks the whole chat read (message_id required by seam schema).
 			await client.read({ chat_id, message_id: msg.message_id })
 
 			const media = await client.sendMedia({

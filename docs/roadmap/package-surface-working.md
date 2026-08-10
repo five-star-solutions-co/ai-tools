@@ -187,7 +187,7 @@ Slice 3 done when: this capability map is implemented under `src/channels/telegr
 | 7 | `vector-store` + `rag` | Done | qdrant+pinecone+supabase; ingest/retrieve via host embed |
 | 8 | `vendors/slack` + messaging seam | Done | Web API pack + multi-provider messaging |
 | 8b | `vendors/teams` | Done | Bot Framework pack in messaging seam |
-| 9 | `vendors/imessage` (Photon Advanced HTTP) | Done | `@photon-ai/advanced-imessage` HTTP; inbound = host |
+| 9 | `vendors/imessage` (photon-rest-proxy) | Done | HTTP to proxy; no Photon SDK in package; inbound = host |
 | 10 | Remaining platform (speech, browser, pdf, image, queue, webhook, crypto, calendar) | Backlog | product-driven |
 
 ---

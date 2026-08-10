@@ -152,7 +152,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | telegram | `TELEGRAM_BOT_TOKEN` (+ chat; optional webhook URL/secret) | getBot, webhook, send/edit/action/react/media/group, downloadFile |
 | slack | `SLACK_BOT_TOKEN` (+ `SLACK_CHANNEL_ID`; optional `SLACK_USER_ID`) | getBot, listConversations, send/edit, **thread** typing/stopTyping, react, media, **downloadFile round-trip**, answerCallback no-op, optional postEphemeral |
 | teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL; optional `TEAMS_FILE_URL`) | getBot; send/edit/action/react/media; answerCallback no-op; optional downloadFile |
-| imessage | chat + (`IMESSAGE_PROJECT_ID`/`IMESSAGE_PROJECT_SECRET` **or** `IMESSAGE_GRPC_ADDRESS`+`IMESSAGE_TOKEN`) (+ optional `IMESSAGE_SERVER`, `IMESSAGE_FILE_ID`, Spectrum URL overrides) | Spectrum Cloud + gRPC (Node); send/edit/typing/react/media/unsend/markRead; optional downloadFile |
+| imessage | `IMESSAGE_BASE_URL` (or `PROXY_URL`) + `PROJECT_ID`/`PROJECT_SECRET` + `CHAT_ID` (+ optional `PHONE`, `FILE_ID`) | photon-rest-proxy; send/edit/typing/react/media/unsend/markRead; optional downloadFile |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/getBytesRange/signed URL/multipart |
 | cloudflare-browser | shared `CF_*` + S3 for render | start/get/stop + optional CDP navigate + renderPdf + renderScreenshot |
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |

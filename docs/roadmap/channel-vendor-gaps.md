@@ -51,7 +51,7 @@ Agent tools stay on core messaging verbs unless product asks otherwise.
 | Item | Notes | Status |
 | --- | --- | --- |
 | Spectrum webhook verify + rich parse | host today; pack has no Spectrum inbound by design | blocked on Spectrum vs Photon inbound lock |
-| Outbound | Photon Advanced HTTP (`ensureChat`, send, …) | separate cutover |
+| Outbound | **photon-rest-proxy** HTTP (`base_url` + Spectrum project headers) | pack migrated; proxy gaps: ensure-chat, clear-by-target+emoji, download without space, stable message_id |
 
 ---
 

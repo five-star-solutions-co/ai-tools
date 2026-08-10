@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { isPlainObject } from 'es-toolkit'
 
 import { isToolError, runTool, validateModule, withAuth } from '../../src/core'
@@ -11,58 +11,11 @@ import {
 import { ImessageClientError } from '../../src/vendors/imessage'
 import { TelegramClientError } from '../../src/vendors/telegram'
 
-/** Stub Advanced iMessage gRPC client used by imessage provider tests. */
-function installImessageGrpcMock(sdk: {
-	sendText?: (chat: string, text: string) => Promise<{ guid: string }>
-	setReaction?: (...args: unknown[]) => Promise<{ guid: string }>
-	setTyping?: (chat: string, on: boolean) => Promise<void>
-	markRead?: (chat: string) => Promise<void>
-	downloadStream?: () => AsyncIterable<{ type: string; data?: Uint8Array; info?: Record<string, unknown> }>
-	failSend?: boolean
-}) {
-	void mock.module('@photon-ai/advanced-imessage/grpc', () => ({
-		createGrpcClient: () => ({
-			messages: {
-				sendText: async (chat: string, text: string) => {
-					if (sdk.failSend) throw new TypeError('grpc failed')
-					return sdk.sendText ? sdk.sendText(chat, text) : { guid: 'im1' }
-				},
-				setReaction: sdk.setReaction ?? (async () => ({ guid: 'react-99' })),
-				edit: async () => ({ guid: 'im1' }),
-				unsend: async () => undefined
-			},
-			chats: {
-				setTyping: sdk.setTyping ?? (async () => undefined),
-				markRead: sdk.markRead ?? (async () => undefined),
-				create: async () => ({ chat: { guid: 'any;-;x' } })
-			},
-			attachments: {
-				upload: async () => ({ attachment: { guid: 'att-1' } }),
-				downloadStream:
-					sdk.downloadStream ??
-					async function* () {
-						yield { type: 'header', info: { fileName: 'a.png', totalBytes: 3 } }
-						yield { type: 'primaryChunk', data: new Uint8Array([1, 2, 3]) }
-					}
-			},
-			close: async () => undefined
-		}),
-		AuthenticationError: class AuthenticationError extends Error {},
-		ConnectionError: class ConnectionError extends Error {},
-		IMessageError: class IMessageError extends Error {
-			retryable?: boolean
-			code?: string
-		},
-		NotFoundError: class NotFoundError extends Error {},
-		RateLimitError: class RateLimitError extends Error {},
-		ValidationError: class ValidationError extends Error {}
-	}))
-}
-
-const imessageDirectAuth = {
+const imessageProxyAuth = {
 	provider: 'imessage' as const,
-	address: 'imessage.spectrum.photon.codes:443',
-	token: 'tok'
+	base_url: 'https://proxy.example.com',
+	project_id: 'proj_1',
+	project_secret: 'sec_1'
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -150,27 +103,29 @@ describe('messaging seam', () => {
 		expect(code).toBe('bad_input')
 	})
 
-	test('imessage provider sendText via Photon gRPC', async () => {
-		installImessageGrpcMock({
-			sendText: async (chat, text) => {
-				expect(chat).toBe('any;-;+15551111111')
-				expect(text).toBe('hi')
-				return { guid: 'im1' }
-			}
+	test('imessage provider sendText via photon-rest-proxy', async () => {
+		const restore = mockFetch((url, init) => {
+			expect(url).toBe('https://proxy.example.com/v1/send')
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			expect(body.space_id).toBe('any;-;+15551111111')
+			expect(body.text).toBe('hi')
+			return new Response(JSON.stringify({ ok: true, message_id: 'im1', space_id: body.space_id }), {
+				status: 200
+			})
 		})
 		try {
-			const client = MessagingClient.fromAuth(imessageDirectAuth)
+			const client = MessagingClient.fromAuth(imessageProxyAuth)
 			const result = await client.sendText({ chat_id: 'any;-;+15551111111', text: 'hi' })
 			expect(result.message_id).toBe('im1')
 		} finally {
-			mock.restore()
+			restore()
 		}
 	})
 
 	test('imessage sendText failure is outcome_unknown', async () => {
-		installImessageGrpcMock({ failSend: true })
+		const restore = mockFetch(() => new Response(JSON.stringify({ error: 'upstream' }), { status: 502 }))
 		try {
-			const client = MessagingClient.fromAuth(imessageDirectAuth)
+			const client = MessagingClient.fromAuth(imessageProxyAuth)
 			let error: unknown
 			try {
 				await client.sendText({ chat_id: 'any;-;+15551111111', text: 'hi' })
@@ -180,7 +135,7 @@ describe('messaging seam', () => {
 			expect(error).toBeInstanceOf(ImessageClientError)
 			expect(isMessagingOutcomeUnknown(error) || isMessagingDefiniteRejection(error)).toBe(true)
 		} finally {
-			mock.restore()
+			restore()
 		}
 	})
 
@@ -250,11 +205,14 @@ describe('messaging seam', () => {
 
 	test('imessage setReaction returns message guid', async () => {
 		const chat = 'any;-;+15551111111'
-		installImessageGrpcMock({
-			setReaction: async () => ({ guid: 'react-99' })
+		const restore = mockFetch((url) => {
+			expect(url).toContain('/v1/react')
+			return new Response(JSON.stringify({ ok: true, message_id: 'react-99', space_id: chat }), {
+				status: 200
+			})
 		})
 		try {
-			const client = MessagingClient.fromAuth(imessageDirectAuth)
+			const client = MessagingClient.fromAuth(imessageProxyAuth)
 			const result = await client.setReaction({
 				chat_id: chat,
 				message_id: 'msg-1',
@@ -262,7 +220,7 @@ describe('messaging seam', () => {
 			})
 			expect(result.message_id).toBe('react-99')
 		} finally {
-			mock.restore()
+			restore()
 		}
 	})
 
@@ -304,32 +262,42 @@ describe('messaging seam', () => {
 		}
 	})
 
-	test('imessage stopTyping / read hit Photon chat methods', async () => {
+	test('imessage stopTyping / read hit proxy typing and read', async () => {
 		const chat = 'any;-;+15551111111'
 		const seen: string[] = []
-		installImessageGrpcMock({
-			setTyping: async (c, on) => {
-				seen.push(`setTyping:${c}:${on}`)
-			},
-			markRead: async (c) => {
-				seen.push(`markRead:${c}`)
+		const restore = mockFetch((url, init) => {
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			if (url.endsWith('/v1/typing')) {
+				seen.push(`typing:${body.action}`)
+				return new Response(JSON.stringify({ ok: true }), { status: 200 })
 			}
+			if (url.endsWith('/v1/read')) {
+				seen.push(`read:${body.space_id}`)
+				return new Response(JSON.stringify({ ok: true }), { status: 200 })
+			}
+			return new Response(JSON.stringify({ error: 'unexpected' }), { status: 500 })
 		})
 		try {
-			const client = MessagingClient.fromAuth(imessageDirectAuth)
+			const client = MessagingClient.fromAuth(imessageProxyAuth)
 			await client.stopTyping({ chat_id: chat })
 			await client.read({ chat_id: chat, message_id: 'in-1' })
-			expect(seen).toContain(`setTyping:${chat}:false`)
-			expect(seen).toContain(`markRead:${chat}`)
+			expect(seen).toContain('typing:stop')
+			expect(seen).toContain(`read:${chat}`)
 		} finally {
-			mock.restore()
+			restore()
 		}
 	})
 
 	test('imessage downloadFile uses attachment guid as file_id', async () => {
-		installImessageGrpcMock({})
+		const restore = mockFetch((url, init) => {
+			expect(url).toContain('/v1/download')
+			const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+			expect(body.file_id).toBe('att-1')
+			expect(body.space_id).toBe('any;-;+15551111111')
+			return new Response(JSON.stringify({ ok: true, file_name: 'a.png', body_base64: btoa('abc') }), { status: 200 })
+		})
 		try {
-			const client = MessagingClient.fromAuth(imessageDirectAuth)
+			const client = MessagingClient.fromAuth(imessageProxyAuth)
 			const out = await client.downloadFile({
 				chat_id: 'any;-;+15551111111',
 				file_id: 'att-1',
@@ -339,7 +307,7 @@ describe('messaging seam', () => {
 			expect(out.body_base64).toBeDefined()
 			expect(out.body_base64!.length).toBeGreaterThan(0)
 		} finally {
-			mock.restore()
+			restore()
 		}
 	})
 

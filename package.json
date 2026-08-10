@@ -248,7 +248,6 @@
 		"release:dry": "semantic-release --dry-run"
 	},
 	"dependencies": {
-		"@photon-ai/advanced-imessage": "2.0.2",
 		"aws4fetch": "1.0.20",
 		"decimal.js": "10.6.0",
 		"es-toolkit": "1.50.0",
@@ -268,7 +267,6 @@
 		"zod": "4.4.3"
 	},
 	"devDependencies": {
-		"@grpc/grpc-js": "1.14.3",
 		"@mastra/core": "1.57.0",
 		"@mastra/pg": "1.19.0",
 		"@modelcontextprotocol/sdk": "1.30.0",
@@ -285,8 +283,6 @@
 		"ai": "7.0.55",
 		"conventional-changelog-conventionalcommits": "10.2.1",
 		"lefthook": "2.1.10",
-		"nice-grpc": "2.1.14",
-		"nice-grpc-common": "2.0.2",
 		"oxc-parser": "0.143.0",
 		"oxfmt": "0.62.0",
 		"oxlint": "1.77.0",
@@ -296,19 +292,13 @@
 		"typescript": "7.0.2"
 	},
 	"peerDependencies": {
-		"@grpc/grpc-js": ">=1.12.6",
 		"@mastra/core": ">=1.0.0",
 		"@mastra/pg": ">=1.14.0",
 		"@modelcontextprotocol/sdk": ">=1.0.0",
 		"@tanstack/ai": ">=0.40.0",
-		"ai": ">=5.0.0",
-		"nice-grpc": ">=2.1.11",
-		"nice-grpc-common": ">=2.0.2"
+		"ai": ">=5.0.0"
 	},
 	"peerDependenciesMeta": {
-		"@grpc/grpc-js": {
-			"optional": true
-		},
 		"@mastra/core": {
 			"optional": true
 		},
@@ -322,12 +312,6 @@
 			"optional": true
 		},
 		"ai": {
-			"optional": true
-		},
-		"nice-grpc": {
-			"optional": true
-		},
-		"nice-grpc-common": {
 			"optional": true
 		}
 	},

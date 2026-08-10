@@ -1,14 +1,11 @@
 /**
  * iMessage provider for the messaging seam.
- * Wraps `ImessageClient` (Photon Spectrum Cloud + Advanced iMessage gRPC).
- *
- * Vendor client is loaded via dynamic import so edge/browser packaging of the
- * messaging seam does not pull Node-only gRPC peers until iMessage is used.
+ * Wraps `ImessageClient` (hosted photon-rest-proxy over HTTP).
  */
 
 import { ToolError } from '../../../core/errors'
 import type { HttpServiceOptions } from '../../../transport/http-service'
-import type { ImessageClient } from '../../../vendors/imessage'
+import { ImessageClient } from '../../../vendors/imessage'
 import type {
 	ImessageMessagingAuth,
 	MessagingAnswerCallbackInput,
@@ -33,32 +30,15 @@ import { sendMediaBatchSequential } from '../domain'
 export type ImessageMessagingProviderOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
 export class ImessageMessagingProvider implements MessagingOps {
-	readonly #auth: ImessageMessagingAuth
-	readonly #options: ImessageMessagingProviderOptions
-	#client: ImessageClient | undefined
-	#ready: Promise<ImessageClient> | undefined
+	readonly #client: ImessageClient
 
 	constructor(auth: ImessageMessagingAuth, options: ImessageMessagingProviderOptions = {}) {
-		this.#auth = auth
-		this.#options = options
-	}
-
-	async #sdk(): Promise<ImessageClient> {
-		if (this.#client) return this.#client
-		this.#ready ??= (async () => {
-			const { ImessageClient } = await import('../../../vendors/imessage/client')
-			const { provider: _p, storage: _s, ...vendorAuth } = this.#auth
-			const client = new ImessageClient(vendorAuth, this.#options)
-			this.#client = client
-			return client
-		})()
-		return this.#ready
+		const { provider: _p, storage: _s, ...vendorAuth } = auth
+		this.#client = new ImessageClient(vendorAuth, options)
 	}
 
 	async sendText(input: MessagingSendTextInput): Promise<MessagingMessageOutput> {
-		const result = await (
-			await this.#sdk()
-		).sendText({
+		const result = await this.#client.sendText({
 			chat_id: input.chat_id,
 			text: input.text
 		})
@@ -66,35 +46,29 @@ export class ImessageMessagingProvider implements MessagingOps {
 	}
 
 	async editText(input: MessagingEditTextInput): Promise<MessagingMessageOutput> {
-		const result = await (
-			await this.#sdk()
-		).editText({
+		const result = await this.#client.editText({
 			chat_id: input.chat_id,
 			message_id: input.message_id,
 			text: input.text
 		})
 		return {
-			message_id: result.message_id ?? input.message_id
+			message_id: result.message_id
 		}
 	}
 
 	async sendChatAction(input: MessagingSendChatActionInput): Promise<void> {
-		await (
-			await this.#sdk()
-		).sendChatAction({
+		await this.#client.sendChatAction({
 			chat_id: input.chat_id,
 			action: input.action
 		})
 	}
 
 	async stopTyping(input: MessagingStopTypingInput): Promise<void> {
-		await (await this.#sdk()).stopTyping({ chat_id: input.chat_id })
+		await this.#client.stopTyping({ chat_id: input.chat_id })
 	}
 
 	async setReaction(input: MessagingSetReactionInput): Promise<MessagingReactionOutput> {
-		const result = await (
-			await this.#sdk()
-		).setReaction({
+		const result = await this.#client.setReaction({
 			chat_id: input.chat_id,
 			message_id: input.message_id,
 			emoji: input.emoji
@@ -103,8 +77,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 	}
 
 	/**
-	 * Clears via setReaction(isSet=false). Requires emoji matching setReaction.
-	 * `message_id` is the **target** message guid.
+	 * Clears via proxy target message_id + emoji (same contract as setReaction).
 	 */
 	async clearReaction(input: MessagingClearReactionInput): Promise<void> {
 		if (!input.emoji) {
@@ -112,9 +85,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 				code: 'bad_input'
 			})
 		}
-		await (
-			await this.#sdk()
-		).clearReaction({
+		await this.#client.clearReaction({
 			chat_id: input.chat_id,
 			message_id: input.message_id,
 			emoji: input.emoji
@@ -122,9 +93,7 @@ export class ImessageMessagingProvider implements MessagingOps {
 	}
 
 	async sendMedia(input: MessagingSendMediaResolved): Promise<MessagingMessageOutput> {
-		const result = await (
-			await this.#sdk()
-		).sendMedia({
+		const result = await this.#client.sendMedia({
 			chat_id: input.chat_id,
 			kind: input.kind,
 			body_base64: input.body_base64,
@@ -140,23 +109,20 @@ export class ImessageMessagingProvider implements MessagingOps {
 	}
 
 	async downloadFile(input: MessagingDownloadFileInput): Promise<MessagingChannelDownloadOutput> {
-		// file_id is attachment guid; optional chat_id for journaling only
-		const fileId = input.chat_id ? input.file_id : (splitImessageFileRef(input.file_id).file_id ?? input.file_id)
-		return (await this.#sdk()).downloadFile({
-			file_id: fileId,
-			...(input.chat_id && { chat_id: input.chat_id }),
+		const ref = input.chat_id ? { chat_id: input.chat_id, file_id: input.file_id } : splitImessageFileRef(input.file_id)
+		return this.#client.downloadFile({
+			file_id: ref.file_id,
+			...(ref.chat_id && { chat_id: ref.chat_id }),
 			...(input.file_name && { file_name: input.file_name })
 		})
 	}
 
 	async answerCallback(_input: MessagingAnswerCallbackInput): Promise<void> {
-		await (await this.#sdk()).answerCallback({})
+		await this.#client.answerCallback({})
 	}
 
 	async read(input: MessagingReadInput): Promise<void> {
-		await (
-			await this.#sdk()
-		).read({
+		await this.#client.read({
 			chat_id: input.chat_id,
 			...(input.message_id && { message_id: input.message_id })
 		})
