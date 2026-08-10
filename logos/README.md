@@ -63,17 +63,13 @@ Downloaded from [Lucide](https://lucide.dev) / `lucide-static@0.469.0` (ISC). Se
 | `code-sandbox` | `box` |
 | `content-type` | `file-type` |
 | `crypto` | `key-round` |
-| `document` | `file-text` |
 | `document-extract` | `scan-text` |
 | `document-render` | `printer` |
 | `email` | `mail` |
 | `email-message` | `mails` |
-| `file-convert` | `refresh-cw` |
 | `files` | `folder-open` |
 | `image` | `image` |
 | `messaging` | `messages-square` |
-| `pdf` | `file-type-2` |
-| `presentation` | `presentation` |
 | `queue` | `list-ordered` |
 | `rag` | `brain-circuit` |
 | `scheduler` | `clock` |

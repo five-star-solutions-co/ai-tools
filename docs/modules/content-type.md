@@ -51,4 +51,4 @@ Same input as `content-type-extension`. Returns `extensions: string[]` (all know
 
 ## Shared helpers
 
-`file-convert` (and other modules) import helpers from the same `mime` package via `src/shared/content-type.ts` — no hand-rolled extension tables.
+Other modules import helpers from the same `mime` package via `src/shared/content-type.ts` — no hand-rolled extension tables.

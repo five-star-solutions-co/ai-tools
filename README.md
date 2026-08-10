@@ -123,17 +123,13 @@ defineTool / defineModule
 | `@5ss/ai-tools/vector-store` | qdrant, pinecone, supabase, mastra | `vector-store-*` | [vector-store](./docs/modules/vector-store.md) |
 | `@5ss/ai-tools/rag` | embed + nested vector-store | `rag-*` | [rag](./docs/modules/rag.md) |
 | `@5ss/ai-tools/document-extract` | multi-provider | `document-extract-text`, `-status`, `-text-batch` | [document-extract](./docs/modules/document-extract.md) |
-| `@5ss/ai-tools/document-render` | multi-provider | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
-| `@5ss/ai-tools/file-convert` | gotenberg LO | `file-convert` (`office-to-pdf`), batch | [file-convert](./docs/modules/file-convert.md) |
-| `@5ss/ai-tools/document` | core reader/builder/editor | read text/PDF/DOCX/XLSX/images; build text/DOCX/XLSX; edit text/DOCX/XLSX/CSV | [document](./docs/modules/document.md) |
-| `@5ss/ai-tools/presentation` | PPTX reader/builder/editor | read, build, and edit PPTX presentations; Node ESM only | [presentation](./docs/modules/presentation.md) |
+| `@5ss/ai-tools/document-render` | cloudflare-browser | `document-render-pdf`, `-screenshot`, batches | [document-render](./docs/modules/document-render.md) |
 | `@5ss/ai-tools/web-fetch` | host policy | `web-fetch-get`, `web-fetch-request` | [web-fetch](./docs/modules/web-fetch.md) |
 | `@5ss/ai-tools/email-message` | pure (no auth) | `email-message-parse`, `email-message-build` | [email-message](./docs/modules/email-message.md) |
 | `@5ss/ai-tools/content-type` | pure (no auth) | `content-type-get`, `-extension`, `-extensions` | [content-type](./docs/modules/content-type.md) |
 | `@5ss/ai-tools/skills` | host-bound catalog | `skills-list`, `skills-get`, `skills-search` | [skills](./docs/modules/skills.md) |
 | `@5ss/ai-tools/tasks` | host-backed definitions | `tasks-create`, `-get`, `-list`, `-update`, `-delete` | [tasks](./docs/modules/tasks.md) |
 | `@5ss/ai-tools/scheduler` | eventbridge provider | `scheduler-create`, `-update`, `-get`, `-list`, `-delete` | [scheduler](./docs/modules/scheduler.md) |
-| `@5ss/ai-tools/pdf` | artifact utilities | inspect, merge, extract, split, rotate | [pdf](./docs/modules/pdf.md) |
 | `@5ss/ai-tools/image` | artifact transforms | metadata, resize, crop, thumbnail, convert | [image](./docs/modules/image.md) |
 | `@5ss/ai-tools/crypto` | Web Crypto | hash, HMAC sign/verify, random bytes | [crypto](./docs/modules/crypto.md) |
 | `@5ss/ai-tools/calendar` | pure iCalendar | build and parse ICS | [calendar](./docs/modules/calendar.md) |
@@ -161,7 +157,6 @@ defineTool / defineModule
 | `@5ss/ai-tools/bedrock-agentcore-code-interpreter` | session + execute + files | [bedrock-agentcore-code-interpreter](./docs/vendors/bedrock-agentcore-code-interpreter.md) |
 | `@5ss/ai-tools/bedrock-agentcore-browser` | start/stop/get session + stream endpoints | [bedrock-agentcore-browser](./docs/vendors/bedrock-agentcore-browser.md) |
 
-| `@5ss/ai-tools/gotenberg` | render PDF/screenshot + `office-to-pdf` convert | [gotenberg](./docs/vendors/gotenberg.md) |
 | `@5ss/ai-tools/cloudflare-browser` | sessions + PDF/screenshot quick actions | [cloudflare-browser](./docs/vendors/cloudflare-browser.md) |
 | `@5ss/ai-tools/woocommerce` | orders, notes, refunds, products, variations, customers, coupons, categories | [woocommerce](./docs/vendors/woocommerce.md) |
 | `@5ss/ai-tools/katana` | sales/purchase/manufacturing orders, products, materials, customers, suppliers, inventory | [katana](./docs/vendors/katana.md) |
@@ -196,13 +191,11 @@ bun run build
 
 Codegen owns `package.json` exports for packs under `src/modules|vendors/<key>/` with `index.ts`. Underscore kits (`_email`, `_storage`, `_messaging`) are skipped.
 
-## Artifacts (extract · convert · render)
+## Artifacts (extract · render)
 
 - Objects are **S3 keys** (`ArtifactRef`), not base64 in the model. Spec: [artifacts-extract-convert](./docs/specs/artifacts-extract-convert.md).
-- **Read / build / edit:** text, PDF, DOCX, spreadsheet, and image-metadata work lives in [`document`](./docs/modules/document.md); PPTX work lives in [`presentation`](./docs/modules/presentation.md). Product lock: [document plane](./docs/specs/document-plane.md).
 - **Extract:** Amazon Textract (object must live in AWS S3 Textract can read).
-- **Convert (office→PDF):** self-host [Gotenberg](https://gotenberg.dev/) LibreOffice (`file-convert` path `office-to-pdf`).
-- **Render (HTML/URL):** Gotenberg Chromium or Cloudflare Browser Rendering → storage `ArtifactRef`.
+- **Render (HTML/URL):** Cloudflare Browser Rendering → storage `ArtifactRef` (`document-render`).
 
 ## Release
 

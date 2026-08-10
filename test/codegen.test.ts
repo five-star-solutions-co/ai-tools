@@ -103,8 +103,10 @@ describe('repo codegen artifacts', () => {
 		expect(manifest.brain.map((b) => b.exportKey)).toContain('mcp')
 		expect(manifest.brain.every((surface) => ['node', 'edge', 'both'].includes(surface.runtime))).toBe(true)
 		expect(manifest.modules.every((surface) => ['node', 'edge', 'both'].includes(surface.runtime))).toBe(true)
-		expect(manifest.modules.find((surface) => surface.key === 'document')?.nodeFormats).toEqual(['esm', 'cjs'])
-		expect(manifest.modules.find((surface) => surface.key === 'presentation')?.nodeFormats).toEqual(['esm', 'cjs'])
+		expect(manifest.modules.find((surface) => surface.key === 'document-render')?.nodeFormats).toEqual(['esm', 'cjs'])
+		expect(manifest.modules.find((surface) => surface.key === 'document-extract')?.nodeFormats).toEqual(['esm', 'cjs'])
+		expect(manifest.modules.some((surface) => surface.key === 'gotenberg')).toBe(false)
+		expect(manifest.modules.some((surface) => surface.key === 'pdf')).toBe(false)
 	})
 
 	test('tsdown entry is derived from module-manifest (not a generated entry dump)', async () => {

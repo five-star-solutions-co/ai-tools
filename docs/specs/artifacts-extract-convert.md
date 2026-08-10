@@ -1,4 +1,4 @@
-# Spec: Artifacts, document extract, file convert
+# Spec: Artifacts, document extract, document render
 
 Status: **locked for implementation**  
 Package: `@5ss/ai-tools`
@@ -7,8 +7,8 @@ Package: `@5ss/ai-tools`
 
 - Keep **file bytes out of the LLM**. Tools pass **ArtifactRef** only.
 - **One path** for all sizes (no small/large tiers).
-- **Reuse** object-storage concepts and the package transport stack. Keep Office conversion and browser print out of the in-process `document` module; native read/build/edit libraries remain in `document`.
-- Extract via **AWS Textract**; convert via **self-hosted Gotenberg LibreOffice** (office → PDF). HTML print via **document-render** (Chromium / Cloudflare Browser).
+- **Reuse** object-storage concepts and the package transport stack.
+- Extract via **AWS Textract**. HTML/URL print via **document-render** (Cloudflare Browser).
 
 ## ArtifactRef
 
@@ -24,7 +24,7 @@ Package: `@5ss/ai-tools`
 
 | Field | Meaning |
 | --- | --- |
-| `store` | Who owns bytes. **`object`** = bound object store (S3-compatible keys for extract/convert/render). **`host`** reserved for host-mapped keys. |
+| `store` | Who owns bytes. **`object`** = bound object store (S3-compatible keys for extract/render). **`host`** reserved for host-mapped keys. |
 | `key` | Object key in the bound bucket (or host id later). |
 | `media_type` | Optional hint (extension or sniffed). Tools may fill if missing. |
 | `filename` | Optional display name. |
@@ -116,60 +116,40 @@ One `GetDocumentTextDetection` call (paginate tokens if needed for full text). *
 
 `both` (HTTP + aws4fetch).
 
-## File convert (`@5ss/ai-tools/file-convert`)
+## Document render (`@5ss/ai-tools/document-render`)
 
-**Backend:** self-hosted **[Gotenberg](https://gotenberg.dev/)** LibreOffice module.  
-Closed path: **`office-to-pdf`** (docx, pptx, xlsx, odt, rtf, … → PDF).  
-HTML/URL layout print is **document-render** (Chromium / Cloudflare Browser), not this module.
+**Backend:** **Cloudflare Browser Rendering** (`provider: 'cloudflare-browser'`).  
+HTML or URL → PDF / PNG; writes `ArtifactRef` to nested object storage.
 
 ### Tools
 
 | Tool id | sideEffect | Behavior |
 | --- | --- | --- |
-| `file-convert` | `write` | `path: office-to-pdf`; read `source` from S3; LO convert; write PDF ArtifactRef |
-| `file-convert-batch` | `write` | Same, up to 10 items |
-
-### Flow (one await)
-
-1. Get object bytes from S3 (`source.key`).
-2. `POST {gotenberg}/forms/libreoffice/convert` multipart.
-3. Put PDF bytes to S3 at `output_key` (or derived `.pdf` key).
-4. Return `{ source, result: ArtifactRef, path: 'office-to-pdf' }`.
+| `document-render-pdf` | `write` | HTML/URL → PDF ArtifactRef |
+| `document-render-screenshot` | `write` | HTML/URL → PNG ArtifactRef |
+| `document-render-pdf-batch` / `-screenshot-batch` | `write` | Up to 10 items |
 
 ### Auth (host-facing)
 
 ```ts
 {
-  provider: 'gotenberg'
-  gotenberg_base_url: string
-  gotenberg_api_username?: string
-  gotenberg_api_password?: string
+  provider: 'cloudflare-browser'
+  account_id: string
+  api_token: string
+  browser?: 'chromium' | 'kitesurf'
   storage: { access_key_id, secret_access_key, region, bucket, endpoint?, session_token? }
-}
-```
-
-### Input (model-facing)
-
-```ts
-{
-  source: ArtifactRef
-  path: 'office-to-pdf'   // closed enum
-  output_key?: string
-  filename?: string
 }
 ```
 
 ## README recommendation
 
-Self-host **Gotenberg** for office→PDF (+ optional Chromium self-host).  
 Managed **Cloudflare Browser** for HTML→PDF/PNG.  
 **AWS Textract** for OCR/text extract.  
-**S3/R2** for ArtifactRef storage (R2 OK for convert/render; **AWS S3 required** for Textract document location).
+**S3/R2** for ArtifactRef storage (R2 OK for render; **AWS S3 required** for Textract document location).
 
 ## Out of scope (v1)
 
-- In-process pdf-parse / LibreOffice in this package  
-- VERT as primary converter backend (browser/WASM-first)  
+- In-process office builders / LibreOffice conversion in this package  
 - Size-based dual code paths  
 - Agent-facing base64 file payloads as primary API  
 
@@ -178,7 +158,6 @@ Managed **Cloudflare Browser** for HTML→PDF/PNG.
 | Package surface | Code |
 | --- | --- |
 | shared ref | `src/shared/artifact.ts` |
-| S3 get/put helpers | `src/shared/s3-bytes.ts` (reuse aws4fetch patterns from s3-storage) |
 | extract | `src/modules/document-extract/` |
-| convert | `src/modules/file-convert/` |
+| render | `src/modules/document-render/` |
 | docs | this spec + module wiki pages |

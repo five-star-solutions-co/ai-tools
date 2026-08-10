@@ -15,7 +15,7 @@ const FORBIDDEN_MODEL_COPY =
  * Keep list brand-focused; avoid bare words like "teams" that appear in normal English.
  */
 const FORBIDDEN_SEAM_BRAND_COPY =
-	/\b(Telegram|Slack|iMessage|Resend|Cloudflare|Textract|Gotenberg|Pinecone|Qdrant|Supabase|WooCommerce|Katana|Amazon|Bot Framework|Microsoft Teams|Photon|Spectrum|Mastra|PgVector|OpenAI)\b|\bS3\b|\bR2\b/
+	/\b(Telegram|Slack|iMessage|Resend|Cloudflare|Textract|Pinecone|Qdrant|Supabase|WooCommerce|Katana|Amazon|Bot Framework|Microsoft Teams|Photon|Spectrum|Mastra|PgVector|OpenAI)\b|\bS3\b|\bR2\b/
 
 /** Seam module ids from codegen (`src/modules/*` only — not hand-maintained). */
 const SEAM_MODULE_IDS = new Set<string>(moduleSeamKeys)

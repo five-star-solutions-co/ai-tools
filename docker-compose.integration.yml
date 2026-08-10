@@ -24,7 +24,7 @@ services:
       timeout: 3s
       retries: 12
 
-  # S3-compatible store — s3 / storage / files / gotenberg output
+  # S3-compatible store — s3 / storage / files / render output
   minio:
     image: minio/minio:RELEASE.2025-01-20T14-49-07Z
     command: server /data --console-address ":9001"
@@ -60,21 +60,6 @@ services:
       mc mb -p local/ai-tools-it || true;
       exit 0;
       "
-
-  # Document stack — Chromium HTML render + LibreOffice office→PDF
-  # vendors/gotenberg, document-render, file-convert (see docker/README.md)
-  gotenberg:
-    image: gotenberg/gotenberg:8
-    command:
-      - gotenberg
-      - --api-timeout=120s
-    ports:
-      - '127.0.0.1:3000:3000'
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:3000/health']
-      interval: 5s
-      timeout: 5s
-      retries: 12
 
 volumes:
   ai_tools_qdrant:

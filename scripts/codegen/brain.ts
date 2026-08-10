@@ -40,8 +40,7 @@ export const NEVER_BUNDLE = bundlePolicy.neverBundle
 
 /**
  * Force-inline into pack dist so consumers (esp. Bun → CJS lambda) never resolve
- * `@office-open/core`'s broken top-level-await zlib path from node_modules.
- * Source is patched via `patchedDependencies` before build.
+ * fragile transitive ESM paths from node_modules.
  * picomatch: bare package names only match exact ids; use slash-star-star subpath globs.
  */
 export const ALWAYS_BUNDLE = bundlePolicy.alwaysBundle

@@ -94,10 +94,6 @@
 			"types": "./dist/modules/crypto/index.d.ts",
 			"default": "./dist/modules/crypto/index.js"
 		},
-		"./document": {
-			"types": "./dist/modules/document/index.d.ts",
-			"default": "./dist/modules/document/index.js"
-		},
 		"./document-extract": {
 			"types": "./dist/modules/document-extract/index.d.ts",
 			"default": "./dist/modules/document-extract/index.js"
@@ -118,17 +114,9 @@
 			"types": "./dist/vendors/eventbridge-scheduler/index.d.ts",
 			"default": "./dist/vendors/eventbridge-scheduler/index.js"
 		},
-		"./file-convert": {
-			"types": "./dist/modules/file-convert/index.d.ts",
-			"default": "./dist/modules/file-convert/index.js"
-		},
 		"./files": {
 			"types": "./dist/modules/files/index.d.ts",
 			"default": "./dist/modules/files/index.js"
-		},
-		"./gotenberg": {
-			"types": "./dist/vendors/gotenberg/index.d.ts",
-			"default": "./dist/vendors/gotenberg/index.js"
 		},
 		"./image": {
 			"types": "./dist/modules/image/index.d.ts",
@@ -150,17 +138,9 @@
 			"types": "./dist/modules/messaging/index.d.ts",
 			"default": "./dist/modules/messaging/index.js"
 		},
-		"./pdf": {
-			"types": "./dist/modules/pdf/index.d.ts",
-			"default": "./dist/modules/pdf/index.js"
-		},
 		"./pinecone": {
 			"types": "./dist/vendors/pinecone/index.d.ts",
 			"default": "./dist/vendors/pinecone/index.js"
-		},
-		"./presentation": {
-			"types": "./dist/modules/presentation/index.d.ts",
-			"default": "./dist/modules/presentation/index.js"
 		},
 		"./qdrant": {
 			"types": "./dist/vendors/qdrant/index.d.ts",
@@ -245,7 +225,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "bun test --parallel --reporter=dots test/*.test.ts test/core test/modules test/vendors test/shared test/transport",
 		"test:integration": "bun test --parallel --max-concurrency=16 test/integration/vendors test/integration/seams",
-		"integration:up:compose": "docker compose -f docker-compose.integration.yml up -d --wait qdrant minio gotenberg && docker compose -f docker-compose.integration.yml up --no-deps minio-init",
+		"integration:up:compose": "docker compose -f docker-compose.integration.yml up -d --wait qdrant minio && docker compose -f docker-compose.integration.yml up --no-deps minio-init",
 		"integration:up:supabase": "bunx supabase start",
 		"integration:env": "bun scripts/integration-env.ts",
 		"integration:up": "bun run --parallel integration:up:compose integration:up:supabase && bun run integration:env",
@@ -268,34 +248,23 @@
 		"release:dry": "semantic-release --dry-run"
 	},
 	"dependencies": {
-		"@napi-rs/canvas": "1.0.3",
-		"@office-kit/docx": "0.1.1",
-		"@office-open/pptx": "0.10.15",
 		"@photon-ai/advanced-imessage": "2.0.2",
 		"aws4fetch": "1.0.20",
 		"decimal.js": "10.6.0",
 		"es-toolkit": "1.50.0",
-		"exceljs": "4.4.0",
 		"fast-xml-parser": "5.10.1",
 		"fflate": "0.8.3",
 		"file-type": "22.0.1",
 		"html-to-text": "10.0.0",
 		"ical.js": "2.2.1",
-		"image-size": "2.0.2",
-		"mammoth": "1.12.0",
 		"mime": "4.1.0",
 		"mimetext": "3.0.28",
 		"ofetch": "1.5.1",
 		"p-map": "7.0.6",
 		"p-retry": "8.0.0",
 		"papaparse": "5.5.4",
-		"pdf-lib": "1.17.1",
-		"pdfjs-dist": "6.2.108",
 		"postal-mime": "2.7.5",
-		"pptx-automizer": "0.8.2",
-		"pptxgenjs": "4.0.1",
 		"sharp": "0.35.3",
-		"unpdf": "1.8.0",
 		"zod": "4.4.3"
 	},
 	"devDependencies": {
@@ -366,9 +335,5 @@
 		"bun": ">=1.3.14",
 		"node": ">=24"
 	},
-	"packageManager": "bun@1.3.14",
-	"patchedDependencies": {
-		"@office-open/core@0.10.15": "patches/@office-open%2Fcore@0.10.15.patch",
-		"unpdf@1.8.0": "patches/unpdf@1.8.0.patch"
-	}
+	"packageManager": "bun@1.3.14"
 }

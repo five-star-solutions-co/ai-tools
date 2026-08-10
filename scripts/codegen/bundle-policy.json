@@ -19,5 +19,5 @@
 		"postal-mime",
 		"zod"
 	],
-	"alwaysBundle": ["@office-open/**", "fflate", "@noble/hashes", "@noble/hashes/**"]
+	"alwaysBundle": ["fflate", "@noble/hashes", "@noble/hashes/**"]
 }

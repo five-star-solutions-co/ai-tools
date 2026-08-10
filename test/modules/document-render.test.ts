@@ -24,10 +24,11 @@ describe('document-render', () => {
 		expect(documentRenderModule.tools.some((t) => t.id === 'document-render-screenshot')).toBe(true)
 	})
 
-	test('gotenberg provider renders PDF and writes to storage', async () => {
+	test('cloudflare-browser provider renders PDF and writes to storage', async () => {
 		const bound = withAuth(documentRenderModule, {
-			provider: 'gotenberg',
-			gotenberg_base_url: 'https://gotenberg.example',
+			provider: 'cloudflare-browser',
+			account_id: 'acc',
+			api_token: 'tok',
 			storage: storageAuth
 		})
 		const tool = bound.tools.find((t) => t.id === 'document-render-pdf')
@@ -38,8 +39,7 @@ describe('document-render', () => {
 		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
 			const method = init?.method ?? (input instanceof Request ? input.method : 'GET')
-			if (url.includes('gotenberg.example') && method === 'POST') {
-				expect(url).toContain('/forms/chromium/convert/html')
+			if (url.includes('browser-rendering/pdf') && method === 'POST') {
 				return new Response(pdfBytes, {
 					status: 200,
 					headers: { 'content-type': 'application/pdf' }

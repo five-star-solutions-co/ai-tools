@@ -34,15 +34,16 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `storage` | **Removed** | No multi-provider storage seam — use `s3` vendor (or nested S3 on `files`) |
 | `r2` / `supabase-storage` | **Removed** | Cloudflare R2 REST + Supabase Storage packs deleted; use S3-compatible `s3` (R2 endpoint) when needed |
 | `document-extract` | Done | textract only |
-| `file-convert` | Done | gotenberg LibreOffice `office-to-pdf` |
-| `document` | Done | read common files with PDF page text/images + build text/docx/pptx/xlsx + edit text/docx/pptx/xlsx/csv |
+| `file-convert` | **Removed** | Gotenberg office→PDF path deleted |
+| `document` / `presentation` / `pdf` | **Removed** | In-process office/PDF packs deleted |
 | `web-fetch` | Done | allowlisted HttpService |
 | `mime` | **Removed** | Stub pack deleted; use `email-message` / `content-type` |
 | `content-type` | Done | pure type ↔ extension |
 | `email-message` | Done | pure parse/build MIME |
 | `files` | Done | path root over nested S3: list/search/stat/get/put/delete/copy/move/mkdir + multipart |
 | `artifacts` | Done | object + host providers; create and bounded byte/line reads |
-| `document-render` | Done | gotenberg + cloudflare-browser |
+| `document-render` | Done | cloudflare-browser only |
+| `vendors/gotenberg` | **Removed** | Self-host print/convert vendor deleted |
 | `vector-store` / `rag` | Done | qdrant+pinecone+supabase+mastra; chunk/embed/retrieve |
 | `messaging` (thin multi-provider seam) | **Done** | Shared verbs; wraps telegram/slack/teams/imessage vendors |
 | `skills` | Done | host-bound catalog; list/get/search |
@@ -51,7 +52,6 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `eventbridge-scheduler` | Done | vendor pack |
 | `bedrock-agentcore-code-interpreter` | Done | sessions + execute + files |
 | `bedrock-agentcore-browser` | Done | session lifecycle + stream endpoints (no faked click tools) |
-| `pdf` | Done | pdf-lib inspect, merge, extract, split, rotate over ArtifactRef |
 | `image` | Done | sharp metadata, resize, crop, thumbnail, convert over ArtifactRef |
 | `crypto` | Done | Web Crypto digest, host-bound HMAC, secure random bytes |
 | `calendar` | Done | ical.js ICS build and parse |

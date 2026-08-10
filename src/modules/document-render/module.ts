@@ -19,7 +19,7 @@ export const documentRenderPdfTool = defineTool({
 	id: 'document-render-pdf',
 	name: 'renderDocumentPdf',
 	description:
-		'Create a PDF from HTML or a URL with a browser print engine and return the final ArtifactRef. Use for web layouts, reports, and invoices. Use file-convert for an existing office document; do not use a general code sandbox to print HTML.',
+		'Create a PDF from HTML or a URL with a browser print engine and return the final ArtifactRef. Use for web layouts, reports, and invoices. Do not use a general code sandbox to print HTML.',
 	inputSchema: renderPdfInputSchema,
 	outputSchema: renderOutputSchema,
 	sideEffect: 'write',
@@ -72,8 +72,7 @@ export const documentRenderScreenshotBatchTool = defineTool({
 export const documentRenderModule = defineModule({
 	id: 'document-render',
 	title: 'Document Render',
-	description:
-		'Create final PDF or PNG ArtifactRefs from HTML or URLs with a browser renderer. Use file conversion for existing office documents.',
+	description: 'Create final PDF or PNG ArtifactRefs from HTML or URLs with a browser renderer.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: documentRenderAuthSchema },
 	categories: ['documents', 'render'],

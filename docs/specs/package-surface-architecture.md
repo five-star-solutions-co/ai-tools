@@ -131,10 +131,7 @@ src/modules/<capability>/
 | `email` | resend, cloudflare | Thin send/batch seam over email vendors |
 | `messaging` | telegram, slack, teams, imessage | Thin shared channel verbs over chat vendors |
 | `document-extract` | textract | ArtifactRef text extract |
-| `document-render` | gotenberg, cloudflare-browser | HTML/URL → PDF / screenshot |
-| `file-convert` | gotenberg (LibreOffice) | Office → PDF only (not HTML print) |
-| `document` | none | Node CommonJS-safe reader, native text/DOCX/XLSX builders, and core format edit tools |
-| `presentation` | none | Isolated PPTX reader, builder, and editor; Node ESM only while the parser graph uses top-level await |
+| `document-render` | cloudflare-browser | HTML/URL → PDF / screenshot |
 | `web-fetch` | host allowlist | Free-form allowlisted HTTP |
 | `email-message` | none | Email message parse/build |
 | `content-type` | none | MIME type ↔ extension |
@@ -142,7 +139,6 @@ src/modules/<capability>/
 | `scheduler` | eventbridge | Shared schedule verbs over EventBridge Scheduler vendor |
 | `queue` | sqs | Enqueue, receive, acknowledge, and extend message visibility |
 | `browser` | bedrock-agentcore, cloudflare | Browser session lifecycle and stream metadata |
-| `pdf` | none | Artifact-backed inspect, merge, extract, split, and rotate |
 | `image` | none | Artifact-backed metadata and transforms |
 | `crypto` | none | Digest, bound-key HMAC, and secure random bytes |
 | `calendar` | none | iCalendar build and parse |
@@ -165,15 +161,9 @@ src/modules/<capability>/
 - Keys exposed to the model are **relative to root**.  
 - Host keeps RLS and org membership; package enforces prefix isolation at the tool boundary.
 
-#### `document-render` vs `file-convert`
+#### `document-render`
 
-| | `file-convert` (LibreOffice / Gotenberg, …) | `document-render` |
-| --- | --- | --- |
-| Input | Documents / images / formats | HTML string, URL, template |
-| Output | Converted file | Print PDF, screenshot PNG |
-| Engine | Format converters | Browser / print pipeline |
-
-They share **ArtifactRef + storage**. They are **not** the same module. HTML→PDF via Gotenberg may appear as a render provider or later as a convert provider; screenshots always belong to render.
+HTML or URL → PDF / PNG via a browser print engine (`cloudflare-browser`). Results write to nested object storage as `ArtifactRef`. Not OCR/extract (`document-extract`).
 
 #### Knowledge / memory (`vector-store`, `rag`)
 
@@ -335,13 +325,11 @@ See [http-and-aws-services.md](../reference/http-and-aws-services.md).
 
 | Capability | Self-hosted / first-party | Managed optional |
 | --- | --- | --- |
-| document-render | **Gotenberg**, Browserless, Playwright server | Cloudflare Browser Rendering |
-| file-convert | **Gotenberg LibreOffice**, LO headless | Cloud convert APIs |
+| document-render | Browserless, Playwright server | **Cloudflare Browser Rendering** |
 | document-extract | ocrmypdf / tesseract / docling services | **Textract** |
 | speech | Whisper / faster-whisper, Piper | ElevenLabs, Deepgram |
 | browser | Browserless, Playwright | Firecrawl cloud |
 | vector-store | **pgvector**, Qdrant, Weaviate, Chroma | Pinecone, managed Supabase |
-| pdf utils | Stirling-PDF, qpdf, pdf-lib | — |
 | image | imgproxy, sharp | Cloudinary |
 | queue | Redis, NATS | SQS, Cloudflare Queues |
 
@@ -352,7 +340,7 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 ## Artifact pipeline (cross-cutting)
 
 - Durable bytes use `ArtifactRef` (`store: 'object' | 'host'`).  
-- Convert / extract / render / rag-ingest accept ArtifactRef where large payloads must not enter the LLM.  
+- Extract / render / rag-ingest accept ArtifactRef where large payloads must not enter the LLM.  
 - `files` sits on vendor object stores; it only adds root prefix + relative-path UX.
 
 ---
@@ -375,14 +363,14 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 ## Build order (locked preference)
 
 1. **Layout** — discover `modules` / `vendors`; docs + AGENTS locks (this spec).  
-2. **`document-render`** — providers: gotenberg + cloudflare-browser.  
+2. **`document-render`** — provider: cloudflare-browser.  
 3. **`files`** — path root over vendor object store.  
 4. **`vendors/telegram`** — full Bot API pack (product P0).  
 5. **Email vendor packs** — `resend`, `cloudflare-email` (expand APIs over time).  
 6. **Vendor lifts** — `woocommerce`, `katana`, `amazon-sp-api`.  
 7. **`vector-store` + `rag`**.  
 8. **More messaging** — slack, imessage, whatsapp, teams.  
-9. **Remaining platform** — speech, browser, pdf, image, queue, webhook, crypto as needed.
+9. **Remaining platform** — speech, browser, image, queue, webhook, crypto as needed.
 
 ---
 
@@ -392,7 +380,7 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 - Platform modules keep generic tool ids + provider auth unions.  
 - Vendor packs may use vendor-prefixed tool ids and full API surfaces.  
 - Channel packs include **tools + webhook verify/parse**, not webhook-only stubs.  
-- Document-render is separate from file-convert; self-host providers are first-class.  
+- Document-render is HTML/URL print only (cloudflare-browser); extract is Textract.  
 - Composio/Nango remain the SaaS OAuth catalog; this package does not absorb them.  
 - Host tenancy/authZ/durable turns remain outside package tools.
 
@@ -400,7 +388,7 @@ Document each provider’s host setup in module docs (host-facing only; not mode
 
 ## Implementation notes (non-normative)
 
-- Lane A: files, email, messaging, extract, convert, render, web-fetch, email-message, content-type, vector-store, rag.  
+- Lane A: files, email, messaging, extract, render, web-fetch, email-message, content-type, vector-store, rag.  
 - Lane B: `resend`, `cloudflare-email`, chat vendors, `s3`, commerce vendors, etc.  
 - Chat: full packs under `vendors/*` + thin `modules/messaging` seam.  
 - Email: full packs under `vendors/*` + thin `modules/email` seam.  

@@ -35,9 +35,6 @@ export const IT = {
 		/** Separate collection for RAG (embed dim) so parallel suites cannot race-recreate. */
 		ragCollection: 'ai_tools_it_rag'
 	},
-	gotenberg: {
-		baseUrl: 'http://127.0.0.1:3000'
-	},
 	supabase: {
 		table: 'ai_tools_vectors',
 		schema: 'public',
@@ -237,18 +234,6 @@ export function qdrantApiKeyFromEnv(): string | undefined {
 /** Supabase pgvector column dimension for IT table. */
 export function supabaseDimensionFromEnv(): number {
 	return IT.supabase.dimension
-}
-
-/** Local Gotenberg — always compose defaults (never env). */
-export function gotenbergBaseUrlFromEnv(): string {
-	return IT.gotenberg.baseUrl
-}
-
-export function gotenbergAuthHeadersFromEnv(): {
-	gotenberg_api_username?: string
-	gotenberg_api_password?: string
-} {
-	return {}
 }
 
 export function browserNavigateUrlFromEnv(): string {

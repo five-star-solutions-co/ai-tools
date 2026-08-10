@@ -16,7 +16,6 @@ Documentation hub. Root [README](../README.md) is the short entry point; this tr
 | [Repo review / gap backlog](./handoffs/repo-review-standards-and-gaps.md) | Standards dump + G-task backlog (not an architecture lock) |
 | [Working inventory](./roadmap/package-surface-working.md) | Delivery status board |
 | [Channel vendor gaps](./roadmap/channel-vendor-gaps.md) | Slack/Teams/iMessage production gaps vs packs |
-| [Document plane](./specs/document-plane.md) | Locked reader, builder, edit, and explicit-converter product scope |
 
 **Authority when docs disagree:** `AGENTS.md` → shipped code + gold files → specs (`provider-seam`, http/aws) → pack docs → architecture + working roadmap.
 
@@ -43,17 +42,14 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 
 | `@5ss/ai-tools/files` | [files](./modules/files.md) — path root over storage |
 | `@5ss/ai-tools/document-extract` | [document-extract](./modules/document-extract.md) — `textract` |
-| `@5ss/ai-tools/document-render` | [document-render](./modules/document-render.md) — `gotenberg`, `cloudflare-browser` |
+| `@5ss/ai-tools/document-render` | [document-render](./modules/document-render.md) — `cloudflare-browser` |
 | `@5ss/ai-tools/code-sandbox` | [code-sandbox](./modules/code-sandbox.md) — `cloudflare`, `bedrock-agentcore` |
-| `@5ss/ai-tools/file-convert` | [file-convert](./modules/file-convert.md) — Gotenberg `office-to-pdf` |
-| `@5ss/ai-tools/document` | [document](./modules/document.md) — read / build / edit text, documents, presentations, and spreadsheets |
 | `@5ss/ai-tools/web-fetch` | [web-fetch](./modules/web-fetch.md) |
 | `@5ss/ai-tools/vector-store` | [vector-store](./modules/vector-store.md) — providers: `qdrant`, `pinecone`, `supabase`, `mastra` |
 | `@5ss/ai-tools/rag` | [rag](./modules/rag.md) — chunk + host embed route + nested vector-store |
 | `@5ss/ai-tools/email-message` | [email-message](./modules/email-message.md) — pure MIME |
 | `@5ss/ai-tools/content-type` | [content-type](./modules/content-type.md) — pure type ↔ extension |
 | `@5ss/ai-tools/skills` | [skills](./modules/skills.md) — portable skill catalog (list/get/search) |
-| `@5ss/ai-tools/pdf` | [pdf](./modules/pdf.md) |
 | `@5ss/ai-tools/image` | [image](./modules/image.md) |
 | `@5ss/ai-tools/crypto` | [crypto](./modules/crypto.md) |
 | `@5ss/ai-tools/calendar` | [calendar](./modules/calendar.md) |
@@ -84,7 +80,6 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@5ss/ai-tools/bedrock-agentcore-code-interpreter` | [bedrock-agentcore-code-interpreter](./vendors/bedrock-agentcore-code-interpreter.md) |
 | `@5ss/ai-tools/bedrock-agentcore-browser` | [bedrock-agentcore-browser](./vendors/bedrock-agentcore-browser.md) |
 
-| `@5ss/ai-tools/gotenberg` | [gotenberg](./vendors/gotenberg.md) |
 | `@5ss/ai-tools/cloudflare-browser` | [cloudflare-browser](./vendors/cloudflare-browser.md) |
 | `@5ss/ai-tools/cloudflare-sandbox` | [cloudflare-sandbox](./vendors/cloudflare-sandbox.md) |
 | `@5ss/ai-tools/woocommerce` | [woocommerce](./vendors/woocommerce.md) |
@@ -107,8 +102,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | [package-surface-architecture](./specs/package-surface-architecture.md) | modules vs vendors layout and import rules |
 | [host-integration-kernel](./specs/host-integration-kernel.md) | bind/context/hooks/catalog; not an agent brain |
 | [provider-seam](./specs/provider-seam.md) | Multi-provider capability modules |
-| [document-plane](./specs/document-plane.md) | Reader, builder, edit, and explicit-converter product lock |
-| [artifacts-extract-convert](./specs/artifacts-extract-convert.md) | ArtifactRef extract / convert / render |
+| [artifacts-extract-convert](./specs/artifacts-extract-convert.md) | ArtifactRef extract / render |
 | [http-and-aws-services](./reference/http-and-aws-services.md) | Transport classes |
 | [package-surface-working](./roadmap/package-surface-working.md) | Delivery board (working) |
 | [integration-tests](./integration-tests.md) | Live vendor + seam tests; Docker + local Supabase ports |

@@ -21,7 +21,6 @@ async function loadPackModule(key: string): Promise<{ id: string; categories: re
 		'cloudflare-email',
 		'cloudflare-sandbox',
 		'eventbridge-scheduler',
-		'gotenberg',
 		'imessage',
 		'katana',
 		'mastra-vector',

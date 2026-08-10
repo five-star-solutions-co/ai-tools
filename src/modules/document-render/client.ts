@@ -1,5 +1,5 @@
 /**
- * Document-render seam client — picks gotenberg / cloudflare-browser from host auth.
+ * Document-render seam client — picks cloudflare-browser from host auth.
  */
 
 import { requireAuth } from '../../core/provider'
@@ -7,7 +7,6 @@ import type { ToolContext } from '../../core/types'
 import { documentRenderAuthSchema } from './contracts'
 import type { DocumentRenderAuth, DocumentRenderOps, RenderPdfInput, RenderScreenshotInput } from './contracts'
 import { CloudflareBrowserDocumentRenderProvider } from './providers/cloudflare-browser'
-import { GotenbergDocumentRenderProvider } from './providers/gotenberg'
 
 function transportOptions(ctx: ToolContext) {
 	return {
@@ -19,8 +18,6 @@ function transportOptions(ctx: ToolContext) {
 function providerFor(auth: DocumentRenderAuth, ctx: ToolContext): DocumentRenderOps {
 	const options = transportOptions(ctx)
 	switch (auth.provider) {
-		case 'gotenberg':
-			return new GotenbergDocumentRenderProvider(auth, options)
 		case 'cloudflare-browser':
 			return new CloudflareBrowserDocumentRenderProvider(auth, options)
 	}

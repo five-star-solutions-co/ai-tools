@@ -55,7 +55,7 @@ Migrations under `supabase/migrations/` create `ai_tools_vectors`, `match_vector
 
 ### What is local vs cloud
 
-**Local (compose + supabase):** qdrant, minio/s3, gotenberg, supabase storage/vector, mastra-vector (same Postgres).
+**Local (compose + supabase):** qdrant, minio/s3, supabase storage/vector, mastra-vector (same Postgres).
 
 **Cloud / external keys still needed:** Resend, CF email/browser, Telegram, Slack, Teams, iMessage proxy, Pinecone, Woo, Katana, Amazon SP-API (LWA), AWS IAM services, embed models.
 
@@ -72,7 +72,7 @@ Env is only for **secrets** and **dynamic host values**.
 | **Mastra DB** | `MASTRA_DB_URL` | Schema hardcoded `public` |
 | **Resend / chat / pinecone / embed / …** | product secrets as before | unchanged |
 
-**Hardcoded (no env needed):** MinIO (`aitools` / `ai-tools-it` / `:9000`), Qdrant (`:6333` / `ai_tools_it`), Gotenberg (`:3000`), browser navigate `https://example.com`, Textract bucket `integration-test-ai-tools-{region}` + sample key, queue/role names under `integration-test-ai-tools*`.
+**Hardcoded (no env needed):** MinIO (`aitools` / `ai-tools-it` / `:9000`), Qdrant (`:6333` / `ai_tools_it`), browser navigate `https://example.com`, Textract bucket `integration-test-ai-tools-{region}` + sample key, queue/role names under `integration-test-ai-tools*`.
 
 ---
 
@@ -154,7 +154,6 @@ bun test test/integration/vendors/resend.live.test.ts
 | teams | `TEAMS_APP_ID`, `APP_PASSWORD` (+ chat, service URL; optional `TEAMS_FILE_URL`) | getBot; send/edit/action/react/media; answerCallback no-op; optional downloadFile |
 | imessage | chat + (`IMESSAGE_PROJECT_ID`/`IMESSAGE_PROJECT_SECRET` **or** `IMESSAGE_GRPC_ADDRESS`+`IMESSAGE_TOKEN`) (+ optional `IMESSAGE_SERVER`, `IMESSAGE_FILE_ID`, Spectrum URL overrides) | Spectrum Cloud + gRPC (Node); send/edit/typing/react/media/unsend/markRead; optional downloadFile |
 | s3 | `S3_*` (MinIO defaults in `.env`) | list/put/get/head/copy/delete/bytes/getBytesRange/signed URL/multipart |
-| gotenberg | `GOTENBERG_BASE_URL` + S3 | renderPdf + renderScreenshot + convert + convertBatch |
 | cloudflare-browser | shared `CF_*` + S3 for render | start/get/stop + optional CDP navigate + renderPdf + renderScreenshot |
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
@@ -190,14 +189,11 @@ Vertical kits (`_email`, `_messaging`, `_storage`, `_vector`) are not packs and 
 | queue | shared `AWS_*` + `SQS_QUEUE_URL` | enqueue/receive/extend visibility/acknowledge |
 | browser | shared `AWS_*` and/or shared `CF_*` | start/get/stop per provider; optional CDP navigate (`BROWSER_NAVIGATE_URL`) |
 | code-sandbox | CF sandbox bridge and/or shared `AWS_*` | start/execute/stop per provider |
-| pdf | S3 | inspect/merge/extract/split/rotate artifacts |
 | image | S3 | metadata/resize/crop/thumbnail/convert artifacts |
 | crypto | none | tools: hash, hmac sign/verify, random bytes |
 | calendar | none | tools: build-ics + parse-ics round trip |
-| document | S3 | text/xlsx/docx/pptx build+edit+read; PDF read |
 | messaging | TG / Slack / iMessage / Teams when env set | full surface incl. Telegram+Slack downloadFile; optional Teams/iMessage download; Slack/Teams answerCallback no-op; iMessage unsend is **vendor-only** |
-| document-render | Gotenberg and/or CF browser + S3 | renderPdf + renderScreenshot (+ gotenberg batch tools) |
-| file-convert | Gotenberg + S3 | convert + convertBatch office-to-pdf |
+| document-render | CF browser + S3 | renderPdf + renderScreenshot + batch tools |
 | document-extract | Textract | extractText + extractTextBatch + getStatus |
 | vector-store | any vector backend | upsert/query/delete per provider |
 | rag | embed + vector backend | ingest/retrieve/delete (qdrant / pinecone / supabase / mastra) |

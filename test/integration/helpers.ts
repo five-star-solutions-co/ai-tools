@@ -32,8 +32,6 @@ export {
 	qdrantCollectionFromEnv,
 	qdrantRagCollectionFromEnv,
 	qdrantApiKeyFromEnv,
-	gotenbergBaseUrlFromEnv,
-	gotenbergAuthHeadersFromEnv,
 	browserNavigateUrlFromEnv,
 	browserSkipNavigateFromEnv,
 	pineconeDimensionFromEnv,

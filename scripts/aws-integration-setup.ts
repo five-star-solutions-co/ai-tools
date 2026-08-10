@@ -29,9 +29,33 @@
 
 import { $ } from 'bun'
 import { join } from 'node:path'
-import { PDFDocument, StandardFonts } from 'pdf-lib'
 
 import { envSetMany } from './lib/env-file'
+
+/** Minimal single-page PDF with visible text (no pdf-lib dependency). */
+function textractSamplePdfBytes(): Uint8Array {
+	const objects = [
+		'1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n',
+		'2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n',
+		'3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 200] /Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj\n',
+		'4 0 obj<< /Length 68 >>stream\nBT /F1 14 Tf 40 100 Td (ai-tools integration textract sample) Tj ET\nendstream\nendobj\n',
+		'5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n'
+	]
+	let body = '%PDF-1.4\n'
+	const offsets = [0]
+	for (const obj of objects) {
+		offsets.push(body.length)
+		body += obj
+	}
+	const xrefStart = body.length
+	body += `xref\n0 ${objects.length + 1}\n`
+	body += '0000000000 65535 f \n'
+	for (let i = 1; i <= objects.length; i++) {
+		body += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`
+	}
+	body += `trailer<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`
+	return new TextEncoder().encode(body)
+}
 
 const root = join(import.meta.dir, '..')
 const envFile = join(root, '.env')
@@ -238,18 +262,8 @@ async function uploadSamplePdf(args: Args): Promise<void> {
 	log(`uploading Textract sample: s3://${args.bucket}/${args.sourceKey}`)
 	if (args.dryRun) return
 
-	const pdf = await PDFDocument.create()
-	const page = pdf.addPage([400, 200])
-	const font = await pdf.embedFont(StandardFonts.Helvetica)
-	page.drawText('ai-tools integration textract sample', {
-		x: 40,
-		y: 100,
-		size: 14,
-		font
-	})
-	const bytes = await pdf.save()
 	const tmp = join(root, '.tmp-ai-tools-textract-sample.pdf')
-	await Bun.write(tmp, bytes)
+	await Bun.write(tmp, textractSamplePdfBytes())
 	try {
 		await awsOk(
 			[

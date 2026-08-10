@@ -74,8 +74,8 @@ async function ensureSupabase(): Promise<void> {
  * `docker compose up --wait` if included in the same wait set.
  */
 async function ensureCompose(): Promise<void> {
-	log('compose: qdrant minio gotenberg (--wait)')
-	const wait = await $`docker compose -f ${composeFile} up -d --wait qdrant minio gotenberg`.nothrow()
+	log('compose: qdrant minio (--wait)')
+	const wait = await $`docker compose -f ${composeFile} up -d --wait qdrant minio`.nothrow()
 	if (wait.exitCode !== 0) {
 		const err = (wait.stderr.toString() || wait.stdout.toString()).trim()
 		die(`docker compose up --wait failed (exit ${wait.exitCode}): ${err.slice(0, 400)}`)
