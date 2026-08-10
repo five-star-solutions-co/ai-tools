@@ -49,13 +49,55 @@ Katana MRP surface: **sales orders**, **products**, **materials**, **customers**
 | `katana-update-manufacturing-order` | `updateManufacturingOrder` | `PATCH /manufacturing_orders/{id}` |
 | `katana-list-inventory` | `listInventory` | `GET /inventory` |
 
-List responses normalize `{ data, pagination }` into `{ items, next_cursor?, truncated }`. Get/create/update unwrap optional `{ data }` envelopes. Updates use `PATCH`. Delete sales order returns `{ deleted, id }` after `204`.
+Existing agent-facing list methods project raw pages into `{ items, next_cursor?, truncated }`. Get, create, and update methods unwrap optional `{ data }` envelopes. Updates use `PATCH`. Delete sales order returns `{ deleted, id }` after `204`.
+
+## Host page APIs
+
+The client exposes one-request host methods for connector-owned pagination and pacing:
+
+```ts
+listSalesOrdersPage(input)
+listProductsPage(input)
+listMaterialsPage(input)
+listCustomersPage(input)
+listSuppliersPage(input)
+listPurchaseOrdersPage(input)
+listManufacturingOrdersPage(input)
+listInventoryPage(input)
+```
+
+Each method performs one `GET`, accepts provider `page` and `limit` values from 1 to 250, and returns:
+
+```ts
+{
+  items: KatanaRawRecord[]
+  pagination: {
+    total_records: number
+    total_pages: number
+    offset: number
+    page: number
+    first_page: boolean
+    last_page: boolean
+  }
+  rate_limit?: {
+    limit: number
+    remaining: number
+    reset_at_ms: number
+  }
+}
+```
+
+Katana list bodies are arrays. Pagination is parsed from the required JSON `X-Pagination` response header with Zod. A caller derives the next provider page as `page + 1` only when `last_page` is false. Item count is never used to guess continuation. Rate metadata comes from `X-Ratelimit-Limit`, `X-Ratelimit-Remaining`, and `X-Ratelimit-Reset`; the reset value is milliseconds since epoch.
+
+Entity page inputs expose each endpoint's supported timestamp window fields, plus `include_deleted` where supported. Products and materials also expose `include_archived`. Inventory intentionally has no timestamp filters and accepts only its documented sync filters: `location_id`, `variant_id[]`, `include_archived`, and `extend`, where `extend` is limited to `variant` and `location`.
+
+Raw entity schemas require only numeric `id` plus optional creation, update, and deletion timestamps. Raw inventory requires the `variant_id` and `location_id` composite identity. All raw schemas use `z.looseObject`, so variants, rows, addresses, custom fields, linked resources, archive state, inventory quantities, and provider-added fields survive parsing.
 
 ### Composite query (`querySalesOrders`)
 
 Multi-scope union for reporting/reconciliation:
 
-1. For each scope × each status: `GET /sales_orders` with `created_at_min` (when `created_from` set), `customer_id`, `location_id`, sequential pages.
+1. For each scope and status: `GET /sales_orders` with `created_at_min` (when `created_from` is set), `customer_id`, `location_id`, and sequential pages.
 2. **Client-side** filter for `order_created_from` / `order_created_to` (list API has no `order_created_date` range params).
 3. Dedupe by order id; enrich customer name via `GET /customers/{id}` (cached).
 4. Line rows via `GET /sales_order_rows?sales_order_ids=…&extend=variant` in chunks of 50 order ids.

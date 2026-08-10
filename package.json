@@ -277,6 +277,7 @@
 		"es-toolkit": "1.50.0",
 		"exceljs": "4.4.0",
 		"fast-xml-parser": "5.10.1",
+		"fflate": "0.8.3",
 		"file-type": "22.0.1",
 		"html-to-text": "10.0.0",
 		"ical.js": "2.2.1",

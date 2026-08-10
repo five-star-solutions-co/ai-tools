@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
 import { ToolError, validateModule } from '../../src/core'
-import { AmazonSpApiClient, amazonSpApiModule } from '../../src/vendors/amazon-sp-api'
+import {
+	AmazonSpApiClient,
+	amazonInventorySummaryRawSchema,
+	amazonSpApiDownloadReportDocumentBytesInputSchema,
+	amazonSpApiListReportsInputSchema,
+	amazonSpApiModule
+} from '../../src/vendors/amazon-sp-api'
 import { parseSettlementV2Tsv, parseUsMoneyToSafeCents } from '../../src/vendors/amazon-sp-api/domain/settlement'
 
 function mockFetch(
@@ -33,11 +39,9 @@ const auth = {
 	client_id: 'amzn1.application-oa2-client.x',
 	client_secret: 'secret',
 	refresh_token: 'Atzr|refresh',
-	access_key_id: 'AKIA',
-	secret_access_key: 'secretkey',
-	region: 'us-east-1',
 	endpoint: 'https://sellingpartnerapi-na.amazon.com' as const,
-	marketplace_ids: ['ATVPDKIKX0DER']
+	marketplace_ids: ['ATVPDKIKX0DER'],
+	user_agent: 'five-star-solutions/1.0'
 }
 
 describe('amazon-sp-api', () => {
@@ -64,7 +68,7 @@ describe('amazon-sp-api', () => {
 			if (url.includes('api.amazon.com/auth/o2/token')) {
 				lwaCalls += 1
 				expect(isPost(init, input)).toBe(true)
-				return new Response(JSON.stringify({ access_token: 'Atza|access', expires_in: 3600 }), {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
 					status: 200
 				})
 			}
@@ -105,7 +109,7 @@ describe('amazon-sp-api', () => {
 		let pages = 0
 		const restore = mockFetch((url, headers) => {
 			if (url.includes('api.amazon.com/auth/o2/token')) {
-				return new Response(JSON.stringify({ access_token: 'Atza|access', expires_in: 3600 }), {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
 					status: 200
 				})
 			}
@@ -163,7 +167,7 @@ describe('amazon-sp-api', () => {
 	test('createReport posts JSON body after LWA', async () => {
 		const restore = mockFetch((url, headers, init, input) => {
 			if (url.includes('api.amazon.com/auth/o2/token')) {
-				return new Response(JSON.stringify({ access_token: 'Atza|access', expires_in: 3600 }), {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
 					status: 200
 				})
 			}
@@ -241,7 +245,7 @@ describe('amazon-sp-api', () => {
 
 		const restore = mockFetch((url) => {
 			if (url.includes('api.amazon.com/auth/o2/token')) {
-				return new Response(JSON.stringify({ access_token: 'Atza|access', expires_in: 3600 }), {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
 					status: 200
 				})
 			}
@@ -298,6 +302,340 @@ describe('amazon-sp-api', () => {
 			expect(JSON.stringify(result)).not.toContain('111-SECRET')
 			expect(JSON.stringify(result)).not.toContain('SKU-SECRET')
 			expect(JSON.stringify(result)).not.toContain('tortuga')
+		} finally {
+			restore()
+		}
+	})
+
+	test('uses LWA only, sends required headers, and refreshes from expires_in', async () => {
+		let lwaCalls = 0
+		let apiCalls = 0
+		const restore = mockFetch((url, headers) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				lwaCalls += 1
+				return new Response(
+					JSON.stringify({ access_token: `token-${lwaCalls}`, token_type: 'bearer', expires_in: 30 }),
+					{ status: 200 }
+				)
+			}
+			apiCalls += 1
+			expect(headers.get('x-amz-access-token')).toBe(`token-${apiCalls}`)
+			expect(headers.get('user-agent')).toBe(auth.user_agent)
+			expect(headers.has('authorization')).toBe(false)
+			expect(headers.has('x-amz-date')).toBe(false)
+			expect(url).not.toContain('X-Amz-Signature')
+			return new Response(JSON.stringify({ payload: { Orders: [] } }), { status: 200 })
+		})
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			await client.listOrders({ created_after: '2026-01-01T00:00:00Z' })
+			await client.listOrders({ created_after: '2026-01-01T00:00:00Z' })
+			expect(lwaCalls).toBe(2)
+			expect(apiCalls).toBe(2)
+		} finally {
+			restore()
+		}
+	})
+
+	test('returns a lossless inventory page with top-level pagination and exact quantity semantics', async () => {
+		let inventoryCalls = 0
+		const raw = amazonInventorySummaryRawSchema.parse({
+			asin: 'B001',
+			fnSku: 'FN-1',
+			sellerSku: 'SKU-1',
+			condition: 'NewItem',
+			productName: 'Widget',
+			totalQuantity: 17,
+			lastUpdatedTime: '2026-08-01T10:00:00Z',
+			stores: ['US'],
+			inventoryDetails: {
+				fulfillableQuantity: 5,
+				inboundWorkingQuantity: 1,
+				inboundShippedQuantity: 2,
+				inboundReceivingQuantity: 3,
+				reservedQuantity: {
+					totalReservedQuantity: 4,
+					pendingCustomerOrderQuantity: 1,
+					pendingTransshipmentQuantity: 1,
+					fcProcessingQuantity: 2,
+					providerAddedReservedField: true
+				},
+				researchingQuantity: {
+					totalResearchingQuantity: 1,
+					researchingQuantityBreakdown: [
+						{ name: 'researchingQuantityInShortTerm', quantity: 1, providerAddedBreakdownField: 'kept' }
+					]
+				},
+				unfulfillableQuantity: {
+					totalUnfulfillableQuantity: 2,
+					customerDamagedQuantity: 1,
+					warehouseDamagedQuantity: 1,
+					distributorDamagedQuantity: 0,
+					carrierDamagedQuantity: 0,
+					defectiveQuantity: 0,
+					expiredQuantity: 0
+				},
+				providerAddedDetailsField: 'kept'
+			},
+			providerAddedRecordField: { nested: true }
+		})
+		const restore = mockFetch((url) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
+					status: 200
+				})
+			}
+			inventoryCalls += 1
+			const query = new URL(url).searchParams
+			expect(query.get('details')).toBe('true')
+			expect(query.get('granularityType')).toBe('Marketplace')
+			expect(query.get('granularityId')).toBe('ATVPDKIKX0DER')
+			expect(query.get('marketplaceIds')).toBe('ATVPDKIKX0DER')
+			return new Response(
+				JSON.stringify({
+					payload: { inventorySummaries: [raw], pagination: { nextToken: 'wrong-location' } },
+					pagination: { nextToken: inventoryCalls === 1 ? 'page-2' : undefined }
+				}),
+				{
+					status: 200,
+					headers: { 'x-amzn-RateLimit-Limit': '2.0', 'x-amzn-RequestId': 'request-1' }
+				}
+			)
+		})
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			const page = await client.getInventorySummariesPage({
+				mode: 'full',
+				marketplace_id: 'ATVPDKIKX0DER'
+			})
+			expect(page.items[0]).toEqual(raw)
+			expect(page.next_token).toBe('page-2')
+			expect(page.rate_limit_per_second).toBe(2)
+			expect(page.request_id).toBe('request-1')
+
+			const slim = await client.listInventorySummaries({ marketplace_id: 'ATVPDKIKX0DER' })
+			expect(slim.items[0]?.total_quantity).toBe(17)
+			expect(slim.items[0]?.total_quantity).not.toBe(5)
+		} finally {
+			restore()
+		}
+	})
+
+	test('serializes full and incremental inventory continuations without hidden page loops', async () => {
+		const seen: URLSearchParams[] = []
+		const startDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+		const restore = mockFetch((url) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
+					status: 200
+				})
+			}
+			seen.push(new URL(url).searchParams)
+			return new Response(JSON.stringify({ payload: { inventorySummaries: [] } }), { status: 200 })
+		})
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			await client.getInventorySummariesPage({
+				mode: 'full',
+				marketplace_id: 'ATVPDKIKX0DER',
+				next_token: 'full-next'
+			})
+			await client.getInventorySummariesPage({
+				mode: 'incremental',
+				marketplace_id: 'ATVPDKIKX0DER',
+				start_date_time: startDateTime
+			})
+			await client.getInventorySummariesPage({
+				mode: 'incremental',
+				marketplace_id: 'ATVPDKIKX0DER',
+				start_date_time: startDateTime,
+				next_token: 'incremental-next'
+			})
+			expect(seen).toHaveLength(3)
+			expect(seen[0]?.get('nextToken')).toBe('full-next')
+			expect(seen[0]?.has('startDateTime')).toBe(false)
+			expect(seen[1]?.get('startDateTime')).toBe(startDateTime)
+			expect(seen[1]?.has('nextToken')).toBe(false)
+			expect(seen[2]?.get('startDateTime')).toBe(startDateTime)
+			expect(seen[2]?.get('nextToken')).toBe('incremental-next')
+		} finally {
+			restore()
+		}
+	})
+
+	test('rejects incremental inventory windows older than 18 months before making a request', async () => {
+		let fetchCalled = false
+		const restore = mockFetch(() => {
+			fetchCalled = true
+			return new Response('{}', { status: 200 })
+		})
+		const tooOld = new Date()
+		tooOld.setUTCFullYear(tooOld.getUTCFullYear() - 2)
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			try {
+				await client.getInventorySummariesPage({
+					mode: 'incremental',
+					marketplace_id: 'ATVPDKIKX0DER',
+					start_date_time: tooOld.toISOString()
+				})
+				throw new Error('expected old inventory window rejection')
+			} catch (error) {
+				expect(error).toBeInstanceOf(ToolError)
+				if (error instanceof ToolError) expect(error.code).toBe('bad_input')
+			}
+			expect(fetchCalled).toBe(false)
+		} finally {
+			restore()
+		}
+	})
+
+	test('requires strict initial or cursor-only report input and sends only nextToken for continuation', async () => {
+		const apiQueries: URLSearchParams[] = []
+		const restore = mockFetch((url) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
+					status: 200
+				})
+			}
+			apiQueries.push(new URL(url).searchParams)
+			return new Response(
+				JSON.stringify({
+					reports: [{ reportId: 'report-1', reportType: 'TYPE_A', providerAddedField: 'kept' }],
+					nextToken: 'next-report-page'
+				}),
+				{ status: 200, headers: { 'x-amzn-RateLimit-Limit': '0.0222', 'x-amzn-RequestId': 'report-request' } }
+			)
+		})
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			expect(amazonSpApiListReportsInputSchema.safeParse({}).success).toBe(false)
+			expect(
+				amazonSpApiListReportsInputSchema.safeParse({ cursor: 'next-report-page', report_types: ['TYPE_A'] }).success
+			).toBe(false)
+			const initial = await client.listReportsPage({
+				report_types: ['TYPE_A'],
+				processing_statuses: ['DONE'],
+				marketplace_ids: ['ATVPDKIKX0DER'],
+				page_size: 100,
+				created_since: '2026-08-01T00:00:00Z'
+			})
+			expect(initial.items[0]?.providerAddedField).toBe('kept')
+			expect(initial.rate_limit_per_second).toBe(0.0222)
+			expect(initial.request_id).toBe('report-request')
+			await client.listReportsPage({ next_token: 'next-report-page' })
+			await client.listReports({ cursor: 'slim-next-report-page' })
+			expect(apiQueries[0]?.get('reportTypes')).toBe('TYPE_A')
+			expect(apiQueries[1] && Array.from(apiQueries[1].keys())).toEqual(['nextToken'])
+			expect(apiQueries[1]?.get('nextToken')).toBe('next-report-page')
+			expect(apiQueries[2] && Array.from(apiQueries[2].keys())).toEqual(['nextToken'])
+			expect(apiQueries[2]?.get('nextToken')).toBe('slim-next-report-page')
+		} finally {
+			restore()
+		}
+	})
+
+	test('preserves Retry-After and downloads presigned documents without SP-API auth', async () => {
+		let mode: 'rate-limit' | 'download' = 'rate-limit'
+		const restore = mockFetch((url, headers) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
+					status: 200
+				})
+			}
+			if (mode === 'rate-limit') {
+				return new Response(JSON.stringify({ errors: [] }), { status: 429, headers: { 'Retry-After': '3' } })
+			}
+			if (url.includes('/reports/2021-06-30/documents/document-1')) {
+				expect(headers.get('x-amz-access-token')).toBe('Atza|access')
+				return new Response(
+					JSON.stringify({
+						reportDocumentId: 'document-1',
+						url: 'https://example.com/presigned-report'
+					}),
+					{ status: 200 }
+				)
+			}
+			expect(url).toBe('https://example.com/presigned-report')
+			expect(headers.has('x-amz-access-token')).toBe(false)
+			expect(headers.has('authorization')).toBe(false)
+			return new Response('report-body', { status: 200, headers: { 'content-type': 'text/plain' } })
+		})
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			try {
+				await client.getInventorySummariesPage({ mode: 'full', marketplace_id: 'ATVPDKIKX0DER' })
+				throw new Error('expected rate limit error')
+			} catch (error) {
+				expect(error).toBeInstanceOf(ToolError)
+				if (error instanceof ToolError) expect(error.details?.retry_after_ms).toBe(3000)
+			}
+			mode = 'download'
+			expect(
+				amazonSpApiDownloadReportDocumentBytesInputSchema.safeParse({
+					url: 'https://example.com/attacker-controlled',
+					max_bytes: 100
+				}).success
+			).toBe(false)
+			const document = await client.downloadReportDocumentBytes({
+				report_document_id: 'document-1',
+				max_bytes: 100
+			})
+			expect(document.text).toBe('report-body')
+			expect(document.byte_length).toBe(11)
+			expect(document.content_type).toBe('text/plain')
+		} finally {
+			restore()
+		}
+	})
+
+	test('decompresses GZIP with fflate and enforces max_bytes on expanded output', async () => {
+		const text = 'inventory-row\n'.repeat(200)
+		const compressedStream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))
+		const compressed = new Uint8Array(await new Response(compressedStream).arrayBuffer())
+		const restore = mockFetch((url, headers) => {
+			if (url.includes('api.amazon.com/auth/o2/token')) {
+				return new Response(JSON.stringify({ access_token: 'Atza|access', token_type: 'bearer', expires_in: 3600 }), {
+					status: 200
+				})
+			}
+			if (url.includes('/reports/2021-06-30/documents/gzip-document')) {
+				return new Response(
+					JSON.stringify({
+						reportDocumentId: 'gzip-document',
+						url: 'https://example.com/gzip-report',
+						compressionAlgorithm: 'GZIP'
+					}),
+					{ status: 200 }
+				)
+			}
+			expect(url).toBe('https://example.com/gzip-report')
+			expect(headers.has('x-amz-access-token')).toBe(false)
+			return new Response(compressed.buffer, { status: 200 })
+		})
+
+		try {
+			const client = new AmazonSpApiClient(auth)
+			const document = await client.downloadReportDocumentBytes({
+				report_document_id: 'gzip-document',
+				max_bytes: 10_000
+			})
+			expect(document.text).toBe(text)
+			expect(document.byte_length).toBe(new TextEncoder().encode(text).byteLength)
+			expect(document.compression_algorithm).toBe('GZIP')
+
+			expect(
+				client.downloadReportDocumentBytes({
+					report_document_id: 'gzip-document',
+					max_bytes: 100
+				})
+			).rejects.toMatchObject({ code: 'too_large' })
 		} finally {
 			restore()
 		}

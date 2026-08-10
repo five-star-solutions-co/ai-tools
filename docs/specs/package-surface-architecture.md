@@ -120,7 +120,7 @@ src/modules/<capability>/
 - Tool ids are **capability-named** (`email-send`, `files-list`).  
 - Auth is `{ provider: '…', … }` union when multi-provider.  
 - Never name a **platform** module after a single cloud vendor (`cloudflare-email` is forbidden).  
-- `HttpService` for HTTP; `AwsService` for SigV4 (S3, Textract, SP-API, …).
+- `HttpService` for HTTP; `AwsService` for SigV4 (S3, Textract, …).
 
 ### Current platform modules
 

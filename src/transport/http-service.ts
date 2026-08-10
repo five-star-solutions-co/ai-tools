@@ -35,8 +35,10 @@ export type HttpServiceOptions = {
  */
 export type HttpBody = BodyInit | object | null
 
+export type HttpQueryValue = string | number | boolean | readonly (string | number | boolean)[] | undefined
+
 export type HttpCallOptions = {
-	query?: Record<string, string | number | boolean | undefined>
+	query?: Record<string, HttpQueryValue>
 	body?: HttpBody
 	headers?: Record<string, string>
 	/** Status codes returned without throwing. */

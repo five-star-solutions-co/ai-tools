@@ -2,20 +2,21 @@
  * Amazon Selling Partner API vendor client.
  * Host: `new AmazonSpApiClient(auth)`. Agent tools: `fromContext(ctx)`.
  *
- * LWA refresh → access token; SP-API calls use AwsService (SigV4 execute-api)
- * plus x-amz-access-token.
+ * LWA refresh provides the access token used by SP-API HTTP requests.
  */
 
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
-import { AwsService } from '../../transport/aws-service'
+import { bytesToUtf8 } from '../../shared/bytes'
 import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import type {
 	AmazonSpApiAuth,
 	AmazonSpApiCreateReportInput,
 	AmazonSpApiCreateReportOutput,
+	AmazonSpApiDownloadReportDocumentBytesInput,
+	AmazonSpApiDownloadReportDocumentBytesOutput,
 	AmazonSpApiGetOrderInput,
 	AmazonSpApiGetOrderItemsInput,
 	AmazonSpApiGetOrderItemsOutput,
@@ -26,34 +27,47 @@ import type {
 	AmazonSpApiGetReportOutput,
 	AmazonSpApiGetSettlementSummaryInput,
 	AmazonSpApiGetSettlementSummaryOutput,
+	AmazonSpApiInventoryPageInput,
+	AmazonSpApiInventoryPageOutput,
 	AmazonSpApiListInventorySummariesInput,
 	AmazonSpApiListInventorySummariesOutput,
 	AmazonSpApiListOrdersInput,
 	AmazonSpApiListOrdersOutput,
 	AmazonSpApiListReportsInput,
 	AmazonSpApiListReportsOutput,
+	AmazonSpApiListReportsPageInput,
+	AmazonSpApiListReportsPageOutput,
 	AmazonSpApiSearchCatalogItemsInput,
 	AmazonSpApiSearchCatalogItemsOutput,
 	AmazonSpApiSearchOrdersInput,
 	AmazonSpApiSearchOrdersOutput
 } from './contracts'
-import { amazonSpApiAuthSchema } from './contracts'
+import {
+	amazonSpApiAuthSchema,
+	amazonSpApiDownloadReportDocumentBytesInputSchema,
+	amazonSpApiInventoryPageInputSchema,
+	amazonSpApiListReportsInputSchema,
+	amazonSpApiListReportsPageInputSchema
+} from './contracts'
 import {
 	LWA_TOKEN_URL,
 	lwaTokenBody,
 	parseCreateReportPayload,
 	parseGetReportPayload,
-	parseInventoryPayload,
-	parseListReportsPayload,
-	parseLwaAccessToken,
+	parseInventoryPagePayload,
+	parseInventorySummary,
+	parseListReportsPagePayload,
+	parseLwaTokenResponse,
 	parseOrderItemsPayload,
 	parseOrderPayload,
 	parseOrdersPayload,
+	parseReport,
 	parseReportDocumentPayload,
 	parseSearchCatalogItemsPayload,
 	parseSearchOrdersPayload,
 	requireMarketplaceIds
 } from './domain'
+import { decompressReportDocumentBytes } from './domain/report-document'
 import {
 	SETTLEMENT_MAX_COMPRESSED_BYTES,
 	SETTLEMENT_REPORT_TYPE_V2,
@@ -66,7 +80,7 @@ export type AmazonSpApiClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signa
 export class AmazonSpApiClient {
 	readonly #auth: AmazonSpApiAuth
 	readonly #lwa: HttpService
-	readonly #api: AwsService
+	readonly #api: HttpService
 	/** Absolute URL document download (report document URLs). */
 	readonly #download: HttpService
 	#accessToken: string | undefined
@@ -85,15 +99,11 @@ export class AmazonSpApiClient {
 			...options,
 			label: 'Amazon LWA'
 		})
-		this.#api = new AwsService({
+		this.#api = new HttpService({
 			...options,
-			accessKeyId: this.#auth.access_key_id,
-			secretAccessKey: this.#auth.secret_access_key,
-			region: this.#auth.region,
-			service: 'execute-api',
 			baseURL: this.#auth.endpoint,
-			label: 'Amazon SP-API',
-			...(this.#auth.session_token && { sessionToken: this.#auth.session_token })
+			headers: { 'user-agent': this.#auth.user_agent },
+			label: 'Amazon SP-API'
 		})
 		this.#download = new HttpService({
 			...options,
@@ -111,18 +121,17 @@ export class AmazonSpApiClient {
 
 	async #ensureAccessToken(): Promise<string> {
 		const now = Date.now()
-		if (this.#accessToken && now < this.#accessTokenExpiresAt - 60_000) {
+		if (this.#accessToken && now < this.#accessTokenExpiresAt) {
 			return this.#accessToken
 		}
 		const { data } = await this.#lwa.post(LWA_TOKEN_URL, lwaTokenBody(this.#auth), {
 			label: 'Amazon LWA token',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
 		})
-		const token = parseLwaAccessToken(data)
-		this.#accessToken = token
-		// LWA tokens last ~1h; refresh early without relying on expires_in type noise
-		this.#accessTokenExpiresAt = now + 3_000_000
-		return token
+		const token = parseLwaTokenResponse(data)
+		this.#accessToken = token.access_token
+		this.#accessTokenExpiresAt = now + Math.max(0, token.expires_in * 1000 - 60_000)
+		return token.access_token
 	}
 
 	async #spGet(path: string, label: string, query?: Record<string, string | number | boolean | undefined>) {
@@ -241,6 +250,40 @@ export class AmazonSpApiClient {
 	}
 
 	/** GET /fba/inventory/v1/summaries */
+	async getInventorySummariesPage(input: AmazonSpApiInventoryPageInput): Promise<AmazonSpApiInventoryPageOutput> {
+		const parsedInput = amazonSpApiInventoryPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Amazon SP-API inventory page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		return await this.#requestInventorySummariesPage({
+			marketplace_id: parsedInput.data.marketplace_id,
+			...(parsedInput.data.mode === 'incremental' && { start_date_time: parsedInput.data.start_date_time }),
+			...(parsedInput.data.next_token && { next_token: parsedInput.data.next_token })
+		})
+	}
+
+	async #requestInventorySummariesPage(input: {
+		marketplace_id: string
+		start_date_time?: string
+		next_token?: string
+		seller_skus?: string[]
+	}): Promise<AmazonSpApiInventoryPageOutput> {
+		const result = await this.#spGet('/fba/inventory/v1/summaries', 'Amazon SP-API getInventorySummariesPage', {
+			details: true,
+			granularityType: 'Marketplace',
+			granularityId: input.marketplace_id,
+			marketplaceIds: input.marketplace_id,
+			...(input.start_date_time && { startDateTime: input.start_date_time }),
+			...(input.next_token && { nextToken: input.next_token }),
+			...(input.seller_skus && input.seller_skus.length > 0 && { sellerSkus: input.seller_skus.join(',') })
+		})
+		return parseInventoryPagePayload(result.data, result.headers)
+	}
+
+	/** Existing slim agent-facing projection over one raw inventory page. */
 	async listInventorySummaries(
 		input: AmazonSpApiListInventorySummariesInput = {}
 	): Promise<AmazonSpApiListInventorySummariesOutput> {
@@ -255,20 +298,35 @@ export class AmazonSpApiClient {
 				code: 'bad_input'
 			})
 		}
-		const { data } = await this.#spGet('/fba/inventory/v1/summaries', 'Amazon SP-API listInventorySummaries', {
-			details: true,
-			granularityType: 'Marketplace',
-			granularityId: marketplaceId,
-			marketplaceIds: marketplaceId,
-			...(input.seller_skus && input.seller_skus.length > 0 && { sellerSkus: input.seller_skus.join(',') }),
-			...(input.start_date_time && { startDateTime: input.start_date_time }),
-			...(input.cursor && { nextToken: input.cursor })
+		const pageInput: AmazonSpApiInventoryPageInput = input.start_date_time
+			? {
+					mode: 'incremental',
+					marketplace_id: marketplaceId,
+					start_date_time: input.start_date_time,
+					...(input.cursor && { next_token: input.cursor })
+				}
+			: {
+					mode: 'full',
+					marketplace_id: marketplaceId,
+					...(input.cursor && { next_token: input.cursor })
+				}
+		const parsedInput = amazonSpApiInventoryPageInputSchema.safeParse(pageInput)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Amazon SP-API inventory page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const page = await this.#requestInventorySummariesPage({
+			marketplace_id: marketplaceId,
+			...(input.start_date_time && { start_date_time: input.start_date_time }),
+			...(input.cursor && { next_token: input.cursor }),
+			...(input.seller_skus && input.seller_skus.length > 0 && { seller_skus: input.seller_skus })
 		})
-		const parsed = parseInventoryPayload(data)
 		return {
-			items: parsed.items,
-			truncated: Boolean(parsed.nextToken),
-			...(parsed.nextToken && { next_cursor: parsed.nextToken })
+			items: page.items.map(parseInventorySummary),
+			truncated: Boolean(page.next_token),
+			...(page.next_token && { next_cursor: page.next_token })
 		}
 	}
 
@@ -300,29 +358,61 @@ export class AmazonSpApiClient {
 	}
 
 	/** GET /reports/2021-06-30/reports */
-	async listReports(input: AmazonSpApiListReportsInput = {}): Promise<AmazonSpApiListReportsOutput> {
-		const marketplaceIds = input.marketplace_ids ?? this.#auth.marketplace_ids
-		const { data } = await this.#spGet('/reports/2021-06-30/reports', 'Amazon SP-API listReports', {
-			...(input.report_types &&
-				input.report_types.length > 0 && {
-					reportTypes: input.report_types.join(',')
-				}),
-			...(input.processing_statuses &&
-				input.processing_statuses.length > 0 && {
-					processingStatuses: input.processing_statuses.join(',')
-				}),
-			...(marketplaceIds && marketplaceIds.length > 0 && { marketplaceIds: marketplaceIds.join(',') }),
-			...(input.page_size !== undefined && { pageSize: input.page_size }),
-			...(input.created_since && { createdSince: input.created_since }),
-			...(input.created_until && { createdUntil: input.created_until }),
-			...(input.cursor && { nextToken: input.cursor })
-		})
-		const parsed = parseListReportsPayload(data)
-		return {
-			items: parsed.items,
-			truncated: Boolean(parsed.nextToken),
-			...(parsed.nextToken && { next_cursor: parsed.nextToken })
+	async listReports(input: AmazonSpApiListReportsInput): Promise<AmazonSpApiListReportsOutput> {
+		const parsedInput = amazonSpApiListReportsInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Amazon SP-API listReports input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
 		}
+		const page =
+			'cursor' in parsedInput.data
+				? await this.listReportsPage({ next_token: parsedInput.data.cursor })
+				: await this.listReportsPage({
+						report_types: parsedInput.data.report_types,
+						...(parsedInput.data.processing_statuses && {
+							processing_statuses: parsedInput.data.processing_statuses
+						}),
+						...(parsedInput.data.marketplace_ids && { marketplace_ids: parsedInput.data.marketplace_ids }),
+						...(parsedInput.data.page_size !== undefined && { page_size: parsedInput.data.page_size }),
+						...(parsedInput.data.created_since && { created_since: parsedInput.data.created_since }),
+						...(parsedInput.data.created_until && { created_until: parsedInput.data.created_until })
+					})
+		return {
+			items: page.items.map(parseReport),
+			truncated: Boolean(page.next_token),
+			...(page.next_token && { next_cursor: page.next_token })
+		}
+	}
+
+	/** One GET /reports/2021-06-30/reports request. Continuations send only nextToken. */
+	async listReportsPage(input: AmazonSpApiListReportsPageInput): Promise<AmazonSpApiListReportsPageOutput> {
+		const parsedInput = amazonSpApiListReportsPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Amazon SP-API reports page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		let query: Record<string, string | number | boolean | undefined>
+		if ('next_token' in parsedInput.data) {
+			query = { nextToken: parsedInput.data.next_token }
+		} else {
+			const marketplaceIds = parsedInput.data.marketplace_ids ?? this.#auth.marketplace_ids
+			query = {
+				reportTypes: parsedInput.data.report_types.join(','),
+				...(parsedInput.data.processing_statuses && {
+					processingStatuses: parsedInput.data.processing_statuses.join(',')
+				}),
+				...(marketplaceIds && { marketplaceIds: marketplaceIds.join(',') }),
+				...(parsedInput.data.page_size !== undefined && { pageSize: parsedInput.data.page_size }),
+				...(parsedInput.data.created_since && { createdSince: parsedInput.data.created_since }),
+				...(parsedInput.data.created_until && { createdUntil: parsedInput.data.created_until })
+			}
+		}
+		const result = await this.#spGet('/reports/2021-06-30/reports', 'Amazon SP-API listReportsPage', query)
+		return parseListReportsPagePayload(result.data, result.headers)
 	}
 
 	/** GET /reports/2021-06-30/documents/{reportDocumentId} */
@@ -332,6 +422,51 @@ export class AmazonSpApiClient {
 			'Amazon SP-API getReportDocument'
 		)
 		return parseReportDocumentPayload(data)
+	}
+
+	/** Resolve and privately download an Amazon report document by id. */
+	async downloadReportDocumentBytes(
+		input: AmazonSpApiDownloadReportDocumentBytesInput
+	): Promise<AmazonSpApiDownloadReportDocumentBytesOutput> {
+		const parsedInput = amazonSpApiDownloadReportDocumentBytesInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Amazon report document download input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const document = await this.getReportDocument({ report_document_id: parsedInput.data.report_document_id })
+		return await this.#downloadReportDocumentDescriptor(document, parsedInput.data.max_bytes)
+	}
+
+	async #downloadReportDocumentDescriptor(
+		document: AmazonSpApiGetReportDocumentOutput,
+		maxBytes: number
+	): Promise<AmazonSpApiDownloadReportDocumentBytesOutput> {
+		let compressionAlgorithm: 'GZIP' | undefined
+		if (document.compression_algorithm) {
+			if (document.compression_algorithm.toUpperCase() !== 'GZIP') {
+				throw new ToolError(`Unsupported Amazon report compression: ${document.compression_algorithm}`, {
+					code: 'unsupported'
+				})
+			}
+			compressionAlgorithm = 'GZIP'
+		}
+		const result = await this.#download.bytes('GET', document.url, {
+			label: 'Amazon SP-API report document',
+			maxBytes
+		})
+		const bytes = await decompressReportDocumentBytes(result.bytes, compressionAlgorithm, maxBytes)
+		const contentType = result.headers.get('content-type') ?? undefined
+		const contentEncoding = result.headers.get('content-encoding') ?? undefined
+		return {
+			bytes,
+			text: bytesToUtf8(bytes),
+			byte_length: bytes.byteLength,
+			...(contentType && { content_type: contentType }),
+			...(contentEncoding && { content_encoding: contentEncoding }),
+			...(compressionAlgorithm && { compression_algorithm: compressionAlgorithm })
+		}
 	}
 
 	/**
@@ -371,13 +506,14 @@ export class AmazonSpApiClient {
 		// Drain a few list pages; Amazon returns newest first for this endpoint.
 		let cursor: string | undefined
 		for (let page = 0; page < 5; page += 1) {
-			const listed = await this.listReports({
-				report_types: [SETTLEMENT_REPORT_TYPE_V2],
-				processing_statuses: ['DONE'],
-				created_since: createdSince,
-				page_size: 100,
-				...(cursor && { cursor })
-			})
+			const listed = cursor
+				? await this.listReports({ cursor })
+				: await this.listReports({
+						report_types: [SETTLEMENT_REPORT_TYPE_V2],
+						processing_statuses: ['DONE'],
+						created_since: createdSince,
+						page_size: 100
+					})
 			for (const report of listed.items) {
 				if (report.report_document_id) {
 					return report.report_document_id

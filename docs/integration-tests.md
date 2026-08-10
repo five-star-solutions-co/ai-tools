@@ -159,7 +159,7 @@ bun test test/integration/vendors/resend.live.test.ts
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
 | **katana** | `KATANA_API_KEY` | **read-only** list/get entity surfaces + inventory |
-| **amazon-sp-api** | LWA (`AMAZON_CLIENT_*` / refresh) + shared `AWS_*` + marketplace/endpoint | **read-only** orders/items/inventory/reports/catalog |
+| **amazon-sp-api** | LWA (`AMAZON_CLIENT_*` / refresh) + marketplace/endpoint | **read-only** orders/items/inventory/reports/catalog |
 | qdrant | `QDRANT_URL` (+ `QDRANT_COLLECTION`) | upsert/query/delete |
 | pinecone | `PINECONE_API_KEY` + `BASE_URL` (+ dimension) | upsert/query/delete |
 | supabase-vector | shared `SUPABASE_*` | upsert/query/delete |

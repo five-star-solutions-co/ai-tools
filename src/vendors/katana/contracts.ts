@@ -18,6 +18,190 @@ const listOutputMeta = {
 	truncated: z.boolean()
 }
 
+const katanaPageSchema = z.int().min(1).optional()
+const katanaPageLimitSchema = z.int().min(1).max(250).optional()
+const katanaTimestampFilterSchema = z.iso.datetime({ offset: true }).optional()
+
+export const katanaRawRecordSchema = z.looseObject({
+	id: z.number().int(),
+	created_at: z.string().optional(),
+	updated_at: z.string().optional(),
+	deleted_at: z.string().nullable().optional()
+})
+
+export const katanaSalesOrderRawSchema = katanaRawRecordSchema
+export const katanaProductRawSchema = katanaRawRecordSchema
+export const katanaMaterialRawSchema = katanaRawRecordSchema
+export const katanaCustomerRawSchema = katanaRawRecordSchema
+export const katanaSupplierRawSchema = katanaRawRecordSchema
+export const katanaPurchaseOrderRawSchema = katanaRawRecordSchema
+export const katanaManufacturingOrderRawSchema = katanaRawRecordSchema
+
+export const katanaInventoryRawSchema = z.looseObject({
+	variant_id: z.number().int(),
+	location_id: z.number().int(),
+	created_at: z.string().optional(),
+	updated_at: z.string().optional(),
+	deleted_at: z.string().nullable().optional()
+})
+
+export const katanaPaginationSchema = z.object({
+	total_records: z.number().int().nonnegative(),
+	total_pages: z.number().int().nonnegative(),
+	offset: z.number().int().nonnegative(),
+	page: z.number().int().min(1),
+	first_page: z.boolean(),
+	last_page: z.boolean()
+})
+
+export const katanaRateLimitSchema = z.object({
+	limit: z.number().int().nonnegative(),
+	remaining: z.number().int().nonnegative(),
+	reset_at_ms: z.number().int().nonnegative()
+})
+
+export const katanaListSalesOrdersPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	status: z.string().min(1).optional(),
+	customer_id: z.int().positive().optional(),
+	order_no: z.string().min(1).optional(),
+	location_id: z.int().positive().optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListProductsPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	name: z.string().min(1).optional(),
+	is_sellable: z.boolean().optional(),
+	is_producible: z.boolean().optional(),
+	is_purchasable: z.boolean().optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional(),
+	include_archived: z.boolean().optional()
+})
+
+export const katanaListMaterialsPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	name: z.string().min(1).optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional(),
+	include_archived: z.boolean().optional()
+})
+
+export const katanaListCustomersPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	name: z.string().min(1).optional(),
+	email: z.string().min(1).optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListSuppliersPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	name: z.string().min(1).optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListPurchaseOrdersPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	status: z.string().min(1).optional(),
+	supplier_id: z.int().positive().optional(),
+	order_no: z.string().min(1).optional(),
+	location_id: z.int().positive().optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListManufacturingOrdersPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	status: z.string().min(1).optional(),
+	variant_id: z.int().positive().optional(),
+	location_id: z.int().positive().optional(),
+	order_no: z.string().min(1).optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListInventoryPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	location_id: z.int().positive().optional(),
+	variant_id: z.array(z.int().positive()).min(1).optional(),
+	include_archived: z.boolean().optional(),
+	extend: z
+		.array(z.enum(['variant', 'location']))
+		.min(1)
+		.optional()
+})
+
+const katanaPageOutputMeta = {
+	pagination: katanaPaginationSchema,
+	rate_limit: katanaRateLimitSchema.optional()
+}
+
+export const katanaListSalesOrdersPageOutputSchema = z.object({
+	items: z.array(katanaSalesOrderRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListProductsPageOutputSchema = z.object({
+	items: z.array(katanaProductRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListMaterialsPageOutputSchema = z.object({
+	items: z.array(katanaMaterialRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListCustomersPageOutputSchema = z.object({
+	items: z.array(katanaCustomerRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListSuppliersPageOutputSchema = z.object({
+	items: z.array(katanaSupplierRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListPurchaseOrdersPageOutputSchema = z.object({
+	items: z.array(katanaPurchaseOrderRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListManufacturingOrdersPageOutputSchema = z.object({
+	items: z.array(katanaManufacturingOrderRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListInventoryPageOutputSchema = z.object({
+	items: z.array(katanaInventoryRawSchema),
+	...katanaPageOutputMeta
+})
+
 // ── Sales orders ────────────────────────────────────────────────────────────
 
 export const katanaSalesOrderRowInputSchema = z.object({
@@ -562,6 +746,27 @@ export const katanaListInventoryOutputSchema = z.object({
 })
 
 // ── Types ───────────────────────────────────────────────────────────────────
+
+export type KatanaRawRecord = z.infer<typeof katanaRawRecordSchema>
+export type KatanaInventoryRawRecord = z.infer<typeof katanaInventoryRawSchema>
+export type KatanaPagination = z.infer<typeof katanaPaginationSchema>
+export type KatanaRateLimit = z.infer<typeof katanaRateLimitSchema>
+export type KatanaListSalesOrdersPageInput = z.infer<typeof katanaListSalesOrdersPageInputSchema>
+export type KatanaListSalesOrdersPageOutput = z.infer<typeof katanaListSalesOrdersPageOutputSchema>
+export type KatanaListProductsPageInput = z.infer<typeof katanaListProductsPageInputSchema>
+export type KatanaListProductsPageOutput = z.infer<typeof katanaListProductsPageOutputSchema>
+export type KatanaListMaterialsPageInput = z.infer<typeof katanaListMaterialsPageInputSchema>
+export type KatanaListMaterialsPageOutput = z.infer<typeof katanaListMaterialsPageOutputSchema>
+export type KatanaListCustomersPageInput = z.infer<typeof katanaListCustomersPageInputSchema>
+export type KatanaListCustomersPageOutput = z.infer<typeof katanaListCustomersPageOutputSchema>
+export type KatanaListSuppliersPageInput = z.infer<typeof katanaListSuppliersPageInputSchema>
+export type KatanaListSuppliersPageOutput = z.infer<typeof katanaListSuppliersPageOutputSchema>
+export type KatanaListPurchaseOrdersPageInput = z.infer<typeof katanaListPurchaseOrdersPageInputSchema>
+export type KatanaListPurchaseOrdersPageOutput = z.infer<typeof katanaListPurchaseOrdersPageOutputSchema>
+export type KatanaListManufacturingOrdersPageInput = z.infer<typeof katanaListManufacturingOrdersPageInputSchema>
+export type KatanaListManufacturingOrdersPageOutput = z.infer<typeof katanaListManufacturingOrdersPageOutputSchema>
+export type KatanaListInventoryPageInput = z.infer<typeof katanaListInventoryPageInputSchema>
+export type KatanaListInventoryPageOutput = z.infer<typeof katanaListInventoryPageOutputSchema>
 
 export type KatanaSalesOrderRowInput = z.infer<typeof katanaSalesOrderRowInputSchema>
 export type KatanaSalesOrder = z.infer<typeof katanaSalesOrderSchema>

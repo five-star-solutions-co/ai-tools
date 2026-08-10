@@ -16,18 +16,15 @@ Deliberate surface: **orders** (v0 list/get/items + SearchOrders v2026 with FULF
   client_id: string
   client_secret: string
   refresh_token: string
-  access_key_id: string
-  secret_access_key: string
-  region: string              // SigV4 region (e.g. us-east-1)
   endpoint: 'https://sellingpartnerapi-na.amazon.com'
     | 'https://sellingpartnerapi-eu.amazon.com'
     | 'https://sellingpartnerapi-fe.amazon.com'
-  session_token?: string
   marketplace_ids?: string[]  // default marketplaces for tools
+  user_agent: string           // application identity sent to SP-API
 }
 ```
 
-Flow: LWA refresh → `access_token`, then SP-API calls with **AwsService** (`execute-api` SigV4) + `x-amz-access-token`.
+The client exchanges the refresh token through LWA, caches the complete token response according to `expires_in`, and refreshes slightly early. SP-API calls use `HttpService` with `x-amz-access-token` and `user-agent`. IAM credentials and SigV4 are not used.
 
 ## Tools
 
@@ -44,6 +41,47 @@ Flow: LWA refresh → `access_token`, then SP-API calls with **AwsService** (`ex
 | `amazon-sp-api-get-settlement-summary` | `getSettlementSummary` | Composite: list/get DONE `GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE_V2` → download one document → eight summary fields (cents) |
 | `amazon-sp-api-search-orders` | `searchOrders` | `GET /orders/2026-01-01/orders` (SearchOrders + FULFILLMENT) |
 | `amazon-sp-api-search-catalog-items` | `searchCatalogItems` | `GET /catalog/2022-04-01/items` |
+
+## Host page APIs
+
+These methods are for connector-owned pagination and pacing. Each page method performs exactly one provider request and returns provider-shaped records plus response metadata.
+
+### FBA inventory
+
+```ts
+await client.getInventorySummariesPage({
+  mode: 'full',
+  marketplace_id: 'ATVPDKIKX0DER',
+  next_token,
+})
+
+await client.getInventorySummariesPage({
+  mode: 'incremental',
+  marketplace_id: 'ATVPDKIKX0DER',
+  start_date_time: windowStart,
+  next_token,
+})
+```
+
+The request always uses marketplace granularity, one marketplace, and `details=true`. Full sync omits `startDateTime`. Incremental continuation requires both the original `start_date_time` and `next_token`. Amazon inventory tokens expire after 30 seconds, so they are not reliable long-lived warehouse checkpoints. On an expired token, restart the same fixed incremental window and rely on idempotent warehouse writes. The caller owns immediate sequential paging and pacing.
+
+The result contains `items`, optional `next_token`, `rate_limit_per_second`, and `request_id`. Inventory items use additive `z.looseObject` schemas and preserve Amazon fields without renaming. In particular, `totalQuantity` and `inventoryDetails.fulfillableQuantity` remain distinct.
+
+### Reports
+
+```ts
+await client.listReportsPage({
+  report_types: ['GET_FLAT_FILE_OPEN_LISTINGS_DATA'],
+  page_size: 100,
+  created_since: windowStart,
+})
+
+await client.listReportsPage({ next_token })
+```
+
+An initial request requires 1 to 10 report types. A continuation sends only Amazon's `nextToken`; filters from the initial request are not resent. The result preserves raw report metadata and returns rate-limit and request metadata.
+
+`getReportDocument` retrieves the presigned document descriptor. `downloadReportDocumentBytes` accepts only `report_document_id` and `max_bytes`, resolves the descriptor internally, then privately downloads Amazon's returned URL without SP-API auth headers. It enforces the byte limit on both downloaded and expanded content, supports Amazon's documented `GZIP` compression, and returns bytes, UTF-8 text, and response metadata. Callers cannot supply a download URL. Report metadata is not treated as a warehouse dataset.
 
 ### Settlement summary
 
@@ -66,11 +104,9 @@ new AmazonSpApiClient({
   client_id: '…',
   client_secret: '…',
   refresh_token: '…',
-  access_key_id: '…',
-  secret_access_key: '…',
-  region: 'us-east-1',
   endpoint: 'https://sellingpartnerapi-na.amazon.com',
   marketplace_ids: ['ATVPDKIKX0DER'],
+  user_agent: 'five-star-solutions/1.0',
 })
 
 withAuth(amazonSpApiModule, { /* same */ })

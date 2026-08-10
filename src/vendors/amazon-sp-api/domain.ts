@@ -2,19 +2,96 @@
  * Amazon SP-API: LWA body, order/inventory/report/catalog parse (no HTTP).
  */
 
-import { isPlainObject, isString } from 'es-toolkit'
+import { z } from 'zod'
 
 import { ToolError } from '../../core/errors'
 import type {
 	AmazonSpApiCatalogItem,
 	AmazonSpApiInventorySummary,
+	AmazonSpApiInventoryPageOutput,
+	AmazonSpApiListReportsPageOutput,
+	AmazonSpApiLwaTokenResponse,
 	AmazonSpApiOrder,
 	AmazonSpApiOrderItem,
 	AmazonSpApiReport,
 	AmazonSpApiSearchOrder
 } from './contracts'
+import { amazonInventorySummaryRawSchema, amazonReportRawSchema, amazonSpApiLwaTokenResponseSchema } from './contracts'
 
 export const LWA_TOKEN_URL = 'https://api.amazon.com/auth/o2/token'
+
+const amazonMoneyRawSchema = z.looseObject({
+	Amount: z.string().optional(),
+	CurrencyCode: z.string().optional()
+})
+
+const amazonOrderRawSchema = z.looseObject({
+	AmazonOrderId: z.string().min(1),
+	OrderStatus: z.string().optional(),
+	PurchaseDate: z.string().optional(),
+	LastUpdateDate: z.string().optional(),
+	MarketplaceId: z.string().optional(),
+	OrderTotal: amazonMoneyRawSchema.optional(),
+	FulfillmentChannel: z.string().optional()
+})
+
+const amazonOrdersResponseSchema = z.looseObject({
+	payload: z.looseObject({
+		Orders: z.array(amazonOrderRawSchema),
+		NextToken: z.string().min(1).optional()
+	})
+})
+
+const amazonSearchOrderRawSchema = z.looseObject({
+	orderId: z.string().min(1),
+	createdTime: z.string().optional(),
+	fulfillment: z.looseObject({ fulfillmentStatus: z.string().optional() }).optional()
+})
+
+const amazonSearchOrdersRootSchema = z.looseObject({
+	orders: z.array(amazonSearchOrderRawSchema),
+	pagination: z.looseObject({ nextToken: z.string().min(1).optional() }).optional()
+})
+
+const amazonSearchOrdersWrappedResponseSchema = z.looseObject({ payload: amazonSearchOrdersRootSchema })
+
+const amazonOrderItemRawSchema = z.looseObject({
+	OrderItemId: z.string().min(1),
+	ASIN: z.string().optional(),
+	SellerSKU: z.string().optional(),
+	Title: z.string().optional(),
+	QuantityOrdered: z.number().optional(),
+	QuantityShipped: z.number().optional(),
+	ItemPrice: amazonMoneyRawSchema.optional()
+})
+
+const amazonOrderItemsResponseSchema = z.looseObject({
+	payload: z.looseObject({
+		AmazonOrderId: z.string().min(1),
+		OrderItems: z.array(amazonOrderItemRawSchema),
+		NextToken: z.string().min(1).optional()
+	})
+})
+
+const amazonCatalogItemRawSchema = z.looseObject({
+	asin: z.string().min(1),
+	summaries: z
+		.array(
+			z.looseObject({
+				itemName: z.string().optional(),
+				brandName: z.string().optional(),
+				marketplaceId: z.string().optional()
+			})
+		)
+		.optional(),
+	productTypes: z.array(z.looseObject({ productType: z.string().optional() })).optional()
+})
+
+const amazonCatalogSearchResponseSchema = z.looseObject({
+	items: z.array(amazonCatalogItemRawSchema),
+	numberOfResults: z.number().optional(),
+	pagination: z.looseObject({ nextToken: z.string().min(1).optional() }).optional()
+})
 
 export function lwaTokenBody(auth: { client_id: string; client_secret: string; refresh_token: string }): string {
 	const params = new URLSearchParams({
@@ -26,29 +103,31 @@ export function lwaTokenBody(auth: { client_id: string; client_secret: string; r
 	return params.toString()
 }
 
-export function parseLwaAccessToken(data: unknown): string {
-	if (!isPlainObject(data) || !isString(data['access_token']) || data['access_token'].length === 0) {
-		throw new ToolError('Amazon LWA did not return an access_token', { code: 'bad_auth' })
+export function parseLwaTokenResponse(data: unknown): AmazonSpApiLwaTokenResponse {
+	const parsed = amazonSpApiLwaTokenResponseSchema.safeParse(data)
+	if (!parsed.success) {
+		throw new ToolError('Amazon LWA returned an invalid token response', {
+			code: 'bad_auth',
+			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+		})
 	}
-	return data['access_token']
+	return parsed.data
 }
 
 export function parseOrder(value: unknown): AmazonSpApiOrder {
-	if (!isPlainObject(value) || !isString(value['AmazonOrderId']) || value['AmazonOrderId'].length === 0) {
+	const parsed = amazonOrderRawSchema.safeParse(value)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API returned an invalid order', { code: 'upstream' })
 	}
-	const total = value['OrderTotal']
-	const amount = isPlainObject(total) && isString(total['Amount']) ? total['Amount'] : undefined
-	const currency = isPlainObject(total) && isString(total['CurrencyCode']) ? total['CurrencyCode'] : undefined
 	return {
-		amazon_order_id: value['AmazonOrderId'],
-		...(isString(value['OrderStatus']) && { order_status: value['OrderStatus'] }),
-		...(isString(value['PurchaseDate']) && { purchase_date: value['PurchaseDate'] }),
-		...(isString(value['LastUpdateDate']) && { last_update_date: value['LastUpdateDate'] }),
-		...(isString(value['MarketplaceId']) && { marketplace_id: value['MarketplaceId'] }),
-		...(amount && { order_total_amount: amount }),
-		...(currency && { order_total_currency: currency }),
-		...(isString(value['FulfillmentChannel']) && { fulfillment_channel: value['FulfillmentChannel'] })
+		amazon_order_id: parsed.data.AmazonOrderId,
+		...(parsed.data.OrderStatus && { order_status: parsed.data.OrderStatus }),
+		...(parsed.data.PurchaseDate && { purchase_date: parsed.data.PurchaseDate }),
+		...(parsed.data.LastUpdateDate && { last_update_date: parsed.data.LastUpdateDate }),
+		...(parsed.data.MarketplaceId && { marketplace_id: parsed.data.MarketplaceId }),
+		...(parsed.data.OrderTotal?.Amount && { order_total_amount: parsed.data.OrderTotal.Amount }),
+		...(parsed.data.OrderTotal?.CurrencyCode && { order_total_currency: parsed.data.OrderTotal.CurrencyCode }),
+		...(parsed.data.FulfillmentChannel && { fulfillment_channel: parsed.data.FulfillmentChannel })
 	}
 }
 
@@ -56,42 +135,36 @@ export function parseOrdersPayload(data: unknown): {
 	items: AmazonSpApiOrder[]
 	nextToken?: string
 } {
-	if (!isPlainObject(data)) {
+	const parsed = amazonOrdersResponseSchema.safeParse(data)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API orders payload invalid', { code: 'upstream' })
 	}
-	const payload = data['payload']
-	if (!isPlainObject(payload)) {
-		throw new ToolError('Amazon SP-API orders missing payload', { code: 'upstream' })
+	return {
+		items: parsed.data.payload.Orders.map(parseOrder),
+		...(parsed.data.payload.NextToken && { nextToken: parsed.data.payload.NextToken })
 	}
-	const orders = payload['Orders']
-	if (!Array.isArray(orders)) {
-		throw new ToolError('Amazon SP-API orders missing Orders array', { code: 'upstream' })
-	}
-	const nextToken = isString(payload['NextToken']) && payload['NextToken'].length > 0 ? payload['NextToken'] : undefined
-	return { items: orders.map(parseOrder), ...(nextToken && { nextToken }) }
 }
 
 export function parseOrderPayload(data: unknown): AmazonSpApiOrder {
-	if (!isPlainObject(data) || !isPlainObject(data['payload'])) {
+	const parsed = z.looseObject({ payload: amazonOrderRawSchema }).safeParse(data)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API get order payload invalid', { code: 'upstream' })
 	}
-	return parseOrder(data['payload'])
+	return parseOrder(parsed.data.payload)
 }
 
 /** Orders API v2026-01-01 SearchOrders — camelCase body, not v0 payload wrapper. */
 export function parseSearchOrder(value: unknown): AmazonSpApiSearchOrder {
-	if (!isPlainObject(value) || !isString(value['orderId']) || value['orderId'].length === 0) {
+	const parsed = amazonSearchOrderRawSchema.safeParse(value)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API searchOrders returned an invalid order', { code: 'upstream' })
 	}
-	const fulfillment = value['fulfillment']
-	const fulfillmentStatus =
-		isPlainObject(fulfillment) && isString(fulfillment['fulfillmentStatus'])
-			? fulfillment['fulfillmentStatus']
-			: undefined
 	return {
-		order_id: value['orderId'],
-		...(isString(value['createdTime']) && { created_time: value['createdTime'] }),
-		...(fulfillmentStatus && { fulfillment_status: fulfillmentStatus })
+		order_id: parsed.data.orderId,
+		...(parsed.data.createdTime && { created_time: parsed.data.createdTime }),
+		...(parsed.data.fulfillment?.fulfillmentStatus && {
+			fulfillment_status: parsed.data.fulfillment.fulfillmentStatus
+		})
 	}
 }
 
@@ -99,42 +172,32 @@ export function parseSearchOrdersPayload(data: unknown): {
 	items: AmazonSpApiSearchOrder[]
 	nextToken?: string
 } {
-	if (!isPlainObject(data)) {
+	const wrapped = amazonSearchOrdersWrappedResponseSchema.safeParse(data)
+	const direct = amazonSearchOrdersRootSchema.safeParse(data)
+	const root = wrapped.success ? wrapped.data.payload : direct.success ? direct.data : undefined
+	if (!root) {
 		throw new ToolError('Amazon SP-API searchOrders payload invalid', { code: 'upstream' })
 	}
-	// Some gateways still wrap; accept both shapes.
-	const root = isPlainObject(data['payload']) ? data['payload'] : data
-	if (!isPlainObject(root)) {
-		throw new ToolError('Amazon SP-API searchOrders missing body', { code: 'upstream' })
+	return {
+		items: root.orders.map(parseSearchOrder),
+		...(root.pagination?.nextToken && { nextToken: root.pagination.nextToken })
 	}
-	const orders = root['orders']
-	if (!Array.isArray(orders)) {
-		throw new ToolError('Amazon SP-API searchOrders missing orders array', { code: 'upstream' })
-	}
-	const pagination = root['pagination']
-	const nextToken =
-		isPlainObject(pagination) && isString(pagination['nextToken']) && pagination['nextToken'].length > 0
-			? pagination['nextToken']
-			: undefined
-	return { items: orders.map(parseSearchOrder), ...(nextToken && { nextToken }) }
 }
 
 export function parseOrderItem(value: unknown): AmazonSpApiOrderItem {
-	if (!isPlainObject(value) || !isString(value['OrderItemId']) || value['OrderItemId'].length === 0) {
+	const parsed = amazonOrderItemRawSchema.safeParse(value)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API returned an invalid order item', { code: 'upstream' })
 	}
-	const price = value['ItemPrice']
-	const amount = isPlainObject(price) && isString(price['Amount']) ? price['Amount'] : undefined
-	const currency = isPlainObject(price) && isString(price['CurrencyCode']) ? price['CurrencyCode'] : undefined
 	return {
-		order_item_id: value['OrderItemId'],
-		...(isString(value['ASIN']) && { asin: value['ASIN'] }),
-		...(isString(value['SellerSKU']) && { seller_sku: value['SellerSKU'] }),
-		...(isString(value['Title']) && { title: value['Title'] }),
-		...(typeof value['QuantityOrdered'] === 'number' && { quantity_ordered: value['QuantityOrdered'] }),
-		...(typeof value['QuantityShipped'] === 'number' && { quantity_shipped: value['QuantityShipped'] }),
-		...(amount && { item_price_amount: amount }),
-		...(currency && { item_price_currency: currency })
+		order_item_id: parsed.data.OrderItemId,
+		...(parsed.data.ASIN && { asin: parsed.data.ASIN }),
+		...(parsed.data.SellerSKU && { seller_sku: parsed.data.SellerSKU }),
+		...(parsed.data.Title && { title: parsed.data.Title }),
+		...(parsed.data.QuantityOrdered !== undefined && { quantity_ordered: parsed.data.QuantityOrdered }),
+		...(parsed.data.QuantityShipped !== undefined && { quantity_shipped: parsed.data.QuantityShipped }),
+		...(parsed.data.ItemPrice?.Amount && { item_price_amount: parsed.data.ItemPrice.Amount }),
+		...(parsed.data.ItemPrice?.CurrencyCode && { item_price_currency: parsed.data.ItemPrice.CurrencyCode })
 	}
 }
 
@@ -143,46 +206,76 @@ export function parseOrderItemsPayload(data: unknown): {
 	items: AmazonSpApiOrderItem[]
 	nextToken?: string
 } {
-	if (!isPlainObject(data)) {
+	const parsed = amazonOrderItemsResponseSchema.safeParse(data)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API order items payload invalid', { code: 'upstream' })
 	}
-	const payload = data['payload']
-	if (!isPlainObject(payload)) {
-		throw new ToolError('Amazon SP-API order items missing payload', { code: 'upstream' })
-	}
-	if (!isString(payload['AmazonOrderId']) || payload['AmazonOrderId'].length === 0) {
-		throw new ToolError('Amazon SP-API order items missing AmazonOrderId', { code: 'upstream' })
-	}
-	const orderItems = payload['OrderItems']
-	if (!Array.isArray(orderItems)) {
-		throw new ToolError('Amazon SP-API order items missing OrderItems array', { code: 'upstream' })
-	}
-	const nextToken = isString(payload['NextToken']) && payload['NextToken'].length > 0 ? payload['NextToken'] : undefined
 	return {
-		amazon_order_id: payload['AmazonOrderId'],
-		items: orderItems.map(parseOrderItem),
-		...(nextToken && { nextToken })
+		amazon_order_id: parsed.data.payload.AmazonOrderId,
+		items: parsed.data.payload.OrderItems.map(parseOrderItem),
+		...(parsed.data.payload.NextToken && { nextToken: parsed.data.payload.NextToken })
 	}
 }
 
 export function parseInventorySummary(value: unknown): AmazonSpApiInventorySummary {
-	if (!isPlainObject(value)) {
-		throw new ToolError('Amazon SP-API returned an invalid inventory summary', { code: 'upstream' })
-	}
-	const totals = value['inventoryDetails']
-	let totalQuantity: number | undefined
-	if (isPlainObject(totals) && typeof totals['fulfillableQuantity'] === 'number') {
-		totalQuantity = totals['fulfillableQuantity']
-	} else if (typeof value['totalQuantity'] === 'number') {
-		totalQuantity = value['totalQuantity']
+	const parsed = amazonInventorySummaryRawSchema.safeParse(value)
+	if (!parsed.success) {
+		throw new ToolError('Amazon SP-API returned an invalid inventory summary', {
+			code: 'upstream',
+			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+		})
 	}
 	return {
-		...(isString(value['sellerSku']) && { seller_sku: value['sellerSku'] }),
-		...(isString(value['asin']) && { asin: value['asin'] }),
-		...(isString(value['fnSku']) && { fn_sku: value['fnSku'] }),
-		...(isString(value['condition']) && { condition: value['condition'] }),
-		...(totalQuantity !== undefined && { total_quantity: totalQuantity }),
-		...(isString(value['productName']) && { product_name: value['productName'] })
+		...(parsed.data.sellerSku && { seller_sku: parsed.data.sellerSku }),
+		...(parsed.data.asin && { asin: parsed.data.asin }),
+		...(parsed.data.fnSku && { fn_sku: parsed.data.fnSku }),
+		...(parsed.data.condition && { condition: parsed.data.condition }),
+		...(parsed.data.totalQuantity !== undefined && { total_quantity: parsed.data.totalQuantity }),
+		...(parsed.data.productName && { product_name: parsed.data.productName })
+	}
+}
+
+const inventoryPageResponseSchema = z.looseObject({
+	payload: z.looseObject({
+		inventorySummaries: z.array(amazonInventorySummaryRawSchema)
+	}),
+	pagination: z.looseObject({ nextToken: z.string().min(1).optional() }).optional()
+})
+
+const optionalAmazonRateLimitSchema = z.coerce.number().positive()
+
+export function parseAmazonResponseMetadata(headers: Headers): {
+	rate_limit_per_second?: number
+	request_id?: string
+} {
+	const rawRateLimit = headers.get('x-amzn-ratelimit-limit')
+	let rateLimit: number | undefined
+	if (rawRateLimit !== null) {
+		const parsedRateLimit = optionalAmazonRateLimitSchema.safeParse(rawRateLimit)
+		if (!parsedRateLimit.success) {
+			throw new ToolError('Amazon SP-API returned an invalid rate-limit header', { code: 'upstream' })
+		}
+		rateLimit = parsedRateLimit.data
+	}
+	const requestId = headers.get('x-amzn-requestid') ?? headers.get('x-amzn-request-id') ?? undefined
+	return {
+		...(rateLimit !== undefined && { rate_limit_per_second: rateLimit }),
+		...(requestId && { request_id: requestId })
+	}
+}
+
+export function parseInventoryPagePayload(data: unknown, headers: Headers): AmazonSpApiInventoryPageOutput {
+	const parsed = inventoryPageResponseSchema.safeParse(data)
+	if (!parsed.success) {
+		throw new ToolError('Amazon SP-API inventory page response invalid', {
+			code: 'upstream',
+			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+		})
+	}
+	return {
+		items: parsed.data.payload.inventorySummaries,
+		...(parsed.data.pagination?.nextToken && { next_token: parsed.data.pagination.nextToken }),
+		...parseAmazonResponseMetadata(headers)
 	}
 }
 
@@ -190,50 +283,38 @@ export function parseInventoryPayload(data: unknown): {
 	items: AmazonSpApiInventorySummary[]
 	nextToken?: string
 } {
-	if (!isPlainObject(data)) {
-		throw new ToolError('Amazon SP-API inventory payload invalid', { code: 'upstream' })
-	}
-	const payload = data['payload']
-	if (!isPlainObject(payload)) {
-		throw new ToolError('Amazon SP-API inventory missing payload', { code: 'upstream' })
-	}
-	const summaries = payload['inventorySummaries']
-	if (!Array.isArray(summaries)) {
-		throw new ToolError('Amazon SP-API inventory missing inventorySummaries', { code: 'upstream' })
-	}
-	const pagination = payload['pagination']
-	const nextToken =
-		isPlainObject(pagination) && isString(pagination['nextToken']) && pagination['nextToken'].length > 0
-			? pagination['nextToken']
-			: undefined
-	return { items: summaries.map(parseInventorySummary), ...(nextToken && { nextToken }) }
+	const page = parseInventoryPagePayload(data, new Headers())
+	return { items: page.items.map(parseInventorySummary), ...(page.next_token && { nextToken: page.next_token }) }
 }
 
 export function parseCreateReportPayload(data: unknown): { report_id: string } {
-	if (!isPlainObject(data) || !isString(data['reportId']) || data['reportId'].length === 0) {
+	const parsed = z.looseObject({ reportId: z.string().min(1) }).safeParse(data)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API create report response invalid', { code: 'upstream' })
 	}
-	return { report_id: data['reportId'] }
+	return { report_id: parsed.data.reportId }
 }
 
 export function parseReport(value: unknown): AmazonSpApiReport {
-	if (!isPlainObject(value) || !isString(value['reportId']) || value['reportId'].length === 0) {
-		throw new ToolError('Amazon SP-API returned an invalid report', { code: 'upstream' })
+	const parsed = amazonReportRawSchema.safeParse(value)
+	if (!parsed.success) {
+		throw new ToolError('Amazon SP-API returned an invalid report', {
+			code: 'upstream',
+			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+		})
 	}
-	const marketplaceIds = value['marketplaceIds']
-	const marketplace_ids =
-		Array.isArray(marketplaceIds) && marketplaceIds.every((id) => isString(id))
-			? marketplaceIds.filter((id): id is string => isString(id) && id.length > 0)
-			: undefined
 	return {
-		report_id: value['reportId'],
-		...(isString(value['reportType']) && { report_type: value['reportType'] }),
-		...(isString(value['processingStatus']) && { processing_status: value['processingStatus'] }),
-		...(marketplace_ids && marketplace_ids.length > 0 && { marketplace_ids }),
-		...(isString(value['dataStartTime']) && { data_start_time: value['dataStartTime'] }),
-		...(isString(value['dataEndTime']) && { data_end_time: value['dataEndTime'] }),
-		...(isString(value['reportDocumentId']) && { report_document_id: value['reportDocumentId'] }),
-		...(isString(value['createdTime']) && { created_time: value['createdTime'] })
+		report_id: parsed.data.reportId,
+		...(parsed.data.reportType && { report_type: parsed.data.reportType }),
+		...(parsed.data.processingStatus && { processing_status: parsed.data.processingStatus }),
+		...(parsed.data.marketplaceIds &&
+			parsed.data.marketplaceIds.length > 0 && {
+				marketplace_ids: parsed.data.marketplaceIds
+			}),
+		...(parsed.data.dataStartTime && { data_start_time: parsed.data.dataStartTime }),
+		...(parsed.data.dataEndTime && { data_end_time: parsed.data.dataEndTime }),
+		...(parsed.data.reportDocumentId && { report_document_id: parsed.data.reportDocumentId }),
+		...(parsed.data.createdTime && { created_time: parsed.data.createdTime })
 	}
 }
 
@@ -245,15 +326,28 @@ export function parseListReportsPayload(data: unknown): {
 	items: AmazonSpApiReport[]
 	nextToken?: string
 } {
-	if (!isPlainObject(data)) {
-		throw new ToolError('Amazon SP-API list reports payload invalid', { code: 'upstream' })
+	const page = parseListReportsPagePayload(data, new Headers())
+	return { items: page.items.map(parseReport), ...(page.next_token && { nextToken: page.next_token }) }
+}
+
+const listReportsPageResponseSchema = z.looseObject({
+	reports: z.array(amazonReportRawSchema),
+	nextToken: z.string().min(1).optional()
+})
+
+export function parseListReportsPagePayload(data: unknown, headers: Headers): AmazonSpApiListReportsPageOutput {
+	const parsed = listReportsPageResponseSchema.safeParse(data)
+	if (!parsed.success) {
+		throw new ToolError('Amazon SP-API list reports page response invalid', {
+			code: 'upstream',
+			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+		})
 	}
-	const reports = data['reports']
-	if (!Array.isArray(reports)) {
-		throw new ToolError('Amazon SP-API list reports missing reports array', { code: 'upstream' })
+	return {
+		items: parsed.data.reports,
+		...(parsed.data.nextToken && { next_token: parsed.data.nextToken }),
+		...parseAmazonResponseMetadata(headers)
 	}
-	const nextToken = isString(data['nextToken']) && data['nextToken'].length > 0 ? data['nextToken'] : undefined
-	return { items: reports.map(parseReport), ...(nextToken && { nextToken }) }
 }
 
 export function parseReportDocumentPayload(data: unknown): {
@@ -261,51 +355,36 @@ export function parseReportDocumentPayload(data: unknown): {
 	url: string
 	compression_algorithm?: string
 } {
-	if (
-		!isPlainObject(data) ||
-		!isString(data['reportDocumentId']) ||
-		data['reportDocumentId'].length === 0 ||
-		!isString(data['url']) ||
-		data['url'].length === 0
-	) {
+	const parsed = z
+		.looseObject({
+			reportDocumentId: z.string().min(1),
+			url: z.url(),
+			compressionAlgorithm: z.string().min(1).optional()
+		})
+		.safeParse(data)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API report document response invalid', { code: 'upstream' })
 	}
 	return {
-		document_id: data['reportDocumentId'],
-		url: data['url'],
-		...(isString(data['compressionAlgorithm']) &&
-			data['compressionAlgorithm'].length > 0 && {
-				compression_algorithm: data['compressionAlgorithm']
-			})
+		document_id: parsed.data.reportDocumentId,
+		url: parsed.data.url,
+		...(parsed.data.compressionAlgorithm && { compression_algorithm: parsed.data.compressionAlgorithm })
 	}
 }
 
 export function parseCatalogItem(value: unknown): AmazonSpApiCatalogItem {
-	if (!isPlainObject(value) || !isString(value['asin']) || value['asin'].length === 0) {
+	const parsed = amazonCatalogItemRawSchema.safeParse(value)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API returned an invalid catalog item', { code: 'upstream' })
 	}
-	const summaries = value['summaries']
-	let title: string | undefined
-	let brand: string | undefined
-	let marketplace_id: string | undefined
-	if (Array.isArray(summaries) && summaries.length > 0 && isPlainObject(summaries[0])) {
-		const summary = summaries[0]
-		if (isString(summary['itemName'])) title = summary['itemName']
-		if (isString(summary['brandName'])) brand = summary['brandName']
-		if (isString(summary['marketplaceId'])) marketplace_id = summary['marketplaceId']
-	}
-	const productTypes = value['productTypes']
-	let product_type: string | undefined
-	if (Array.isArray(productTypes) && productTypes.length > 0 && isPlainObject(productTypes[0])) {
-		const pt = productTypes[0]
-		if (isString(pt['productType'])) product_type = pt['productType']
-	}
+	const summary = parsed.data.summaries?.[0]
+	const productType = parsed.data.productTypes?.[0]
 	return {
-		asin: value['asin'],
-		...(title && { title }),
-		...(brand && { brand }),
-		...(product_type && { product_type }),
-		...(marketplace_id && { marketplace_id })
+		asin: parsed.data.asin,
+		...(summary?.itemName && { title: summary.itemName }),
+		...(summary?.brandName && { brand: summary.brandName }),
+		...(productType?.productType && { product_type: productType.productType }),
+		...(summary?.marketplaceId && { marketplace_id: summary.marketplaceId })
 	}
 }
 
@@ -314,23 +393,14 @@ export function parseSearchCatalogItemsPayload(data: unknown): {
 	numberOfResults?: number
 	nextToken?: string
 } {
-	if (!isPlainObject(data)) {
+	const parsed = amazonCatalogSearchResponseSchema.safeParse(data)
+	if (!parsed.success) {
 		throw new ToolError('Amazon SP-API catalog search payload invalid', { code: 'upstream' })
 	}
-	const items = data['items']
-	if (!Array.isArray(items)) {
-		throw new ToolError('Amazon SP-API catalog search missing items array', { code: 'upstream' })
-	}
-	const pagination = data['pagination']
-	const nextToken =
-		isPlainObject(pagination) && isString(pagination['nextToken']) && pagination['nextToken'].length > 0
-			? pagination['nextToken']
-			: undefined
-	const numberOfResults = typeof data['numberOfResults'] === 'number' ? data['numberOfResults'] : undefined
 	return {
-		items: items.map(parseCatalogItem),
-		...(numberOfResults !== undefined && { numberOfResults }),
-		...(nextToken && { nextToken })
+		items: parsed.data.items.map(parseCatalogItem),
+		...(parsed.data.numberOfResults !== undefined && { numberOfResults: parsed.data.numberOfResults }),
+		...(parsed.data.pagination?.nextToken && { nextToken: parsed.data.pagination.nextToken })
 	}
 }
 

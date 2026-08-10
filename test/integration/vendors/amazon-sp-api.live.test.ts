@@ -1,20 +1,18 @@
 /**
- * Amazon SP-API live IT — read-only only (no createReport or other writes).
- * SigV4 IAM uses shared AI_TOOLS_AWS_*; LWA app credentials stay Amazon-specific.
+ * Amazon SP-API live IT. Read-only only (no createReport or other writes).
  */
 import { describe, expect, test } from 'bun:test'
 
 import { AmazonSpApiClient } from '../../../src/vendors/amazon-sp-api'
-import { awsCredentialsFromEnv, env } from '../env'
+import { env } from '../env'
 
 const clientId = env('AI_TOOLS_AMAZON_CLIENT_ID')
 const clientSecret = env('AI_TOOLS_AMAZON_CLIENT_SECRET')
 const refreshToken = env('AI_TOOLS_AMAZON_REFRESH_TOKEN')
-const aws = awsCredentialsFromEnv()
 const endpoint = env('AI_TOOLS_AMAZON_ENDPOINT')
 const marketplaceIds = env('AI_TOOLS_AMAZON_MARKETPLACE_IDS')
 const catalogKeywords = env('AI_TOOLS_AMAZON_CATALOG_KEYWORDS')
-const run = clientId && clientSecret && refreshToken && aws && endpoint && marketplaceIds ? describe : describe.skip
+const run = clientId && clientSecret && refreshToken && endpoint && marketplaceIds ? describe : describe.skip
 
 function client() {
 	const ep = endpoint!
@@ -29,12 +27,9 @@ function client() {
 		client_id: clientId!,
 		client_secret: clientSecret!,
 		refresh_token: refreshToken!,
-		access_key_id: aws!.access_key_id,
-		secret_access_key: aws!.secret_access_key,
-		region: aws!.region,
 		endpoint: ep,
 		marketplace_ids: marketplaceIds!.split(',').map((s) => s.trim()),
-		...(aws!.session_token && { session_token: aws!.session_token })
+		user_agent: '@5ss/ai-tools-live-test'
 	})
 }
 
@@ -78,7 +73,10 @@ run('live vendor amazon-sp-api (read-only)', () => {
 		'listReports + optional getReport/getReportDocument',
 		async () => {
 			const c = client()
-			const out = await c.listReports({ page_size: 1 })
+			const out = await c.listReports({
+				report_types: ['GET_FLAT_FILE_OPEN_LISTINGS_DATA'],
+				page_size: 1
+			})
 			expect(out).toBeDefined()
 			expect(Array.isArray(out.items)).toBe(true)
 			const report = out.items[0]

@@ -11,22 +11,24 @@ export const amazonSpApiAuthSchema = z.object({
 	client_id: z.string().min(1).describe('LWA client id'),
 	client_secret: z.string().min(1).describe('LWA client secret'),
 	refresh_token: z.string().min(1).describe('LWA refresh token for the selling partner'),
-	access_key_id: z.string().min(1).describe('AWS access key id for SP-API SigV4'),
-	secret_access_key: z.string().min(1).describe('AWS secret access key for SP-API SigV4'),
-	region: z
-		.string()
-		.min(1)
-		.describe('AWS region used for SigV4 (typically us-east-1 for NA, eu-west-1 for EU, us-west-2 for FE)'),
 	endpoint: amazonSpApiEndpointSchema.describe('SP-API regional endpoint'),
-	session_token: z.string().min(1).optional().describe('Optional AWS session token'),
 	marketplace_ids: z
 		.array(z.string().min(1))
 		.min(1)
 		.optional()
-		.describe('Default marketplace ids when a tool call omits marketplace_ids')
+		.describe('Default marketplace ids when a tool call omits marketplace_ids'),
+	user_agent: z.string().min(1).describe('Application user agent sent with every SP-API request')
 })
 
 export type AmazonSpApiAuth = z.infer<typeof amazonSpApiAuthSchema>
+
+export const amazonSpApiLwaTokenResponseSchema = z.object({
+	access_token: z.string().min(1),
+	token_type: z.string().min(1),
+	expires_in: z.number().int().positive()
+})
+
+export type AmazonSpApiLwaTokenResponse = z.infer<typeof amazonSpApiLwaTokenResponseSchema>
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
@@ -129,6 +131,102 @@ export const amazonSpApiSearchOrdersOutputSchema = z.object({
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
+const amazonInventoryDateTimeSchema = z.iso.datetime({ offset: true })
+
+function eighteenMonthsBeforeNow(): number {
+	const oldestAllowed = new Date()
+	const currentDay = oldestAllowed.getUTCDate()
+	oldestAllowed.setUTCDate(1)
+	oldestAllowed.setUTCMonth(oldestAllowed.getUTCMonth() - 18)
+	const lastDayOfTargetMonth = new Date(
+		Date.UTC(oldestAllowed.getUTCFullYear(), oldestAllowed.getUTCMonth() + 1, 0)
+	).getUTCDate()
+	oldestAllowed.setUTCDate(Math.min(currentDay, lastDayOfTargetMonth))
+	return oldestAllowed.getTime()
+}
+
+const amazonInventoryFullPageInputSchema = z.strictObject({
+	mode: z.literal('full'),
+	marketplace_id: z.string().min(1),
+	next_token: z.string().min(1).optional()
+})
+
+const amazonInventoryIncrementalPageInputSchema = z.strictObject({
+	mode: z.literal('incremental'),
+	marketplace_id: z.string().min(1),
+	start_date_time: amazonInventoryDateTimeSchema,
+	next_token: z.string().min(1).optional()
+})
+
+export const amazonSpApiInventoryPageInputSchema = z
+	.discriminatedUnion('mode', [amazonInventoryFullPageInputSchema, amazonInventoryIncrementalPageInputSchema])
+	.superRefine((input, context) => {
+		if (input.mode !== 'incremental') return
+		if (Date.parse(input.start_date_time) < eighteenMonthsBeforeNow()) {
+			context.addIssue({
+				code: 'custom',
+				path: ['start_date_time'],
+				message: 'start_date_time cannot be more than 18 months in the past'
+			})
+		}
+	})
+
+export const amazonInventoryReservedQuantityRawSchema = z.looseObject({
+	totalReservedQuantity: z.number().optional(),
+	pendingCustomerOrderQuantity: z.number().optional(),
+	pendingTransshipmentQuantity: z.number().optional(),
+	fcProcessingQuantity: z.number().optional()
+})
+
+export const amazonInventoryResearchingQuantityBreakdownRawSchema = z.looseObject({
+	name: z.enum(['researchingQuantityInShortTerm', 'researchingQuantityInMidTerm', 'researchingQuantityInLongTerm']),
+	quantity: z.int()
+})
+
+export const amazonInventoryResearchingQuantityRawSchema = z.looseObject({
+	totalResearchingQuantity: z.number().optional(),
+	researchingQuantityBreakdown: z.array(amazonInventoryResearchingQuantityBreakdownRawSchema).optional()
+})
+
+export const amazonInventoryUnfulfillableQuantityRawSchema = z.looseObject({
+	totalUnfulfillableQuantity: z.number().optional(),
+	customerDamagedQuantity: z.number().optional(),
+	warehouseDamagedQuantity: z.number().optional(),
+	distributorDamagedQuantity: z.number().optional(),
+	carrierDamagedQuantity: z.number().optional(),
+	defectiveQuantity: z.number().optional(),
+	expiredQuantity: z.number().optional()
+})
+
+export const amazonInventoryDetailsRawSchema = z.looseObject({
+	fulfillableQuantity: z.number().optional(),
+	inboundWorkingQuantity: z.number().optional(),
+	inboundShippedQuantity: z.number().optional(),
+	inboundReceivingQuantity: z.number().optional(),
+	reservedQuantity: amazonInventoryReservedQuantityRawSchema.optional(),
+	researchingQuantity: amazonInventoryResearchingQuantityRawSchema.optional(),
+	unfulfillableQuantity: amazonInventoryUnfulfillableQuantityRawSchema.optional()
+})
+
+export const amazonInventorySummaryRawSchema = z.looseObject({
+	asin: z.string().optional(),
+	fnSku: z.string().optional(),
+	sellerSku: z.string().optional(),
+	condition: z.string().optional(),
+	productName: z.string().optional(),
+	totalQuantity: z.number().optional(),
+	lastUpdatedTime: z.string().optional(),
+	stores: z.array(z.string()).optional(),
+	inventoryDetails: amazonInventoryDetailsRawSchema.optional()
+})
+
+export const amazonSpApiInventoryPageOutputSchema = z.object({
+	items: z.array(amazonInventorySummaryRawSchema),
+	next_token: z.string().optional(),
+	rate_limit_per_second: z.number().optional(),
+	request_id: z.string().optional()
+})
+
 export const amazonSpApiListInventorySummariesInputSchema = z.object({
 	marketplace_id: z.string().min(1).optional().describe('Marketplace id; omit to use the first configured default'),
 	seller_skus: z.array(z.string().min(1)).max(50).optional().describe('Optional seller SKU filter (max 50)'),
@@ -188,8 +286,8 @@ export const amazonSpApiGetReportOutputSchema = z.object({
 	report: amazonSpApiReportSchema
 })
 
-export const amazonSpApiListReportsInputSchema = z.object({
-	report_types: z.array(z.string().min(1)).optional().describe('Filter by report type(s)'),
+const amazonSpApiListReportsInitialFields = {
+	report_types: z.array(z.string().min(1)).min(1).max(10).describe('Filter by 1-10 report types'),
 	processing_statuses: z
 		.array(z.string().min(1))
 		.optional()
@@ -200,9 +298,49 @@ export const amazonSpApiListReportsInputSchema = z.object({
 		.optional()
 		.describe('Marketplace ids filter; omit to use configured defaults when available'),
 	page_size: z.int().min(1).max(100).optional().describe('Page size (1-100)'),
-	created_since: z.string().min(1).optional().describe('ISO 8601; reports created after'),
-	created_until: z.string().min(1).optional().describe('ISO 8601; reports created before'),
-	cursor: z.string().min(1).optional().describe('nextToken from a prior page')
+	created_since: z.iso.datetime({ offset: true }).optional().describe('ISO 8601; reports created after'),
+	created_until: z.iso.datetime({ offset: true }).optional().describe('ISO 8601; reports created before')
+}
+
+export const amazonSpApiListReportsInitialInputSchema = z.strictObject(amazonSpApiListReportsInitialFields)
+
+const amazonSpApiListReportsCursorInputSchema = z.strictObject({
+	cursor: z.string().min(1).describe('nextToken from a prior page')
+})
+
+export const amazonSpApiListReportsInputSchema = z.union([
+	amazonSpApiListReportsInitialInputSchema,
+	amazonSpApiListReportsCursorInputSchema
+])
+
+export const amazonReportRawSchema = z.looseObject({
+	reportId: z.string().min(1),
+	reportType: z.string().optional(),
+	processingStatus: z.string().optional(),
+	marketplaceIds: z.array(z.string()).optional(),
+	dataStartTime: z.string().optional(),
+	dataEndTime: z.string().optional(),
+	reportScheduleId: z.string().optional(),
+	createdTime: z.string().optional(),
+	processingStartTime: z.string().optional(),
+	processingEndTime: z.string().optional(),
+	reportDocumentId: z.string().optional()
+})
+
+export const amazonSpApiListReportsContinuationInputSchema = z.strictObject({
+	next_token: z.string().min(1)
+})
+
+export const amazonSpApiListReportsPageInputSchema = z.union([
+	amazonSpApiListReportsInitialInputSchema,
+	amazonSpApiListReportsContinuationInputSchema
+])
+
+export const amazonSpApiListReportsPageOutputSchema = z.object({
+	items: z.array(amazonReportRawSchema),
+	next_token: z.string().optional(),
+	rate_limit_per_second: z.number().optional(),
+	request_id: z.string().optional()
 })
 
 export const amazonSpApiListReportsOutputSchema = z.object({
@@ -219,6 +357,20 @@ export const amazonSpApiGetReportDocumentOutputSchema = z.object({
 	document_id: z.string(),
 	url: z.string(),
 	compression_algorithm: z.string().optional()
+})
+
+export const amazonSpApiDownloadReportDocumentBytesInputSchema = z.strictObject({
+	report_document_id: z.string().min(1),
+	max_bytes: z.int().positive()
+})
+
+export const amazonSpApiDownloadReportDocumentBytesOutputSchema = z.object({
+	bytes: z.custom<Uint8Array>((value) => value instanceof Uint8Array),
+	text: z.string(),
+	byte_length: z.int().nonnegative(),
+	content_type: z.string().optional(),
+	content_encoding: z.string().optional(),
+	compression_algorithm: z.enum(['GZIP']).optional()
 })
 
 // ─── Settlement summary (Flat File V2 composite) ──────────────────────────────
@@ -299,14 +451,28 @@ export type AmazonSpApiGetOrderItemsInput = z.infer<typeof amazonSpApiGetOrderIt
 export type AmazonSpApiGetOrderItemsOutput = z.infer<typeof amazonSpApiGetOrderItemsOutputSchema>
 export type AmazonSpApiListInventorySummariesInput = z.infer<typeof amazonSpApiListInventorySummariesInputSchema>
 export type AmazonSpApiListInventorySummariesOutput = z.infer<typeof amazonSpApiListInventorySummariesOutputSchema>
+export type AmazonSpApiInventoryPageInput = z.infer<typeof amazonSpApiInventoryPageInputSchema>
+export type AmazonSpApiInventoryPageOutput = z.infer<typeof amazonSpApiInventoryPageOutputSchema>
+export type AmazonInventorySummaryRaw = z.infer<typeof amazonInventorySummaryRawSchema>
 export type AmazonSpApiCreateReportInput = z.infer<typeof amazonSpApiCreateReportInputSchema>
 export type AmazonSpApiCreateReportOutput = z.infer<typeof amazonSpApiCreateReportOutputSchema>
 export type AmazonSpApiGetReportInput = z.infer<typeof amazonSpApiGetReportInputSchema>
 export type AmazonSpApiGetReportOutput = z.infer<typeof amazonSpApiGetReportOutputSchema>
 export type AmazonSpApiListReportsInput = z.infer<typeof amazonSpApiListReportsInputSchema>
 export type AmazonSpApiListReportsOutput = z.infer<typeof amazonSpApiListReportsOutputSchema>
+export type AmazonSpApiListReportsInitialInput = z.infer<typeof amazonSpApiListReportsInitialInputSchema>
+export type AmazonSpApiListReportsContinuationInput = z.infer<typeof amazonSpApiListReportsContinuationInputSchema>
+export type AmazonSpApiListReportsPageInput = z.infer<typeof amazonSpApiListReportsPageInputSchema>
+export type AmazonSpApiListReportsPageOutput = z.infer<typeof amazonSpApiListReportsPageOutputSchema>
+export type AmazonReportRaw = z.infer<typeof amazonReportRawSchema>
 export type AmazonSpApiGetReportDocumentInput = z.infer<typeof amazonSpApiGetReportDocumentInputSchema>
 export type AmazonSpApiGetReportDocumentOutput = z.infer<typeof amazonSpApiGetReportDocumentOutputSchema>
+export type AmazonSpApiDownloadReportDocumentBytesInput = z.infer<
+	typeof amazonSpApiDownloadReportDocumentBytesInputSchema
+>
+export type AmazonSpApiDownloadReportDocumentBytesOutput = z.infer<
+	typeof amazonSpApiDownloadReportDocumentBytesOutputSchema
+>
 export type AmazonSpApiSearchCatalogItemsInput = z.infer<typeof amazonSpApiSearchCatalogItemsInputSchema>
 export type AmazonSpApiSearchCatalogItemsOutput = z.infer<typeof amazonSpApiSearchCatalogItemsOutputSchema>
 export type AmazonSpApiSearchOrdersInput = z.infer<typeof amazonSpApiSearchOrdersInputSchema>

@@ -2,7 +2,8 @@
  * Katana MRP payload helpers (no HTTP).
  */
 
-import { isPlainObject, isString } from 'es-toolkit'
+import { isString } from 'es-toolkit'
+import { z } from 'zod'
 
 import { ToolError } from '../../core/errors'
 import type {
@@ -14,6 +15,8 @@ import type {
 	KatanaCreateSupplierInput,
 	KatanaCustomer,
 	KatanaInventory,
+	KatanaPagination,
+	KatanaRateLimit,
 	KatanaManufacturingOrder,
 	KatanaMaterial,
 	KatanaProduct,
@@ -32,8 +35,77 @@ import type {
 	KatanaUpdatePurchaseOrderInput,
 	KatanaUpdateSalesOrderInput
 } from './contracts'
+import {
+	katanaInventoryRawSchema,
+	katanaPaginationSchema,
+	katanaRateLimitSchema,
+	katanaRawRecordSchema
+} from './contracts'
 
 export const KATANA_API_BASE = 'https://api.katanamrp.com/v1'
+
+const katanaRateLimitHeadersSchema = z.object({
+	limit: z.coerce.number().int().nonnegative(),
+	remaining: z.coerce.number().int().nonnegative(),
+	reset_at_ms: z.coerce.number().int().nonnegative()
+})
+
+function parseKatanaPaginationHeader(headers: Headers): KatanaPagination {
+	const raw = headers.get('x-pagination')
+	if (raw === null) {
+		throw new ToolError('Katana response is missing X-Pagination', { code: 'upstream' })
+	}
+	let value: unknown
+	try {
+		value = JSON.parse(raw)
+	} catch (error) {
+		throw new ToolError('Katana returned malformed X-Pagination JSON', { code: 'upstream', cause: error })
+	}
+	const parsed = katanaPaginationSchema.safeParse(value)
+	if (!parsed.success) {
+		throw new ToolError('Katana returned invalid X-Pagination metadata', {
+			code: 'upstream',
+			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+		})
+	}
+	return parsed.data
+}
+
+function parseKatanaRateLimitHeaders(headers: Headers): KatanaRateLimit | undefined {
+	const limit = headers.get('x-ratelimit-limit')
+	const remaining = headers.get('x-ratelimit-remaining')
+	const resetAtMs = headers.get('x-ratelimit-reset')
+	if (limit === null && remaining === null && resetAtMs === null) return undefined
+	if (limit === null || remaining === null || resetAtMs === null) {
+		throw new ToolError('Katana returned incomplete rate-limit metadata', { code: 'upstream' })
+	}
+	const parsed = katanaRateLimitHeadersSchema.safeParse({ limit, remaining, reset_at_ms: resetAtMs })
+	if (!parsed.success) {
+		throw new ToolError('Katana returned invalid rate-limit metadata', { code: 'upstream' })
+	}
+	return katanaRateLimitSchema.parse(parsed.data)
+}
+
+export function parseKatanaPage<T>(
+	data: unknown,
+	headers: Headers,
+	itemSchema: z.ZodType<T>,
+	label: string
+): { items: T[]; pagination: KatanaPagination; rate_limit?: KatanaRateLimit } {
+	const parsedItems = z.array(itemSchema).safeParse(data)
+	if (!parsedItems.success) {
+		throw new ToolError(`Katana returned an invalid ${label} array`, {
+			code: 'upstream',
+			details: { issues: parsedItems.error.issues.map((issue) => issue.message) }
+		})
+	}
+	const rateLimit = parseKatanaRateLimitHeaders(headers)
+	return {
+		items: parsedItems.data,
+		pagination: parseKatanaPaginationHeader(headers),
+		...(rateLimit && { rate_limit: rateLimit })
+	}
+}
 
 export function pageFromCursor(cursor: string | undefined): number {
 	if (!cursor) return 1
@@ -42,21 +114,6 @@ export function pageFromCursor(cursor: string | undefined): number {
 		throw new ToolError('Invalid list cursor', { code: 'bad_input', details: { cursor } })
 	}
 	return n
-}
-
-export function listPageMeta(
-	page: number,
-	limit: number,
-	itemCount: number,
-	totalPages: number | undefined
-): { next_cursor?: string; truncated: boolean } {
-	if (typeof totalPages === 'number' && totalPages > page) {
-		return { next_cursor: String(page + 1), truncated: true }
-	}
-	if (itemCount >= limit && totalPages === undefined) {
-		return { next_cursor: String(page + 1), truncated: true }
-	}
-	return { truncated: false }
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -78,41 +135,21 @@ function optionalBoolean(value: unknown): boolean | undefined {
 }
 
 export function unwrapResource(data: unknown): unknown {
-	if (isPlainObject(data) && 'data' in data) {
-		return data['data']
+	const parsed = z.looseObject({ data: z.unknown().optional() }).safeParse(data)
+	if (parsed.success && 'data' in parsed.data) {
+		return parsed.data.data
 	}
 	return data
 }
 
-export function parseListEnvelope<T>(
-	data: unknown,
-	parseItem: (value: unknown) => T,
-	label: string
-): { items: T[]; totalPages?: number } {
-	if (Array.isArray(data)) {
-		return { items: data.map(parseItem) }
-	}
-	if (!isPlainObject(data)) {
-		throw new ToolError(`Katana returned an unexpected ${label} payload`, { code: 'upstream' })
-	}
-	const rows = data['data']
-	if (!Array.isArray(rows)) {
-		throw new ToolError(`Katana ${label} missing data array`, { code: 'upstream' })
-	}
-	const pagination = data['pagination']
-	let totalPages: number | undefined
-	if (isPlainObject(pagination) && typeof pagination['total_pages'] === 'number') {
-		totalPages = pagination['total_pages']
-	}
-	return { items: rows.map(parseItem), ...(totalPages !== undefined && { totalPages }) }
-}
-
 // ── Resource parsers ────────────────────────────────────────────────────────
 
-export function parseSalesOrder(value: unknown): KatanaSalesOrder {
-	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+export function parseSalesOrder(input: unknown): KatanaSalesOrder {
+	const parsed = katanaRawRecordSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid sales order', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const totalRaw = value['total'] ?? value['total_price']
 	const total = optionalNumber(totalRaw)
 	const orderNo = optionalString(value['order_no'])
@@ -146,12 +183,6 @@ export function parseSalesOrder(value: unknown): KatanaSalesOrder {
  * Spike (Katana docs): `created_at_min` / `created_at_max` only — no `order_created_date` list filter.
  * `order_created_*` scopes are applied client-side after list (see matchOrderCreatedDateScope).
  */
-export function salesOrderListDateQuery(scope: KatanaQuerySalesOrderScope): Record<string, string> {
-	const out: Record<string, string> = {}
-	if (scope.created_from) out['created_at_min'] = scope.created_from
-	return out
-}
-
 /** Client-side filter for order_created_date when the list endpoint cannot express it. */
 export function matchOrderCreatedDateScope(
 	orderCreatedDate: string | undefined,
@@ -201,10 +232,12 @@ export type ParsedSalesOrderRow = {
 	unit_cost?: number
 }
 
-export function parseSalesOrderRow(value: unknown): ParsedSalesOrderRow {
-	if (!isPlainObject(value)) {
+export function parseSalesOrderRow(input: unknown): ParsedSalesOrderRow {
+	const parsed = z.looseObject({}).safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid sales order row', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const salesOrderId = optionalNumber(value['sales_order_id'])
 	const quantity = optionalNumber(value['quantity'])
 	if (salesOrderId === undefined || quantity === undefined) {
@@ -216,12 +249,13 @@ export function parseSalesOrderRow(value: unknown): ParsedSalesOrderRow {
 	const variant = value['variant']
 	let sku = optionalString(value['sku'])
 	let unitCost: number | undefined
-	if (isPlainObject(variant)) {
-		sku = sku ?? optionalString(variant['sku'])
+	const parsedVariant = z.looseObject({}).safeParse(variant)
+	if (parsedVariant.success) {
+		sku = sku ?? optionalString(parsedVariant.data['sku'])
 		unitCost =
-			optionalNumber(variant['purchase_price']) ??
-			optionalNumber(variant['average_cost']) ??
-			optionalNumber(variant['cost_per_unit'])
+			optionalNumber(parsedVariant.data['purchase_price']) ??
+			optionalNumber(parsedVariant.data['average_cost']) ??
+			optionalNumber(parsedVariant.data['cost_per_unit'])
 	}
 	return {
 		sales_order_id: salesOrderId,
@@ -262,14 +296,16 @@ export function normalizeSalesOrderHeader(
 
 /** Parse optional created_at onto a sales order (used by composite enrichment). */
 export function parseSalesOrderCreatedAt(value: unknown): string | undefined {
-	if (!isPlainObject(value)) return undefined
-	return optionalString(value['created_at'])
+	const parsed = z.looseObject({ created_at: z.string().optional() }).safeParse(value)
+	return parsed.success ? parsed.data.created_at : undefined
 }
 
-export function parseProduct(value: unknown): KatanaProduct {
-	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+export function parseProduct(input: unknown): KatanaProduct {
+	const parsed = katanaRawRecordSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid product', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const name = optionalString(value['name'])
 	const uom = optionalString(value['uom'])
 	const categoryName = optionalString(value['category_name'])
@@ -293,10 +329,12 @@ export function parseProduct(value: unknown): KatanaProduct {
 	}
 }
 
-export function parseMaterial(value: unknown): KatanaMaterial {
-	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+export function parseMaterial(input: unknown): KatanaMaterial {
+	const parsed = katanaRawRecordSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid material', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const name = optionalString(value['name'])
 	const uom = optionalString(value['uom'])
 	const categoryName = optionalString(value['category_name'])
@@ -316,10 +354,12 @@ export function parseMaterial(value: unknown): KatanaMaterial {
 	}
 }
 
-export function parseCustomer(value: unknown): KatanaCustomer {
-	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+export function parseCustomer(input: unknown): KatanaCustomer {
+	const parsed = katanaRawRecordSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid customer', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const name = optionalString(value['name'])
 	const firstName = optionalString(value['first_name'])
 	const lastName = optionalString(value['last_name'])
@@ -345,10 +385,12 @@ export function parseCustomer(value: unknown): KatanaCustomer {
 	}
 }
 
-export function parseSupplier(value: unknown): KatanaSupplier {
-	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+export function parseSupplier(input: unknown): KatanaSupplier {
+	const parsed = katanaRawRecordSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid supplier', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const name = optionalString(value['name'])
 	const email = optionalString(value['email'])
 	const phone = optionalString(value['phone'])
@@ -364,10 +406,12 @@ export function parseSupplier(value: unknown): KatanaSupplier {
 	}
 }
 
-export function parsePurchaseOrder(value: unknown): KatanaPurchaseOrder {
-	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+export function parsePurchaseOrder(input: unknown): KatanaPurchaseOrder {
+	const parsed = katanaRawRecordSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid purchase order', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const orderNo = optionalString(value['order_no'])
 	const status = optionalString(value['status'])
 	const supplierId = optionalNumber(value['supplier_id'])
@@ -393,10 +437,12 @@ export function parsePurchaseOrder(value: unknown): KatanaPurchaseOrder {
 	}
 }
 
-export function parseManufacturingOrder(value: unknown): KatanaManufacturingOrder {
-	if (!isPlainObject(value) || typeof value['id'] !== 'number') {
+export function parseManufacturingOrder(input: unknown): KatanaManufacturingOrder {
+	const parsed = katanaRawRecordSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid manufacturing order', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const orderNo = optionalString(value['order_no'])
 	const status = optionalString(value['status'])
 	const variantId = optionalNumber(value['variant_id'])
@@ -424,10 +470,12 @@ export function parseManufacturingOrder(value: unknown): KatanaManufacturingOrde
 	}
 }
 
-export function parseInventory(value: unknown): KatanaInventory {
-	if (!isPlainObject(value) || typeof value['variant_id'] !== 'number' || typeof value['location_id'] !== 'number') {
+export function parseInventory(input: unknown): KatanaInventory {
+	const parsed = katanaInventoryRawSchema.safeParse(input)
+	if (!parsed.success) {
 		throw new ToolError('Katana returned an invalid inventory row', { code: 'upstream' })
 	}
+	const value = parsed.data
 	const quantityInStock = optionalNumber(value['quantity_in_stock'])
 	const quantityCommitted = optionalNumber(value['quantity_committed'])
 	const quantityExpected = optionalNumber(value['quantity_expected'])

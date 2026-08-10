@@ -112,7 +112,7 @@ export const amazonSpApiListReportsTool = defineTool({
 	id: 'amazon-sp-api-list-reports',
 	name: 'amazonSpApiListReports',
 	description:
-		'List Amazon SP-API reports with optional type, status, marketplace, and created-time filters. Paginate with next_cursor.',
+		'List Amazon SP-API reports. Initial calls require report types and may use status, marketplace, and created-time filters. Continue with next_cursor.',
 	inputSchema: amazonSpApiListReportsInputSchema,
 	outputSchema: amazonSpApiListReportsOutputSchema,
 	sideEffect: 'read',

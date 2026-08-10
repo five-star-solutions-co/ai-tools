@@ -8,6 +8,7 @@ import Papa from 'papaparse'
 
 import { ToolError } from '../../../core/errors'
 import type { AmazonSpApiSettlementSummary } from '../contracts'
+import { decompressReportDocumentBytes } from './report-document'
 
 /** Report type for Flat File V2 Settlement (auto-scheduled by Amazon). */
 export const SETTLEMENT_REPORT_TYPE_V2 = 'GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE_V2'
@@ -77,38 +78,21 @@ export function parseUsMoneyToSafeCents(raw: string): number {
 	return n
 }
 
-/** Copy into a fresh ArrayBuffer so Blob accepts it under exact DOM typings. */
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-	const copy = new Uint8Array(bytes.byteLength)
-	copy.set(bytes)
-	return copy.buffer
-}
-
-/** Decompress GZIP when report document uses compressionAlgorithm GZIP (Web DecompressionStream). */
+/** Decompress GZIP when report document uses compressionAlgorithm GZIP. */
 export async function maybeGunzipReportBytes(
 	bytes: Uint8Array,
 	compressionAlgorithm: string | undefined
 ): Promise<Uint8Array> {
-	if (!compressionAlgorithm) return bytes
-	const algo = compressionAlgorithm.toUpperCase()
-	if (algo !== 'GZIP') {
-		settlementError(`Unsupported settlement report compression: ${algo}`, 'upstream')
-	}
 	if (bytes.byteLength > SETTLEMENT_MAX_COMPRESSED_BYTES) {
 		settlementError('Settlement report compressed body exceeds limit', 'too_large')
 	}
-	if (typeof DecompressionStream === 'undefined') {
-		settlementError('GZIP decompression is not available in this runtime', 'unsupported')
-	}
 	try {
-		const stream = new Blob([toArrayBuffer(bytes)]).stream().pipeThrough(new DecompressionStream('gzip'))
-		const buffer = await new Response(stream).arrayBuffer()
-		if (buffer.byteLength > SETTLEMENT_MAX_DECOMPRESSED_BYTES) {
+		return await decompressReportDocumentBytes(bytes, compressionAlgorithm, SETTLEMENT_MAX_DECOMPRESSED_BYTES)
+	} catch (error) {
+		if (error instanceof ToolError && error.code === 'too_large') {
 			settlementError('Settlement report decompressed body exceeds limit', 'too_large')
 		}
-		return new Uint8Array(buffer)
-	} catch (error) {
-		if (error instanceof ToolError) throw error
+		if (error instanceof ToolError && error.code === 'unsupported') throw error
 		settlementError('Failed to decompress settlement report', 'upstream')
 	}
 }
