@@ -15,37 +15,70 @@
 | MinIO S3 | 9000 / UI 9001 | compose |
 | Gotenberg | 3000 | compose |
 
-### One-shot e2e (recommended)
+### Recommended local workflow (reuse stack)
+
+Stack is **left running** by default so iterative runs stay fast.
 
 ```bash
 cd /Users/harryy/Desktop/hariom/ai-tools
 # needs: Docker + bun on PATH (supabase via bunx)
+
+# once per machine/session — skips start when already healthy
+bun run integration:up
+
+# full suite (reuses healthy stack; does not tear down)
 bun run integration:e2e
+
+# subset / single file (CLI)
+bun run integration:e2e -- s3.live
+bun run integration:e2e -- test/integration/vendors/resend.live.test.ts
+bun run test:integration -- test/integration/vendors/s3.live.test.ts
+
+# when finished
+bun run integration:down
 ```
 
-`scripts/integration-e2e.ts` (Bun) runs in parallel where possible:
+`scripts/integration-e2e.ts`:
 
-1. **parallel up:** `docker compose up -d --wait` + `bunx supabase start` (`Promise.all`)
-2. `bun run integration:env` → **in-place upsert** of API URL, DB URL, service_role + compose defaults into `.env` (existing keys rewritten where they sit; missing keys appended once; no secrets printed)
-3. **parallel tests:** `bun test --parallel --max-concurrency=<cpu>`
-4. **parallel down:** compose + `bunx supabase stop` (always, even on failure)
+1. **ensure up** (compose + supabase in parallel; **skip** when qdrant/minio healthy and `supabase status` ready)
+2. `integration:env` → **in-place upsert** of API URL, DB URL, service_role into `.env`
+3. **tests:** `bun test --parallel` (optional path / `-t` filters after `--`)
+4. **leave stack up** unless `--down` (or `bun run integration:e2e:ci`)
 
-`bun run integration:up` also ends with `integration:env` so Supabase/local defaults stay updated without duplicating lines.
+Flags:
 
-Manual parallel helpers:
+| Flag | Meaning |
+| --- | --- |
+| *(default)* | ensure stack if needed, run tests, **keep stack** |
+| `--down` | tear down compose + supabase after tests |
+| `--no-up` | tests only (stack already running) |
+| `--up-only` | ensure stack + `.env` only |
+| `--force` | force start even when healthy |
 
-```bash
-bun run integration:up      # compose + supabase in parallel
-bun run integration:down    # both in parallel
-```
+### WebStorm / IDE (list + run individual tests)
+
+Do **not** wire WebStorm to `integration:e2e` — that is a shell orchestrator, so the IDE cannot expand a per-test tree from it.
+
+Use the **Bun test** runner on real files under `test/integration/`:
+
+1. Once: `bun run integration:up` (terminal; leaves Docker/Supabase up)
+2. In WebStorm: open any `test/integration/**/*.live.test.ts`
+3. Use gutter icons / right-click **Run** on `describe` / `test` / file
+4. Or create a **Bun Test** run configuration:
+   - Working directory: project root
+   - Test file / directory: `test/integration` (or a single `*.live.test.ts`)
+   - Bun loads `.env` automatically from the project root
+5. Optional: second config for unit tests only (`test/*.test.ts`, `test/core`, …) matching the `test` script paths
+6. When done: `bun run integration:down`
+
+Missing secrets → suites use `describe.skip` (shown as skipped in the UI, not failed). Local-only suites (MinIO/Qdrant/pure helpers) need the compose/supabase stack when they hit those backends.
 
 ### Manual start / stop
 
 ```bash
-bun run integration:up
-bunx supabase status   # if you need keys yourself
-set -a && source .env && set +a
-bun run test:integration
+bun run integration:up       # compose + supabase; skip if healthy; write .env
+bun run integration:status   # healthy? + compose ps + supabase status
+bun run test:integration     # all live files (stack must be up for local backends)
 bun run integration:down
 ```
 
@@ -137,8 +170,12 @@ The test **always** `deleteWebhook` in `finally` (drops pending updates). Do not
 
 ```bash
 bun test                    # unit only (default CI gate)
+bun run integration:up      # ensure local stack + .env (skip if healthy)
 bun run test:integration    # live under test/integration/vendors + seams
 bun test test/integration/vendors/resend.live.test.ts
+bun run integration:e2e     # ensure + full live suite; leave stack up
+bun run integration:e2e:ci  # same but --down after (CI / clean teardown)
+bun run integration:down
 ```
 
 ---

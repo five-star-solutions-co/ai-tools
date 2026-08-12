@@ -6,11 +6,11 @@ function reportDocumentError(message: string, code: 'too_large' | 'unsupported' 
 	throw new ToolError(message, { code })
 }
 
-export async function decompressReportDocumentBytes(
+export function decompressReportDocumentBytes(
 	bytes: Uint8Array,
 	compressionAlgorithm: string | undefined,
 	maxBytes: number
-): Promise<Uint8Array> {
+): Uint8Array {
 	if (bytes.byteLength > maxBytes) {
 		reportDocumentError('Amazon report document exceeds max_bytes', 'too_large')
 	}

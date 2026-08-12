@@ -79,15 +79,12 @@ export function parseUsMoneyToSafeCents(raw: string): number {
 }
 
 /** Decompress GZIP when report document uses compressionAlgorithm GZIP. */
-export async function maybeGunzipReportBytes(
-	bytes: Uint8Array,
-	compressionAlgorithm: string | undefined
-): Promise<Uint8Array> {
+export function maybeGunzipReportBytes(bytes: Uint8Array, compressionAlgorithm: string | undefined): Uint8Array {
 	if (bytes.byteLength > SETTLEMENT_MAX_COMPRESSED_BYTES) {
 		settlementError('Settlement report compressed body exceeds limit', 'too_large')
 	}
 	try {
-		return await decompressReportDocumentBytes(bytes, compressionAlgorithm, SETTLEMENT_MAX_DECOMPRESSED_BYTES)
+		return decompressReportDocumentBytes(bytes, compressionAlgorithm, SETTLEMENT_MAX_DECOMPRESSED_BYTES)
 	} catch (error) {
 		if (error instanceof ToolError && error.code === 'too_large') {
 			settlementError('Settlement report decompressed body exceeds limit', 'too_large')
@@ -214,14 +211,14 @@ export function parseSettlementV2Tsv(text: string): AmazonSpApiSettlementSummary
 }
 
 /** Decode UTF-8 document bytes (after optional gunzip) and parse summary. */
-export async function summarizeSettlementDocument(
+export function summarizeSettlementDocument(
 	bytes: Uint8Array,
 	compressionAlgorithm: string | undefined
-): Promise<AmazonSpApiSettlementSummary> {
+): AmazonSpApiSettlementSummary {
 	if (!compressionAlgorithm && bytes.byteLength > SETTLEMENT_MAX_DECOMPRESSED_BYTES) {
 		settlementError('Settlement report body exceeds limit', 'too_large')
 	}
-	const plain = await maybeGunzipReportBytes(bytes, compressionAlgorithm)
+	const plain = maybeGunzipReportBytes(bytes, compressionAlgorithm)
 	if (plain.byteLength > SETTLEMENT_MAX_DECOMPRESSED_BYTES) {
 		settlementError('Settlement report body exceeds limit', 'too_large')
 	}

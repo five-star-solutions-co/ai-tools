@@ -436,7 +436,7 @@ export class AmazonSpApiClient {
 			})
 		}
 		const document = await this.getReportDocument({ report_document_id: parsedInput.data.report_document_id })
-		return await this.#downloadReportDocumentDescriptor(document, parsedInput.data.max_bytes)
+		return this.#downloadReportDocumentDescriptor(document, parsedInput.data.max_bytes)
 	}
 
 	async #downloadReportDocumentDescriptor(
@@ -456,7 +456,7 @@ export class AmazonSpApiClient {
 			label: 'Amazon SP-API report document',
 			maxBytes
 		})
-		const bytes = await decompressReportDocumentBytes(result.bytes, compressionAlgorithm, maxBytes)
+		const bytes = decompressReportDocumentBytes(result.bytes, compressionAlgorithm, maxBytes)
 		const contentType = result.headers.get('content-type') ?? undefined
 		const contentEncoding = result.headers.get('content-encoding') ?? undefined
 		return {
@@ -484,7 +484,7 @@ export class AmazonSpApiClient {
 			label: 'Amazon SP-API settlement document',
 			maxBytes: SETTLEMENT_MAX_COMPRESSED_BYTES
 		})
-		return await summarizeSettlementDocument(bytes, doc.compression_algorithm)
+		return summarizeSettlementDocument(bytes, doc.compression_algorithm)
 	}
 
 	async #resolveSettlementReportDocumentId(input: AmazonSpApiGetSettlementSummaryInput): Promise<string> {

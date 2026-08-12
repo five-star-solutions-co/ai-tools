@@ -2,5 +2,6 @@
 exact = true
 
 [test]
-# Keep unit tests default; add pathIgnorePatterns for future integration suites.
+# Unit script scopes paths; live IT is test/integration/**/*.live.test.ts
+# (run via test:integration / IDE after integration:up — not default `bun test` paths).
 pathIgnorePatterns = ["**/*.integration.test.ts"]

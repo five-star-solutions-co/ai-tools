@@ -1,12 +1,20 @@
 #!/usr/bin/env bun
 /**
- * Full local integration e2e (max parallel with Bun):
- *   compose + supabase up (parallel, compose --wait for health)
+ * Local integration e2e:
+ *   ensure compose + supabase (skip start when healthy)
  *   → write keys into .env in-place (no secret logging)
- *   → bun test --parallel
- *   → compose + supabase down (parallel)
+ *   → bun test --parallel [optional filters]
+ *   → leave stack up by default (use --down for teardown)
  *
  *   bun run integration:e2e
+ *   bun run integration:e2e -- --down
+ *   bun run integration:e2e -- s3.live
+ *   bun run integration:e2e -- test/integration/vendors/resend.live.test.ts
+ *   bun run integration:e2e -- --no-up -t "round-trip"
+ *
+ * WebStorm: prefer `bun run integration:up` once, then run individual
+ * `*.live.test.ts` files via the Bun test runner / gutter (not this script).
+ * See docs/integration-tests.md.
  */
 
 import { $ } from 'bun'
@@ -14,17 +22,14 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { writeIntegrationEnv } from './integration-env'
+import { downStack, ensureStack, log } from './integration-stack'
 
 const root = join(import.meta.dir, '..')
 const envFile = join(root, '.env')
-const composeFile = 'docker-compose.integration.yml'
 const maxConcurrency = navigator.hardwareConcurrency || 8
+const defaultTestRoots = ['test/integration/vendors', 'test/integration/seams'] as const
 
 process.chdir(root)
-
-function log(msg: string): void {
-	console.log(`==> ${msg}`)
-}
 
 function die(msg: string): never {
 	console.error(`error: ${msg}`)
@@ -35,70 +40,61 @@ function need(cmd: string): void {
 	if (!Bun.which(cmd)) die(`missing required command: ${cmd}`)
 }
 
-/** Wait until `supabase status -o env` succeeds (API_URL present). */
-async function waitSupabaseReady(timeoutMs = 180_000): Promise<void> {
-	const deadline = Date.now() + timeoutMs
-	let lastErr = ''
-	while (Date.now() < deadline) {
-		const status = await $`bunx supabase status -o env`.nothrow().quiet()
-		const out = status.stdout.toString()
-		const err = status.stderr.toString()
-		if (status.exitCode === 0 && /API_URL=|SUPABASE_URL=/.test(out)) {
-			log('supabase ready')
-			return
-		}
-		lastErr = (err || out).trim() || `exit ${status.exitCode}`
-		await Bun.sleep(2_000)
-	}
-	die(`supabase not ready within ${timeoutMs / 1000}s: ${lastErr}`)
+type E2eFlags = {
+	down: boolean
+	noUp: boolean
+	upOnly: boolean
+	force: boolean
+	help: boolean
 }
 
-/**
- * Start Supabase (or accept "already running"), then poll until the DB/API are up.
- * `supabase start` often exits non-zero when already running or while db is still starting.
- */
-async function ensureSupabase(): Promise<void> {
-	log('supabase start')
-	const started = await $`bunx supabase start`.nothrow()
-	if (started.exitCode === 0) {
-		log('supabase start ok')
-	} else {
-		const msg = (started.stderr.toString() || started.stdout.toString()).trim()
-		log(`supabase start exit ${started.exitCode} (will wait for ready): ${msg.slice(0, 200)}`)
+function parseArgs(argv: string[]): { flags: E2eFlags; rest: string[] } {
+	const flags: E2eFlags = {
+		down: false,
+		noUp: false,
+		upOnly: false,
+		force: false,
+		help: false
 	}
-	await waitSupabaseReady()
+	const rest: string[] = []
+	for (const arg of argv) {
+		if (arg === '--down') flags.down = true
+		else if (arg === '--no-up') flags.noUp = true
+		else if (arg === '--up-only') flags.upOnly = true
+		else if (arg === '--force') flags.force = true
+		else if (arg === '--help' || arg === '-h') flags.help = true
+		else rest.push(arg)
+	}
+	return { flags, rest }
 }
 
-/**
- * Long-running compose services only. minio-init is one-shot (exits 0) and breaks
- * `docker compose up --wait` if included in the same wait set.
- */
-async function ensureCompose(): Promise<void> {
-	log('compose: qdrant minio (--wait)')
-	const wait = await $`docker compose -f ${composeFile} up -d --wait qdrant minio`.nothrow()
-	if (wait.exitCode !== 0) {
-		const err = (wait.stderr.toString() || wait.stdout.toString()).trim()
-		die(`docker compose up --wait failed (exit ${wait.exitCode}): ${err.slice(0, 400)}`)
-	}
-	log('compose: minio-init (bucket bootstrap)')
-	const init = await $`docker compose -f ${composeFile} up --no-deps minio-init`.nothrow()
-	if (init.exitCode !== 0) {
-		const err = (init.stderr.toString() || init.stdout.toString()).trim()
-		die(`minio-init failed (exit ${init.exitCode}): ${err.slice(0, 400)}`)
-	}
-}
+function printHelp(): void {
+	console.log(`usage: bun scripts/integration-e2e.ts [flags] [bun test args...]
 
-async function stackUp(): Promise<void> {
-	log('up: compose + supabase (parallel)')
-	await Promise.all([ensureCompose(), ensureSupabase()])
-}
+flags:
+  --down       Tear down compose + supabase after tests (default: leave running)
+  --no-up      Skip stack ensure (tests only; stack must already be up)
+  --up-only    Ensure stack + .env only; do not run tests
+  --force      Force compose/supabase start even when healthy
+  -h, --help   Show this help
 
-async function stackDown(): Promise<void> {
-	log('down: compose + supabase (parallel)')
-	await Promise.allSettled([
-		$`docker compose -f ${composeFile} down --remove-orphans`.nothrow().quiet(),
-		$`bunx supabase stop`.nothrow().quiet()
-	])
+bun test args:
+  Any remaining args are passed to \`bun test\` (file globs, -t, etc.).
+  If no path-like args are given, defaults to:
+    test/integration/vendors test/integration/seams
+
+examples:
+  bun run integration:e2e
+  bun run integration:e2e -- --down
+  bun run integration:e2e -- s3.live qdrant.live
+  bun run integration:e2e -- test/integration/vendors/s3.live.test.ts
+  bun run integration:e2e -- --no-up -t "list put"
+
+WebStorm / iterative:
+  bun run integration:up          # once per session
+  # then run individual *.live.test.ts from the IDE
+  bun run integration:down        # when finished
+`)
 }
 
 function loadEnvIntoProcess(): void {
@@ -117,27 +113,55 @@ function loadEnvIntoProcess(): void {
 	}
 }
 
-async function runTests(): Promise<number> {
+/** Build bun test argv: user paths replace defaults; flags alone keep defaults. */
+function buildTestArgs(rest: string[]): string[] {
+	const hasPath = rest.some((a) => !a.startsWith('-'))
+	if (hasPath) return rest
+	return [...rest, ...defaultTestRoots]
+}
+
+async function runTests(rest: string[]): Promise<number> {
+	const testArgs = buildTestArgs(rest)
 	log(`test:integration (bun --parallel --max-concurrency=${maxConcurrency})`)
-	const result =
-		await $`bun test --parallel --max-concurrency=${maxConcurrency} test/integration/vendors test/integration/seams`.nothrow()
+	if (testArgs.length > 0) log(`test args: ${testArgs.join(' ')}`)
+	const result = await $`bun test --parallel --max-concurrency=${maxConcurrency} ${testArgs}`.nothrow()
 	return result.exitCode ?? 1
 }
 
 async function main(): Promise<void> {
+	const { flags, rest } = parseArgs(process.argv.slice(2))
+	if (flags.help) {
+		printHelp()
+		process.exit(0)
+	}
+
 	need('docker')
 	need('bun')
 
 	let exitCode = 0
 	try {
-		await stackUp()
-		await writeIntegrationEnv()
+		if (!flags.noUp) {
+			await ensureStack({ force: flags.force })
+			await writeIntegrationEnv()
+		} else {
+			log('skip stack ensure (--no-up)')
+		}
 		loadEnvIntoProcess()
-		exitCode = await runTests()
-		if (exitCode === 0) log('tests finished OK')
-		else log('tests finished with failures')
+
+		if (flags.upOnly) {
+			log('up-only: stack ready, skipping tests')
+			exitCode = 0
+		} else {
+			exitCode = await runTests(rest)
+			if (exitCode === 0) log('tests finished OK')
+			else log('tests finished with failures')
+		}
 	} finally {
-		await stackDown()
+		if (flags.down) {
+			await downStack()
+		} else {
+			log('stack left running (integration:down to stop; re-run e2e reuses healthy stack)')
+		}
 	}
 	process.exit(exitCode)
 }

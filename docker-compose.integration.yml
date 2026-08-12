@@ -1,9 +1,9 @@
 # Local backends for ai-tools integration tests (non-Supabase).
 # Supabase is started separately: `supabase start` (see supabase/config.toml for ports).
 #
-#   bun run integration:up
-#   set -a && source .env && set +a
-#   bun run test:integration
+#   bun run integration:up          # once; reuses healthy stack
+#   bun run test:integration        # or WebStorm Bun test on *.live.test.ts
+#   bun run integration:down        # when finished
 #
 # Ports bind to 127.0.0.1 only. Not for production.
 
