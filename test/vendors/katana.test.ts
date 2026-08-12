@@ -179,9 +179,14 @@ describe('katana', () => {
 					{ status: 200, headers: paginationHeaders() }
 				)
 			}
-			if (url.includes('/customers/5')) {
-				return new Response(JSON.stringify({ data: { id: 5, name: 'Acme Co', first_name: 'A', last_name: 'C' } }), {
-					status: 200
+			if (url.includes('/customers')) {
+				const query = new URL(url).searchParams
+				expect(query.getAll('ids')).toEqual(['5'])
+				expect(query.get('page')).toBe('1')
+				expect(query.get('limit')).toBe('1')
+				return new Response(JSON.stringify([{ id: 5, name: 'Acme Co', first_name: 'A', last_name: 'C' }]), {
+					status: 200,
+					headers: paginationHeaders()
 				})
 			}
 			return new Response(`unexpected ${url}`, { status: 404 })
@@ -222,7 +227,33 @@ describe('katana', () => {
 			])
 			expect(calls.some((u) => u.includes('/sales_orders'))).toBe(true)
 			expect(calls.some((u) => u.includes('/sales_order_rows'))).toBe(true)
-			expect(calls.some((u) => u.includes('/customers/5'))).toBe(true)
+			expect(calls.some((u) => new URL(u).pathname.endsWith('/customers'))).toBe(true)
+		} finally {
+			restore()
+		}
+	})
+
+	test('gets contacts through the documented ids list filters', async () => {
+		const calls: URL[] = []
+		const restore = mockFetch((url) => {
+			const parsedUrl = new URL(url)
+			calls.push(parsedUrl)
+			const isCustomer = parsedUrl.pathname.endsWith('/customers')
+			const id = isCustomer ? 5 : 7
+			return new Response(JSON.stringify([{ id, name: isCustomer ? 'Acme Co' : 'Parts Co' }]), {
+				status: 200,
+				headers: paginationHeaders()
+			})
+		})
+
+		try {
+			const client = new KatanaClient(auth)
+			expect((await client.getCustomer({ customer_id: 5 })).customer.id).toBe(5)
+			expect((await client.getSupplier({ supplier_id: 7 })).supplier.id).toBe(7)
+			expect(calls.map((url) => url.pathname)).toEqual(['/v1/customers', '/v1/suppliers'])
+			expect(calls[0]?.searchParams.getAll('ids')).toEqual(['5'])
+			expect(calls[1]?.searchParams.getAll('ids')).toEqual(['7'])
+			expect(calls.every((url) => url.searchParams.get('limit') === '1')).toBe(true)
 		} finally {
 			restore()
 		}
@@ -270,8 +301,80 @@ describe('katana', () => {
 		}
 	})
 
+	test('accepts Katana data envelopes without stripping raw records', async () => {
+		const raw = {
+			id: 43,
+			created_at: '2026-01-01T00:00:00Z',
+			updated_at: '2026-02-01T00:00:00Z',
+			provider_added_field: { nested: 'kept' }
+		}
+		const restore = mockFetch(
+			() =>
+				new Response(JSON.stringify({ data: [raw] }), {
+					status: 200,
+					headers: paginationHeaders()
+				})
+		)
+
+		try {
+			const result = await new KatanaClient(auth).listSalesOrdersPage({ page: 1, limit: 1 })
+			expect(result.items).toEqual([raw])
+		} finally {
+			restore()
+		}
+	})
+
+	test('normalizes string-valued X-Pagination metadata', async () => {
+		const restore = mockFetch(
+			() =>
+				new Response(JSON.stringify({ data: [{ id: 44 }] }), {
+					status: 200,
+					headers: {
+						'X-Pagination': JSON.stringify({
+							total_records: '44',
+							total_pages: '4',
+							offset: '22',
+							page: '3',
+							first_page: 'false',
+							last_page: 'false'
+						})
+					}
+				})
+		)
+
+		try {
+			const result = await new KatanaClient(auth).listSalesOrdersPage({ page: 3, limit: 1 })
+			expect(result.pagination).toEqual({
+				total_records: 44,
+				total_pages: 4,
+				offset: 22,
+				page: 3,
+				first_page: false,
+				last_page: false
+			})
+		} finally {
+			restore()
+		}
+	})
+
 	test('fails on missing, malformed, or invalid X-Pagination', async () => {
 		let response = 0
+		const rejectionOf = async (operation: Promise<unknown>): Promise<unknown> => {
+			try {
+				await operation
+			} catch (error) {
+				return error
+			}
+			throw new Error('expected Katana pagination rejection')
+		}
+		const invalidPagination = {
+			total_records: '1',
+			total_pages: '1',
+			offset: '0',
+			page: '1',
+			first_page: 'false',
+			last_page: 'not-a-boolean'
+		}
 		const restore = mockFetch(() => {
 			response += 1
 			if (response === 1) return new Response(JSON.stringify([{ id: 1 }]), { status: 200 })
@@ -283,15 +386,21 @@ describe('katana', () => {
 			}
 			return new Response(JSON.stringify([{ id: 1 }]), {
 				status: 200,
-				headers: { 'X-Pagination': JSON.stringify({ page: 1, last_page: true }) }
+				headers: { 'X-Pagination': JSON.stringify(invalidPagination) }
 			})
 		})
 
 		try {
 			const client = new KatanaClient(auth)
-			expect(client.listCustomersPage()).rejects.toMatchObject({ code: 'upstream' })
-			expect(client.listCustomersPage()).rejects.toMatchObject({ code: 'upstream' })
-			expect(client.listCustomersPage()).rejects.toMatchObject({ code: 'upstream' })
+			expect(await rejectionOf(client.listCustomersPage())).toMatchObject({ code: 'upstream' })
+			expect(await rejectionOf(client.listCustomersPage())).toMatchObject({
+				code: 'upstream',
+				details: { x_pagination: '{not-json' }
+			})
+			expect(await rejectionOf(client.listCustomersPage())).toMatchObject({
+				code: 'upstream',
+				details: { x_pagination: invalidPagination }
+			})
 		} finally {
 			restore()
 		}

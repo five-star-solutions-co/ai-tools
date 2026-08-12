@@ -523,6 +523,7 @@ export class KatanaClient {
 			query: {
 				page: parsedInput.data.page ?? 1,
 				limit: parsedInput.data.limit ?? 50,
+				...(parsedInput.data.ids && { ids: parsedInput.data.ids }),
 				...(parsedInput.data.name && { name: parsedInput.data.name }),
 				...(parsedInput.data.email && { email: parsedInput.data.email }),
 				...(parsedInput.data.created_at_min && { created_at_min: parsedInput.data.created_at_min }),
@@ -537,12 +538,17 @@ export class KatanaClient {
 		return parseKatanaPage(result.data, result.headers, katanaCustomerRawSchema, 'customers')
 	}
 
-	/** GET /customers/{id} */
+	/** GET /customers?ids={id} */
 	async getCustomer(input: KatanaGetCustomerInput): Promise<KatanaGetCustomerOutput> {
-		const { data } = await this.#http.get(`/customers/${input.customer_id}`, {
-			label: 'Katana getCustomer'
-		})
-		return { customer: parseCustomer(unwrapResource(data)) }
+		const page = await this.listCustomersPage({ ids: [input.customer_id], page: 1, limit: 1 })
+		const customer = page.items.find((item) => item.id === input.customer_id)
+		if (!customer) {
+			throw new ToolError('Katana customer not found', {
+				code: 'not_found',
+				details: { customer_id: input.customer_id }
+			})
+		}
+		return { customer: parseCustomer(customer) }
 	}
 
 	/** POST /customers */
@@ -593,6 +599,7 @@ export class KatanaClient {
 			query: {
 				page: parsedInput.data.page ?? 1,
 				limit: parsedInput.data.limit ?? 50,
+				...(parsedInput.data.ids && { ids: parsedInput.data.ids }),
 				...(parsedInput.data.name && { name: parsedInput.data.name }),
 				...(parsedInput.data.created_at_min && { created_at_min: parsedInput.data.created_at_min }),
 				...(parsedInput.data.created_at_max && { created_at_max: parsedInput.data.created_at_max }),
@@ -606,12 +613,17 @@ export class KatanaClient {
 		return parseKatanaPage(result.data, result.headers, katanaSupplierRawSchema, 'suppliers')
 	}
 
-	/** GET /suppliers/{id} */
+	/** GET /suppliers?ids={id} */
 	async getSupplier(input: KatanaGetSupplierInput): Promise<KatanaGetSupplierOutput> {
-		const { data } = await this.#http.get(`/suppliers/${input.supplier_id}`, {
-			label: 'Katana getSupplier'
-		})
-		return { supplier: parseSupplier(unwrapResource(data)) }
+		const page = await this.listSuppliersPage({ ids: [input.supplier_id], page: 1, limit: 1 })
+		const supplier = page.items.find((item) => item.id === input.supplier_id)
+		if (!supplier) {
+			throw new ToolError('Katana supplier not found', {
+				code: 'not_found',
+				details: { supplier_id: input.supplier_id }
+			})
+		}
+		return { supplier: parseSupplier(supplier) }
 	}
 
 	/** POST /suppliers */

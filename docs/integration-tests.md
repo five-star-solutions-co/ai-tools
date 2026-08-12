@@ -82,7 +82,7 @@ Live IT aims for **full public client-method smoke** when env is set (pack-file 
 
 | Area | Policy |
 | --- | --- |
-| **WooCommerce, Katana, Amazon SP-API** | **Read-only only** — list/get/search. **No** create/update/delete/refunds/notes writes / `createReport` |
+| **WooCommerce, Katana, Amazon SP-API** | **Read-only only** — every pack list/get/search/report-read method. **No** create/update/delete/refunds/notes writes / `createReport` |
 | All other vendors + seams | Full public methods that can run without a human-driven inbound interactive event |
 | Missing env | `describe.skip` (not a failure) |
 | Optional secondary resources | Seeded via optional env when self-seed is impossible |
@@ -157,8 +157,8 @@ bun test test/integration/vendors/resend.live.test.ts
 | cloudflare-browser | shared `CF_*` + S3 for render | start/get/stop + optional CDP navigate + renderPdf + renderScreenshot |
 | textract | shared `AWS_*` + `TEXTRACT_BUCKET` + `TEXTRACT_SOURCE_KEY` | extractText + extractTextBatch + getStatus |
 | **woocommerce** | store + consumer key/secret | **read-only** list/get orders/products/customers/coupons/categories |
-| **katana** | `KATANA_API_KEY` | **read-only** list/get entity surfaces + inventory |
-| **amazon-sp-api** | LWA (`AMAZON_CLIENT_*` / refresh) + marketplace/endpoint | **read-only** orders/items/inventory/reports/catalog |
+| **katana** | `KATANA_API_KEY` | **read-only** list/get all entity surfaces + inventory + `querySalesOrders` + host `list*Page` |
+| **amazon-sp-api** | LWA (`AMAZON_CLIENT_*` / refresh) + marketplace/endpoint | **read-only** orders v0 + searchOrders v2026, inventory (+ page), reports (+ page/document/download), settlement summary (soft if none), optional catalog keywords |
 | qdrant | `QDRANT_URL` (+ `QDRANT_COLLECTION`) | upsert/query/delete |
 | pinecone | `PINECONE_API_KEY` + `BASE_URL` (+ dimension) | upsert/query/delete |
 | supabase-vector | shared `SUPABASE_*` | upsert/query/delete |

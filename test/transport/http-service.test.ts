@@ -56,7 +56,11 @@ describe('HttpService', () => {
 			expect.unreachable()
 		} catch (error) {
 			expect(isToolError(error)).toBe(true)
-			if (isToolError(error)) expect(error.code).toBe('not_found')
+			if (isToolError(error)) {
+				expect(error.code).toBe('not_found')
+				expect(error.message).toBe('Example failed with HTTP 404')
+				expect(error.details).toEqual({ status: 404, operation: 'Example' })
+			}
 		} finally {
 			globalThis.fetch = original
 		}

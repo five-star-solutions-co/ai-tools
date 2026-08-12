@@ -52,7 +52,6 @@ describe('amazon-sp-api', () => {
 			'amazon-sp-api-get-order',
 			'amazon-sp-api-get-order-items',
 			'amazon-sp-api-get-report',
-			'amazon-sp-api-get-report-document',
 			'amazon-sp-api-get-settlement-summary',
 			'amazon-sp-api-list-inventory-summaries',
 			'amazon-sp-api-list-orders',

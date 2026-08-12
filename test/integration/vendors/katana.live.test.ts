@@ -1,6 +1,11 @@
 /**
- * Katana live IT — read-only only (no create/update/delete).
- * Note: Katana has no retrieve-by-id for customers or suppliers (list only).
+ * Katana live IT — full read/search surface only (no create/update/delete).
+ *
+ * Read methods exercised:
+ * - list/get sales orders, products, materials, customers, suppliers, purchase orders, manufacturing orders
+ * - list inventory
+ * - querySalesOrders (composite search/report read)
+ * - host page APIs for each list resource (one page each)
  */
 import { describe, expect, test } from 'bun:test'
 
@@ -16,7 +21,7 @@ function client() {
 
 run('live vendor katana (read-only)', () => {
 	test(
-		'list + get where Katana supports retrieve',
+		'list + get entity surfaces',
 		async () => {
 			const c = client()
 
@@ -44,12 +49,21 @@ run('live vendor katana (read-only)', () => {
 				expect(got.material.id).toBe(material.id)
 			}
 
-			// List-only surfaces (Katana API has no GET-by-id for these)
 			const customers = await c.listCustomers({ limit: 1 })
 			expect(Array.isArray(customers.items)).toBe(true)
+			const customer = customers.items[0]
+			if (customer) {
+				const got = await c.getCustomer({ customer_id: customer.id })
+				expect(got.customer.id).toBe(customer.id)
+			}
 
 			const suppliers = await c.listSuppliers({ limit: 1 })
 			expect(Array.isArray(suppliers.items)).toBe(true)
+			const supplier = suppliers.items[0]
+			if (supplier) {
+				const got = await c.getSupplier({ supplier_id: supplier.id })
+				expect(got.supplier.id).toBe(supplier.id)
+			}
 
 			const purchaseOrders = await c.listPurchaseOrders({ limit: 1 })
 			expect(Array.isArray(purchaseOrders.items)).toBe(true)
@@ -68,6 +82,58 @@ run('live vendor katana (read-only)', () => {
 			}
 
 			const inventory = await c.listInventory({ limit: 1 })
+			expect(Array.isArray(inventory.items)).toBe(true)
+		},
+		{ timeout: 90_000 }
+	)
+
+	test(
+		'querySalesOrders composite search (bounded)',
+		async () => {
+			const c = client()
+			const out = await c.querySalesOrders({
+				scopes: [{}],
+				page_size: 5,
+				max_pages_per_list: 1
+			})
+			expect(out).toBeDefined()
+			expect(Array.isArray(out.orders)).toBe(true)
+			expect(typeof out.order_count).toBe('number')
+			expect(out.order_count).toBe(out.orders.length)
+		},
+		{ timeout: 90_000 }
+	)
+
+	test(
+		'host list*Page APIs (one page each)',
+		async () => {
+			const c = client()
+			const page = 1
+			const limit = 1
+
+			const sales = await c.listSalesOrdersPage({ page, limit })
+			expect(Array.isArray(sales.items)).toBe(true)
+			expect(sales.pagination.page).toBe(page)
+
+			const products = await c.listProductsPage({ page, limit })
+			expect(Array.isArray(products.items)).toBe(true)
+
+			const materials = await c.listMaterialsPage({ page, limit })
+			expect(Array.isArray(materials.items)).toBe(true)
+
+			const customers = await c.listCustomersPage({ page, limit })
+			expect(Array.isArray(customers.items)).toBe(true)
+
+			const suppliers = await c.listSuppliersPage({ page, limit })
+			expect(Array.isArray(suppliers.items)).toBe(true)
+
+			const purchaseOrders = await c.listPurchaseOrdersPage({ page, limit })
+			expect(Array.isArray(purchaseOrders.items)).toBe(true)
+
+			const manufacturingOrders = await c.listManufacturingOrdersPage({ page, limit })
+			expect(Array.isArray(manufacturingOrders.items)).toBe(true)
+
+			const inventory = await c.listInventoryPage({ page, limit })
 			expect(Array.isArray(inventory.items)).toBe(true)
 		},
 		{ timeout: 90_000 }

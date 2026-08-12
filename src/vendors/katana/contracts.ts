@@ -45,13 +45,21 @@ export const katanaInventoryRawSchema = z.looseObject({
 	deleted_at: z.string().nullable().optional()
 })
 
+const katanaPaginationIntegerSchema = z
+	.union([z.int(), z.string().regex(/^-?\d+$/)])
+	.transform((value) => (typeof value === 'string' ? Number(value) : value))
+
+const katanaPaginationBooleanSchema = z
+	.union([z.boolean(), z.enum(['true', 'false'])])
+	.transform((value) => (typeof value === 'string' ? value === 'true' : value))
+
 export const katanaPaginationSchema = z.object({
-	total_records: z.number().int().nonnegative(),
-	total_pages: z.number().int().nonnegative(),
-	offset: z.number().int().nonnegative(),
-	page: z.number().int().min(1),
-	first_page: z.boolean(),
-	last_page: z.boolean()
+	total_records: katanaPaginationIntegerSchema.pipe(z.int().nonnegative()),
+	total_pages: katanaPaginationIntegerSchema.pipe(z.int().nonnegative()),
+	offset: katanaPaginationIntegerSchema.pipe(z.int().nonnegative()),
+	page: katanaPaginationIntegerSchema.pipe(z.int().min(1)),
+	first_page: katanaPaginationBooleanSchema,
+	last_page: katanaPaginationBooleanSchema
 })
 
 export const katanaRateLimitSchema = z.object({
@@ -104,6 +112,7 @@ export const katanaListMaterialsPageInputSchema = z.strictObject({
 export const katanaListCustomersPageInputSchema = z.strictObject({
 	page: katanaPageSchema,
 	limit: katanaPageLimitSchema,
+	ids: z.array(z.int().positive()).min(1).optional(),
 	name: z.string().min(1).optional(),
 	email: z.string().min(1).optional(),
 	created_at_min: katanaTimestampFilterSchema,
@@ -116,6 +125,7 @@ export const katanaListCustomersPageInputSchema = z.strictObject({
 export const katanaListSuppliersPageInputSchema = z.strictObject({
 	page: katanaPageSchema,
 	limit: katanaPageLimitSchema,
+	ids: z.array(z.int().positive()).min(1).optional(),
 	name: z.string().min(1).optional(),
 	created_at_min: katanaTimestampFilterSchema,
 	created_at_max: katanaTimestampFilterSchema,

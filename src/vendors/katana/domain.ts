@@ -59,13 +59,20 @@ function parseKatanaPaginationHeader(headers: Headers): KatanaPagination {
 	try {
 		value = JSON.parse(raw)
 	} catch (error) {
-		throw new ToolError('Katana returned malformed X-Pagination JSON', { code: 'upstream', cause: error })
+		throw new ToolError('Katana returned malformed X-Pagination JSON', {
+			code: 'upstream',
+			cause: error,
+			details: { x_pagination: raw }
+		})
 	}
 	const parsed = katanaPaginationSchema.safeParse(value)
 	if (!parsed.success) {
 		throw new ToolError('Katana returned invalid X-Pagination metadata', {
 			code: 'upstream',
-			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+			details: {
+				issues: parsed.error.issues.map((issue) => issue.message),
+				x_pagination: value
+			}
 		})
 	}
 	return parsed.data
@@ -92,7 +99,7 @@ export function parseKatanaPage<T>(
 	itemSchema: z.ZodType<T>,
 	label: string
 ): { items: T[]; pagination: KatanaPagination; rate_limit?: KatanaRateLimit } {
-	const parsedItems = z.array(itemSchema).safeParse(data)
+	const parsedItems = z.array(itemSchema).safeParse(unwrapResource(data))
 	if (!parsedItems.success) {
 		throw new ToolError(`Katana returned an invalid ${label} array`, {
 			code: 'upstream',

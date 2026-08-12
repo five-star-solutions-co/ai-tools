@@ -37,7 +37,6 @@ The client exchanges the refresh token through LWA, caches the complete token re
 | `amazon-sp-api-create-report` | `createReport` | `POST /reports/2021-06-30/reports` |
 | `amazon-sp-api-get-report` | `getReport` | `GET /reports/2021-06-30/reports/{reportId}` |
 | `amazon-sp-api-list-reports` | `listReports` | `GET /reports/2021-06-30/reports` |
-| `amazon-sp-api-get-report-document` | `getReportDocument` | `GET /reports/2021-06-30/documents/{reportDocumentId}` |
 | `amazon-sp-api-get-settlement-summary` | `getSettlementSummary` | Composite: list/get DONE `GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE_V2` → download one document → eight summary fields (cents) |
 | `amazon-sp-api-search-orders` | `searchOrders` | `GET /orders/2026-01-01/orders` (SearchOrders + FULFILLMENT) |
 | `amazon-sp-api-search-catalog-items` | `searchCatalogItems` | `GET /catalog/2022-04-01/items` |
@@ -81,7 +80,7 @@ await client.listReportsPage({ next_token })
 
 An initial request requires 1 to 10 report types. A continuation sends only Amazon's `nextToken`; filters from the initial request are not resent. The result preserves raw report metadata and returns rate-limit and request metadata.
 
-`getReportDocument` retrieves the presigned document descriptor. `downloadReportDocumentBytes` accepts only `report_document_id` and `max_bytes`, resolves the descriptor internally, then privately downloads Amazon's returned URL without SP-API auth headers. It enforces the byte limit on both downloaded and expanded content, supports Amazon's documented `GZIP` compression, and returns bytes, UTF-8 text, and response metadata. Callers cannot supply a download URL. Report metadata is not treated as a warehouse dataset.
+`getReportDocument` remains host-only because its presigned URL grants temporary access to the report body. It is deliberately excluded from `amazonSpApiModule`, so the URL cannot enter model output or agent logs. `downloadReportDocumentBytes` accepts only `report_document_id` and `max_bytes`, resolves the descriptor internally, then privately downloads Amazon's returned URL without SP-API auth headers. It enforces the byte limit on both downloaded and expanded content, supports Amazon's documented `GZIP` compression, and returns bytes, UTF-8 text, and response metadata. Callers cannot supply a download URL. Report metadata is not treated as a warehouse dataset.
 
 ### Settlement summary
 

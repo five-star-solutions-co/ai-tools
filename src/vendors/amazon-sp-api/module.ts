@@ -8,8 +8,6 @@ import {
 	amazonSpApiGetOrderItemsInputSchema,
 	amazonSpApiGetOrderItemsOutputSchema,
 	amazonSpApiGetOrderOutputSchema,
-	amazonSpApiGetReportDocumentInputSchema,
-	amazonSpApiGetReportDocumentOutputSchema,
 	amazonSpApiGetReportInputSchema,
 	amazonSpApiGetReportOutputSchema,
 	amazonSpApiListInventorySummariesInputSchema,
@@ -120,18 +118,6 @@ export const amazonSpApiListReportsTool = defineTool({
 	execute: async (input, ctx) => AmazonSpApiClient.fromContext(ctx).listReports(input)
 })
 
-export const amazonSpApiGetReportDocumentTool = defineTool({
-	id: 'amazon-sp-api-get-report-document',
-	name: 'amazonSpApiGetReportDocument',
-	description:
-		'Get a downloadable Amazon SP-API report document (document_id, url, optional compression_algorithm). Does not download the file body.',
-	inputSchema: amazonSpApiGetReportDocumentInputSchema,
-	outputSchema: amazonSpApiGetReportDocumentOutputSchema,
-	sideEffect: 'read',
-	runtime: 'both',
-	execute: async (input, ctx) => AmazonSpApiClient.fromContext(ctx).getReportDocument(input)
-})
-
 export const amazonSpApiSearchCatalogItemsTool = defineTool({
 	id: 'amazon-sp-api-search-catalog-items',
 	name: 'amazonSpApiSearchCatalogItems',
@@ -160,7 +146,7 @@ export const amazonSpApiModule = defineModule({
 	id: 'amazon-sp-api',
 	title: 'Amazon SP-API',
 	description:
-		'Amazon Selling Partner API vendor pack: orders v0 and SearchOrders v2026, order items, FBA inventory summaries, reports (create/get/list/document), settlement V2 summary, and catalog item search.',
+		'Amazon Selling Partner API vendor pack: orders v0 and SearchOrders v2026, order items, FBA inventory summaries, reports (create/get/list), settlement V2 summary, and catalog item search.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: amazonSpApiAuthSchema },
 	categories: ['commerce', 'amazon'],
@@ -175,7 +161,6 @@ export const amazonSpApiModule = defineModule({
 		amazonSpApiCreateReportTool,
 		amazonSpApiGetReportTool,
 		amazonSpApiListReportsTool,
-		amazonSpApiGetReportDocumentTool,
 		amazonSpApiGetSettlementSummaryTool,
 		amazonSpApiSearchCatalogItemsTool
 	]

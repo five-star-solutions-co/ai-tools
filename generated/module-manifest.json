@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-10T06:57:21.761Z",
+	"generatedAt": "2026-08-12T03:00:42.175Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -125,7 +125,6 @@
 				"amazonSpApiGetOrderTool",
 				"amazonSpApiGetReportDocumentInputSchema",
 				"amazonSpApiGetReportDocumentOutputSchema",
-				"amazonSpApiGetReportDocumentTool",
 				"amazonSpApiGetReportInputSchema",
 				"amazonSpApiGetReportOutputSchema",
 				"amazonSpApiGetReportTool",

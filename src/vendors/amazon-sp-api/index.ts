@@ -96,7 +96,6 @@ export {
 	amazonSpApiCreateReportTool,
 	amazonSpApiGetOrderItemsTool,
 	amazonSpApiGetOrderTool,
-	amazonSpApiGetReportDocumentTool,
 	amazonSpApiGetReportTool,
 	amazonSpApiGetSettlementSummaryTool,
 	amazonSpApiListInventorySummariesTool,
