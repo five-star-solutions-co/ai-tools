@@ -37,8 +37,7 @@ function client() {
 		client_secret: clientSecret!,
 		refresh_token: refreshToken!,
 		endpoint: ep,
-		marketplace_ids: marketplaceIds!.split(',').map((s) => s.trim()),
-		user_agent: '@5ss/ai-tools-live-test'
+		marketplace_ids: marketplaceIds!.split(',').map((s) => s.trim())
 	})
 }
 

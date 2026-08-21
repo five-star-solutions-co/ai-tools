@@ -20,11 +20,10 @@ Deliberate surface: **orders** (v0 list/get/items + SearchOrders v2026 with FULF
     | 'https://sellingpartnerapi-eu.amazon.com'
     | 'https://sellingpartnerapi-fe.amazon.com'
   marketplace_ids?: string[]  // default marketplaces for tools
-  user_agent: string           // application identity sent to SP-API
 }
 ```
 
-The client exchanges the refresh token through LWA, caches the complete token response according to `expires_in`, and refreshes slightly early. SP-API calls use `HttpService` with `x-amz-access-token` and `user-agent`. IAM credentials and SigV4 are not used.
+The client exchanges the refresh token through LWA, caches the complete token response according to `expires_in`, and refreshes slightly early. SP-API calls use `HttpService` with `x-amz-access-token`. IAM credentials and SigV4 are not used.
 
 ## Tools
 
@@ -105,7 +104,6 @@ new AmazonSpApiClient({
   refresh_token: '…',
   endpoint: 'https://sellingpartnerapi-na.amazon.com',
   marketplace_ids: ['ATVPDKIKX0DER'],
-  user_agent: 'five-star-solutions/1.0',
 })
 
 withAuth(amazonSpApiModule, { /* same */ })

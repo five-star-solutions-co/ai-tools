@@ -102,7 +102,6 @@ export class AmazonSpApiClient {
 		this.#api = new HttpService({
 			...options,
 			baseURL: this.#auth.endpoint,
-			headers: { 'user-agent': this.#auth.user_agent },
 			label: 'Amazon SP-API'
 		})
 		this.#download = new HttpService({

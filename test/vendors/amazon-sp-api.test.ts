@@ -40,8 +40,7 @@ const auth = {
 	client_secret: 'secret',
 	refresh_token: 'Atzr|refresh',
 	endpoint: 'https://sellingpartnerapi-na.amazon.com' as const,
-	marketplace_ids: ['ATVPDKIKX0DER'],
-	user_agent: 'five-star-solutions/1.0'
+	marketplace_ids: ['ATVPDKIKX0DER']
 }
 
 describe('amazon-sp-api', () => {
@@ -319,7 +318,6 @@ describe('amazon-sp-api', () => {
 			}
 			apiCalls += 1
 			expect(headers.get('x-amz-access-token')).toBe(`token-${apiCalls}`)
-			expect(headers.get('user-agent')).toBe(auth.user_agent)
 			expect(headers.has('authorization')).toBe(false)
 			expect(headers.has('x-amz-date')).toBe(false)
 			expect(url).not.toContain('X-Amz-Signature')

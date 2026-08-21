@@ -16,8 +16,7 @@ export const amazonSpApiAuthSchema = z.object({
 		.array(z.string().min(1))
 		.min(1)
 		.optional()
-		.describe('Default marketplace ids when a tool call omits marketplace_ids'),
-	user_agent: z.string().min(1).describe('Application user agent sent with every SP-API request')
+		.describe('Default marketplace ids when a tool call omits marketplace_ids')
 })
 
 export type AmazonSpApiAuth = z.infer<typeof amazonSpApiAuthSchema>
