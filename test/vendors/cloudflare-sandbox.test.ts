@@ -384,7 +384,7 @@ describe('cloudflare-sandbox', () => {
 		}
 	})
 
-	test('mount R2 binding mode omits endpoint and credentials', async () => {
+	test('mount R2 binding mode sends the Worker binding and omits endpoint credentials', async () => {
 		let mountBody: Record<string, unknown> | undefined
 		const restore = mockFetch(async (input, init) => {
 			const req = asRequest(input, init)
@@ -403,8 +403,9 @@ describe('cloudflare-sandbox', () => {
 				mount_path: '/data'
 			})
 			expect(mountBody).toEqual({
-				bucket: 'MY_BUCKET',
-				mountPath: '/data'
+				binding: 'MY_BUCKET',
+				mountPath: '/data',
+				options: {}
 			})
 		} finally {
 			restore()

@@ -418,10 +418,11 @@ export class CloudflareSandboxClient {
 		}
 
 		const body: Record<string, unknown> = {
-			bucket: data.bucket,
-			mountPath: data.mount_path
+			mountPath: data.mount_path,
+			options
 		}
-		if (Object.keys(options).length > 0) body['options'] = options
+		if (endpoint) body['bucket'] = data.bucket
+		else body['binding'] = data.bucket
 
 		await this.#http.post(`/v1/sandbox/${encodeURIComponent(data.sandbox_id)}/mount`, body, {
 			label: 'Cloudflare Sandbox mount'
