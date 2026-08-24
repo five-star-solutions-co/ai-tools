@@ -1,5 +1,5 @@
 /**
- * ArtifactRef creation and bounded read contracts.
+ * ArtifactRef creation and read contracts.
  * Host-mapped and object-store backends share the same model-facing verbs.
  */
 
@@ -58,20 +58,13 @@ export const artifactsReadRangeOutputSchema = z.object({
 	media_type: z.string().optional()
 })
 
-export const artifactsReadLinesInputSchema = z
-	.object({
-		source: artifactRefSchema.describe('UTF-8 text artifact to read'),
-		start_line: z.int().min(1).describe('Inclusive one-based start line'),
-		end_line: z.int().min(1).describe('Inclusive one-based end line')
-	})
-	.refine((input) => input.end_line >= input.start_line, {
-		path: ['end_line'],
-		message: 'end_line must be greater than or equal to start_line'
-	})
+export const artifactsReadLinesInputSchema = z.object({
+	source: artifactRefSchema.describe('UTF-8 text artifact to read')
+})
 
 export const artifactsReadLinesOutputSchema = z.object({
 	source: artifactRefSchema,
-	text: z.string().describe('Selected UTF-8 lines'),
+	text: z.string().describe('Complete UTF-8 text content'),
 	start_line: z.int().min(1),
 	end_line: z.int().min(1),
 	total_lines: z.int().min(0)

@@ -99,7 +99,7 @@ describe('artifacts', () => {
 		expect(result.total_bytes).toBe(11)
 	})
 
-	test('object provider reads an inclusive UTF-8 line range', async () => {
+	test('object provider reads a complete UTF-8 text artifact', async () => {
 		const text = 'one\ntwo\nthree\nfour'
 		const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 			const request = asRequest(input, init)
@@ -117,16 +117,12 @@ describe('artifacts', () => {
 
 		const result = await runTool(
 			artifactsReadLinesTool,
-			{
-				source: { store: 'object', key: 'lines.txt' },
-				start_line: 2,
-				end_line: 3
-			},
+			{ source: { store: 'object', key: 'lines.txt' } },
 			{ auth: { provider: 'object', storage }, fetch }
 		)
-		expect(result.text).toBe('two\nthree')
-		expect(result.start_line).toBe(2)
-		expect(result.end_line).toBe(3)
+		expect(result.text).toBe(text)
+		expect(result.start_line).toBe(1)
+		expect(result.end_line).toBe(4)
 		expect(result.total_lines).toBe(4)
 	})
 
@@ -181,8 +177,8 @@ describe('artifacts', () => {
 			readLines: async (input) => ({
 				source: input.source,
 				text: 'line',
-				start_line: input.start_line,
-				end_line: input.start_line,
+				start_line: 1,
+				end_line: 1,
 				total_lines: 1
 			})
 		}
@@ -198,11 +194,7 @@ describe('artifacts', () => {
 		)
 		expect(range.body_base64).toBe('YWJj')
 
-		const lines = await runTool(
-			artifactsReadLinesTool,
-			{ source: created.artifact, start_line: 1, end_line: 1 },
-			{ auth }
-		)
+		const lines = await runTool(artifactsReadLinesTool, { source: created.artifact }, { auth })
 		expect(lines.text).toBe('line')
 		expect(asRecord(lines.source)['store']).toBe('host')
 	})
@@ -222,8 +214,8 @@ describe('artifacts', () => {
 			readLines: async (input) => ({
 				source: input.source,
 				text: '',
-				start_line: input.start_line,
-				end_line: input.start_line,
+				start_line: 1,
+				end_line: 1,
 				total_lines: 0
 			}),
 			resolve: async (input) => {

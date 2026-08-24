@@ -41,7 +41,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `content-type` | Done | pure type ↔ extension |
 | `email-message` | Done | pure parse/build MIME |
 | `files` | Done | path root over nested S3: list/search/stat/get/put/delete/copy/move/mkdir + multipart |
-| `artifacts` | Done | object + host providers; create and bounded byte/line reads |
+| `artifacts` | Done | object + host providers; create, bounded byte reads, and complete UTF-8 text reads |
 | `document-render` | Done | cloudflare-browser only |
 | `vendors/gotenberg` | **Removed** | Self-host print/convert vendor deleted |
 | `vector-store` / `rag` | Done | qdrant+pinecone+supabase+mastra; chunk/embed/retrieve |

@@ -649,7 +649,7 @@ Full lock: [`docs/specs/host-integration-kernel.md`](../specs/host-integration-k
 | H-03 | Generic hooks | **Done** — `withHooks` / hooks on bind |
 | H-04 | Richer `ToolMeta` | **Done** — additive host hints + catalog |
 | H-05 | Registry + catalog discovery | **Tabled.** Search/read over registered tools; prefer names `catalog-search-tools` / `catalog-read-tool` (not “meta tools”) |
-| H-06 | Public artifacts surface | **Done**: `@5ss/ai-tools/artifacts` with object/host providers and bounded range/line/create tools |
+| H-06 | Public artifacts surface | **Done**: `@5ss/ai-tools/artifacts` with object/host providers and create, bounded byte-range, and complete UTF-8 text-read tools |
 | H-07 | Task contracts | **Done**: host-backed task-definition Zod contracts and CRUD tools; no host persistence code |
 | H-08 | Scheduler + EventBridge provider | **Done**: scheduler seam over the EventBridge vendor; single provider by explicit product decision |
 | H-09 | Bedrock AgentCore packs | **Done** — `bedrock-agentcore-code-interpreter` + `bedrock-agentcore-browser` vendors |

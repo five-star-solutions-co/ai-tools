@@ -6,10 +6,10 @@
 | **Kind** | capability **seam** (`src/modules/artifacts`) |
 | **Module id** | `artifacts` |
 | **Providers** | `object`, `host` |
-| **Tools** | create, bounded byte-range read, bounded line read |
+| **Tools** | create, bounded byte-range read, complete UTF-8 text read |
 
-Portable `ArtifactRef` creation, validation, output discovery, bounded model reads,
-and host-facing byte resolution. The package keeps large or arbitrary file reads
+Portable `ArtifactRef` creation, validation, output discovery, size-bounded model reads,
+and host-facing byte resolution. The package keeps oversized or arbitrary file reads
 out of the model-facing surface.
 
 ## Tools
@@ -18,9 +18,10 @@ out of the model-facing surface.
 | --- | --- |
 | `artifacts-create` | Create a small artifact from UTF-8 or base64 content |
 | `artifacts-read-range` | Read an explicit inclusive byte range as base64 |
-| `artifacts-read-lines` | Read an explicit inclusive line range from UTF-8 text |
+| `artifacts-read-lines` | Read the complete contents of a UTF-8 text artifact |
 
-Create and read ranges are capped by `MAX_ARTIFACT_CREATE_BYTES` and `MAX_ARTIFACT_READ_BYTES`. Use multipart file tools for larger writes.
+Creates and text reads are capped by `MAX_ARTIFACT_CREATE_BYTES` and `MAX_ARTIFACT_READ_BYTES`.
+Byte reads are also capped by `MAX_ARTIFACT_READ_BYTES`. Use multipart file tools for larger writes.
 
 ## Structured-output discovery
 

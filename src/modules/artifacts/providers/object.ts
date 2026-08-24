@@ -85,18 +85,11 @@ export class ObjectArtifactsProvider implements ArtifactsClientOps {
 		requireObjectSource(input.source.store)
 		const bytes = await this.#storage.getBytes(input.source.key, { maxBytes: MAX_ARTIFACT_READ_BYTES })
 		const lines = textLines(bytesToUtf8(bytes))
-		if (input.start_line > lines.length) {
-			throw new ToolError('start_line is beyond the end of the artifact', {
-				code: 'bad_input',
-				details: { start_line: input.start_line, total_lines: lines.length }
-			})
-		}
-		const selected = lines.slice(input.start_line - 1, input.end_line)
 		return {
 			source: input.source,
-			text: selected.join('\n'),
-			start_line: input.start_line,
-			end_line: input.start_line + selected.length - 1,
+			text: lines.join('\n'),
+			start_line: 1,
+			end_line: lines.length,
 			total_lines: lines.length
 		}
 	}

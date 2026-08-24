@@ -127,7 +127,7 @@ src/modules/<capability>/
 | Module | Providers (today) | Notes |
 | --- | --- | --- |
 | `files` | nested S3 `storage` + `root_prefix` | Path-rooted manage over S3Client |
-| `artifacts` | object, host | ArtifactRef create + bounded byte/line reads |
+| `artifacts` | object, host | ArtifactRef create + bounded byte reads + complete UTF-8 text reads |
 | `email` | resend, cloudflare | Thin send/batch seam over email vendors |
 | `messaging` | telegram, slack, teams, imessage | Thin shared channel verbs over chat vendors |
 | `document-extract` | textract | ArtifactRef text extract |

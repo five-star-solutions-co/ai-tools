@@ -37,8 +37,7 @@ export const artifactsReadRangeTool = defineTool({
 export const artifactsReadLinesTool = defineTool({
 	id: 'artifacts-read-lines',
 	name: 'readArtifactLines',
-	description:
-		'Read an explicit inclusive line range from a UTF-8 text artifact. Use for bounded inspection instead of loading the whole file into context.',
+	description: 'Read the complete contents of a UTF-8 text artifact, bounded by the artifact read-size limit.',
 	inputSchema: artifactsReadLinesInputSchema,
 	outputSchema: artifactsReadLinesOutputSchema,
 	sideEffect: 'read',
@@ -50,7 +49,7 @@ export const artifactsModule = defineModule({
 	id: 'artifacts',
 	title: 'Artifacts',
 	description:
-		'Persist small serialized content and inspect bounded byte or text ranges. ArtifactRef is the handoff between tools; structured document creation belongs to purpose-built builders.',
+		'Persist small serialized content, inspect bounded byte ranges, and read UTF-8 text artifacts. ArtifactRef is the handoff between tools; structured document creation belongs to purpose-built builders.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: artifactsAuthSchema },
 	categories: ['storage', 'artifacts'],

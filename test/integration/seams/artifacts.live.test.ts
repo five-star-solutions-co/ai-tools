@@ -43,15 +43,11 @@ describe('live seam artifacts host binding', () => {
 				const bytes = blobs.get(input.source.key)
 				if (!bytes) throw new Error('missing')
 				const lines = new TextDecoder().decode(bytes).split('\n')
-				const start = Math.max(1, input.start_line) - 1
-				const end = input.end_line
-				const selected = lines.slice(start, end)
-				const text = selected.join('\n')
 				return {
 					source: input.source,
-					text,
-					start_line: start + 1,
-					end_line: start + selected.length,
+					text: lines.join('\n'),
+					start_line: 1,
+					end_line: lines.length,
 					total_lines: lines.length
 				}
 			}
@@ -73,18 +69,14 @@ describe('live seam artifacts host binding', () => {
 		})
 		expect(Buffer.from(range.body_base64, 'base64').toString('utf8')).toBe('beta')
 
-		const lines = await client.readLines({
-			source: created.artifact,
-			start_line: 2,
-			end_line: 3
-		})
-		expect(lines.text).toBe('beta\ngamma')
+		const lines = await client.readLines({ source: created.artifact })
+		expect(lines.text).toBe('alpha\nbeta\ngamma')
 	})
 })
 
 runObject('live seam artifacts object storage', () => {
 	test(
-		'create and bounded byte/line reads on S3',
+		'create, bounded byte reads, and complete text reads on S3',
 		async () => {
 			const key = `ai-tools-artifacts-it/${uniqueId('artifact')}.txt`
 			const client = ArtifactsClient.fromAuth({
@@ -109,12 +101,8 @@ runObject('live seam artifacts object storage', () => {
 				})
 				expect(Buffer.from(range.body_base64, 'base64').toString('utf8')).toBe('beta')
 
-				const lines = await client.readLines({
-					source: created.artifact,
-					start_line: 2,
-					end_line: 3
-				})
-				expect(lines.text).toBe('beta\ngamma')
+				const lines = await client.readLines({ source: created.artifact })
+				expect(lines.text).toBe('alpha\nbeta\ngamma')
 			} finally {
 				await cleanup.delete({ key }).catch(() => undefined)
 			}
