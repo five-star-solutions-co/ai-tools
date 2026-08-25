@@ -106,7 +106,7 @@ export const cloudflareSandboxExecuteCodeTool = defineTool({
 	id: `${id}-execute-code`,
 	name: 'cloudflareSandboxExecuteCode',
 	description:
-		'Execute Python, JavaScript, or shell source in a Cloudflare sandbox. Use as a fallback for computation or automation with no dedicated tool. Do not generate or edit supported documents, spreadsheets, presentations, PDFs, or images here when a purpose-built tool is available.',
+		'Execute Python, JavaScript, or TypeScript in a Cloudflare sandbox interpreter context. Imports and variables stay loaded on later calls. Use exec for shell. Use as a fallback for computation or automation with no dedicated tool. Do not generate or edit supported documents, spreadsheets, presentations, PDFs, or images here when a purpose-built tool is available.',
 	inputSchema: executeCodeInputSchema,
 	outputSchema: execOutputSchema,
 	sideEffect: 'write',

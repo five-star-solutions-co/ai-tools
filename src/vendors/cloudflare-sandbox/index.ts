@@ -13,9 +13,13 @@ export {
 	MAX_WRITE_FILES,
 	cloudflareSandboxAuthSchema,
 	createBridgeSessionOutputSchema,
+	createCodeContextInputSchema,
+	createCodeContextOutputSchema,
 	createSandboxOutputSchema,
 	deleteBridgeSessionInputSchema,
 	deleteBridgeSessionOutputSchema,
+	deleteCodeContextInputSchema,
+	deleteCodeContextOutputSchema,
 	destroySandboxOutputSchema,
 	execInputSchema,
 	execOutputSchema,
@@ -25,6 +29,7 @@ export {
 	healthOutputSchema,
 	importArtifactInputSchema,
 	importArtifactOutputSchema,
+	listCodeContextsOutputSchema,
 	listFilesInputSchema,
 	listFilesOutputSchema,
 	mountBucketInputSchema,
@@ -35,6 +40,7 @@ export {
 	readFilesOutputSchema,
 	removeFilesInputSchema,
 	removeFilesOutputSchema,
+	runCodeInputSchema,
 	runningOutputSchema,
 	sandboxIdInputSchema,
 	sandboxObjectArtifactRefSchema,
@@ -48,9 +54,13 @@ export {
 export type {
 	CloudflareSandboxAuth,
 	CreateBridgeSessionOutput,
+	CreateCodeContextInput,
+	CreateCodeContextOutput,
 	CreateSandboxOutput,
 	DeleteBridgeSessionInput,
 	DeleteBridgeSessionOutput,
+	DeleteCodeContextInput,
+	DeleteCodeContextOutput,
 	DestroySandboxOutput,
 	ExecInput,
 	ExecOutput,
@@ -60,6 +70,7 @@ export type {
 	HealthOutput,
 	ImportArtifactInput,
 	ImportArtifactOutput,
+	ListCodeContextsOutput,
 	ListFilesInput,
 	ListFilesOutput,
 	MountBucketInput,
@@ -70,6 +81,7 @@ export type {
 	ReadFilesOutput,
 	RemoveFilesInput,
 	RemoveFilesOutput,
+	RunCodeInput,
 	RunningOutput,
 	SandboxIdInput,
 	SandboxObjectArtifactRef,
@@ -81,14 +93,14 @@ export type {
 	WriteFilesOutput
 } from './contracts'
 export {
-	executeCodeArgv,
 	parseExecSse,
+	parseRunCodePayload,
 	resolveWriteFileBytes,
 	shellQuote,
 	workspaceAbsolutePath,
 	workspaceFileKey
 } from './domain'
-export type { ParsedExecStream } from './domain'
+export type { InterpreterLanguage, ParsedExecStream, ParsedRunCode } from './domain'
 export {
 	cloudflareSandboxCreateSessionTool,
 	cloudflareSandboxCreateTool,

@@ -17,9 +17,13 @@ import { S3Client } from '../s3'
 import type {
 	CloudflareSandboxAuth,
 	CreateBridgeSessionOutput,
+	CreateCodeContextInput,
+	CreateCodeContextOutput,
 	CreateSandboxOutput,
 	DeleteBridgeSessionInput,
 	DeleteBridgeSessionOutput,
+	DeleteCodeContextInput,
+	DeleteCodeContextOutput,
 	DestroySandboxOutput,
 	ExecInput,
 	ExecOutput,
@@ -29,6 +33,7 @@ import type {
 	HealthOutput,
 	ImportArtifactInput,
 	ImportArtifactOutput,
+	ListCodeContextsOutput,
 	ListFilesInput,
 	ListFilesOutput,
 	MountBucketInput,
@@ -39,6 +44,7 @@ import type {
 	ReadFilesOutput,
 	RemoveFilesInput,
 	RemoveFilesOutput,
+	RunCodeInput,
 	RunningOutput,
 	SandboxIdInput,
 	UnmountBucketInput,
@@ -57,13 +63,16 @@ import {
 	unmountBucketInputSchema
 } from './contracts'
 import {
-	executeCodeArgv,
+	parseCreateCodeContextPayload,
 	parseExecSse,
+	parseListCodeContextsPayload,
+	parseRunCodePayload,
 	resolveWriteFileBytes,
 	shellQuote,
 	workspaceAbsolutePath,
 	workspaceFileKey
 } from './domain'
+import type { InterpreterLanguage } from './domain'
 
 export type CloudflareSandboxClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -78,6 +87,9 @@ export class CloudflareSandboxClient {
 				endpoint?: string | undefined
 		  }
 		| undefined
+	/** sandbox_id:language → interpreter context id (Node/Python stay loaded). */
+	readonly #contexts = new Map<string, string>()
+	readonly #pendingContexts = new Map<string, Promise<string>>()
 
 	constructor(auth: CloudflareSandboxAuth, options: CloudflareSandboxClientOptions = {}) {
 		const parsed = cloudflareSandboxAuthSchema.safeParse(auth)
@@ -143,6 +155,7 @@ export class CloudflareSandboxClient {
 		await this.#http.delete(`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}`, {
 			label: 'Cloudflare Sandbox destroy'
 		})
+		this.#forgetSandboxContexts(input.sandbox_id)
 		return { sandbox_id: input.sandbox_id, destroyed: true }
 	}
 
@@ -210,15 +223,81 @@ export class CloudflareSandboxClient {
 		return out
 	}
 
-	/** Execute source via python3/node/sh on the bridge (no native runCode route). */
 	async executeCode(input: ExecuteCodeInput): Promise<ExecOutput> {
 		const language = input.language ?? 'python'
-		return this.exec({
+		const context_id = input.context_id ?? (await this.#ensureCodeContext(input.sandbox_id, language))
+		return this.runCode({
 			sandbox_id: input.sandbox_id,
-			argv: executeCodeArgv(language, input.code),
-			...(input.timeout_ms !== undefined && { timeout_ms: input.timeout_ms }),
-			...(input.session_id && { session_id: input.session_id })
+			code: input.code,
+			context_id,
+			language,
+			...(input.timeout_ms !== undefined && { timeout_ms: input.timeout_ms })
 		})
+	}
+
+	async createCodeContext(input: CreateCodeContextInput): Promise<CreateCodeContextOutput> {
+		const language = input.language ?? 'python'
+		const { data } = await this.#http.post(
+			`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/context`,
+			{
+				language,
+				...(input.cwd && { cwd: input.cwd }),
+				...(input.env && Object.keys(input.env).length > 0 && { env: input.env }),
+				...(input.timeout_ms !== undefined && { timeout_ms: input.timeout_ms })
+			},
+			{ label: 'Cloudflare Sandbox createCodeContext' }
+		)
+		const row = parseCreateCodeContextPayload(data)
+		return {
+			sandbox_id: input.sandbox_id,
+			context_id: row.id,
+			language,
+			...(row.cwd && { cwd: row.cwd })
+		}
+	}
+
+	async listCodeContexts(input: SandboxIdInput): Promise<ListCodeContextsOutput> {
+		const { data } = await this.#http.get(`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/context`, {
+			label: 'Cloudflare Sandbox listCodeContexts'
+		})
+		return {
+			sandbox_id: input.sandbox_id,
+			contexts: parseListCodeContextsPayload(data)
+		}
+	}
+
+	async deleteCodeContext(input: DeleteCodeContextInput): Promise<DeleteCodeContextOutput> {
+		await this.#http.delete(
+			`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/context/${encodeURIComponent(input.context_id)}`,
+			{ label: 'Cloudflare Sandbox deleteCodeContext' }
+		)
+		const prefix = `${input.sandbox_id}:`
+		for (const [key, contextId] of this.#contexts) {
+			if (contextId === input.context_id && key.startsWith(prefix)) this.#contexts.delete(key)
+		}
+		return { sandbox_id: input.sandbox_id, context_id: input.context_id, deleted: true }
+	}
+
+	async runCode(input: RunCodeInput): Promise<ExecOutput> {
+		const { data } = await this.#http.post(
+			`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/run-code`,
+			{
+				code: input.code,
+				...(input.context_id && { context_id: input.context_id }),
+				...(input.language && { language: input.language }),
+				...(input.timeout_ms !== undefined && { timeout_ms: input.timeout_ms })
+			},
+			{ label: 'Cloudflare Sandbox runCode' }
+		)
+		const parsed = parseRunCodePayload(data)
+		return {
+			sandbox_id: input.sandbox_id,
+			stdout: parsed.stdout,
+			stderr: parsed.stderr,
+			exit_code: parsed.exit_code,
+			success: parsed.success,
+			...(parsed.error && { error: parsed.error })
+		}
 	}
 
 	async writeFile(input: WriteFileInput): Promise<WriteFileOutput> {
@@ -458,6 +537,34 @@ export class CloudflareSandboxClient {
 			sandbox_id: data.sandbox_id,
 			mount_path: data.mount_path,
 			ok: true
+		}
+	}
+
+	async #ensureCodeContext(sandboxId: string, language: InterpreterLanguage): Promise<string> {
+		const key = `${sandboxId}:${language}`
+		const cached = this.#contexts.get(key)
+		if (cached) return cached
+		const pending = this.#pendingContexts.get(key)
+		if (pending) return pending
+		const created = this.createCodeContext({ sandbox_id: sandboxId, language })
+			.then((row) => {
+				this.#contexts.set(key, row.context_id)
+				return row.context_id
+			})
+			.finally(() => {
+				this.#pendingContexts.delete(key)
+			})
+		this.#pendingContexts.set(key, created)
+		return created
+	}
+
+	#forgetSandboxContexts(sandboxId: string): void {
+		const prefix = `${sandboxId}:`
+		for (const key of this.#contexts.keys()) {
+			if (key.startsWith(prefix)) this.#contexts.delete(key)
+		}
+		for (const key of this.#pendingContexts.keys()) {
+			if (key.startsWith(prefix)) this.#pendingContexts.delete(key)
 		}
 	}
 

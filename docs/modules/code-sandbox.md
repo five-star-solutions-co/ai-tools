@@ -38,5 +38,5 @@ Isolated code execution: start/stop sessions, run source or shell commands, read
 ## Notes
 
 - `session_id` is the provider session key (bridge sandbox id or AgentCore session id).
-- Cloudflare has no native REPL route; code runs via container runtimes (`python3 -c`, `node -e`, …).
+- Cloudflare python/javascript/typescript reuse a persistent interpreter context (`POST …/context` + `POST …/run-code`). Shell is `execute-command` / `exec`.
 - AgentCore file list/read shapes are normalized best-effort from invoke payloads.

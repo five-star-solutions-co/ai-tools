@@ -49,6 +49,15 @@ describe('code-sandbox', () => {
 			if (url.includes('/running') && method === 'GET') {
 				return Response.json({ running: true })
 			}
+			if (url.includes('/context') && method === 'POST') {
+				return Response.json({ id: 'ctx-py' })
+			}
+			if (url.includes('/run-code') && method === 'POST') {
+				const body = asRecord(JSON.parse(await req.text()))
+				expect(body['code']).toBe('print(1)')
+				expect(body['context_id']).toBe('ctx-py')
+				return Response.json({ logs: { stdout: ['ok\n'], stderr: [] } })
+			}
 			if (url.includes('/exec') && method === 'POST') {
 				const body = asRecord(JSON.parse(await req.text()))
 				expect(Array.isArray(body['argv'])).toBe(true)

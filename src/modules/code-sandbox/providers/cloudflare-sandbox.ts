@@ -1,3 +1,4 @@
+import { ToolError } from '../../../core/errors'
 import type { HttpServiceOptions } from '../../../transport/http-service'
 import { CloudflareSandboxClient } from '../../../vendors/cloudflare-sandbox'
 import type {
@@ -122,10 +123,12 @@ function mapExec(
 	return result
 }
 
-function normalizeLanguage(language: string | undefined): 'python' | 'javascript' | 'typescript' | 'shell' {
+function normalizeLanguage(language: string | undefined): 'python' | 'javascript' | 'typescript' {
 	const raw = (language ?? 'python').toLowerCase()
-	if (raw === 'js' || raw === 'javascript' || raw === 'node') return 'javascript'
-	if (raw === 'ts' || raw === 'typescript') return 'typescript'
-	if (raw === 'sh' || raw === 'bash' || raw === 'shell') return 'shell'
+	if (['js', 'javascript', 'node'].includes(raw)) return 'javascript'
+	if (['ts', 'typescript'].includes(raw)) return 'typescript'
+	if (['sh', 'bash', 'shell'].includes(raw)) {
+		throw new ToolError('Use executeCommand for shell', { code: 'bad_input' })
+	}
 	return 'python'
 }

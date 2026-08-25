@@ -6,6 +6,7 @@ import {
 	CloudflareSandboxClient,
 	cloudflareSandboxModule,
 	parseExecSse,
+	parseRunCodePayload,
 	workspaceFileKey
 } from '../../src/vendors/cloudflare-sandbox'
 
@@ -75,6 +76,13 @@ describe('cloudflare-sandbox', () => {
 		expect(parsed.stdout).toBe('hello\n')
 		expect(parsed.stderr).toBe('warn\n')
 		expect(parsed.exit_code).toBe(0)
+
+		const run = parseRunCodePayload({
+			logs: { stdout: ['42\n'], stderr: [] }
+		})
+		expect(run.stdout).toBe('42\n')
+		expect(run.success).toBe(true)
+		expect(run.exit_code).toBe(0)
 	})
 
 	test('create, exec SSE, write/read, destroy', async () => {
@@ -93,21 +101,16 @@ describe('cloudflare-sandbox', () => {
 			if (url.includes('/v1/sandbox/sbx-1/running') && method === 'GET') {
 				return Response.json({ running: true })
 			}
-			if (url.includes('/v1/sandbox/sbx-1/exec') && method === 'POST') {
+			if (url.includes('/v1/sandbox/sbx-1/context') && method === 'POST') {
 				const body = asRecord(JSON.parse(await req.text()))
-				expect(body['argv']).toEqual(['python3', '-c', 'print(42)'])
-				const stream = [
-					'event: stdout',
-					`data: ${Buffer.from('42\n').toString('base64')}`,
-					'',
-					'event: exit',
-					'data: {"exit_code":0}',
-					''
-				].join('\n')
-				return new Response(stream, {
-					status: 200,
-					headers: { 'content-type': 'text/event-stream' }
-				})
+				expect(body['language']).toBe('python')
+				return Response.json({ id: 'ctx-py' })
+			}
+			if (url.includes('/v1/sandbox/sbx-1/run-code') && method === 'POST') {
+				const body = asRecord(JSON.parse(await req.text()))
+				expect(body['code']).toBe('print(42)')
+				expect(body['context_id']).toBe('ctx-py')
+				return Response.json({ logs: { stdout: ['42\n'], stderr: [] } })
 			}
 			if (url.includes('/file/workspace/hi.py') && method === 'PUT') {
 				expect(await req.text()).toBe('print(1)')
@@ -157,6 +160,44 @@ describe('cloudflare-sandbox', () => {
 				sandbox_id: 'sbx-1',
 				destroyed: true
 			})
+		} finally {
+			restore()
+		}
+	})
+
+	test('javascript executeCode reuses one interpreter context', async () => {
+		let contextCreates = 0
+		let runCalls = 0
+		const restore = mockFetch(async (input, init) => {
+			const req = asRequest(input, init)
+			const url = req.url
+			const method = req.method.toUpperCase()
+			if (url.includes('/v1/sandbox/sbx-js/context') && method === 'POST') {
+				contextCreates += 1
+				const body = asRecord(JSON.parse(await req.text()))
+				expect(body['language']).toBe('javascript')
+				return Response.json({ id: 'ctx-js' })
+			}
+			if (url.includes('/v1/sandbox/sbx-js/run-code') && method === 'POST') {
+				runCalls += 1
+				const body = asRecord(JSON.parse(await req.text()))
+				expect(body['context_id']).toBe('ctx-js')
+				expect(body['language']).toBe('javascript')
+				const code = body['code']
+				if (code === 'const x = 1') return Response.json({ logs: { stdout: [], stderr: [] } })
+				if (code === 'x + 2') return Response.json({ logs: { stdout: ['3'], stderr: [] } })
+				return new Response(`unexpected code ${String(code)}`, { status: 500 })
+			}
+			return new Response(`unexpected ${method} ${url}`, { status: 500 })
+		})
+		try {
+			const client = new CloudflareSandboxClient(auth)
+			await client.executeCode({ sandbox_id: 'sbx-js', code: 'const x = 1', language: 'javascript' })
+			const second = await client.executeCode({ sandbox_id: 'sbx-js', code: 'x + 2', language: 'javascript' })
+			expect(contextCreates).toBe(1)
+			expect(runCalls).toBe(2)
+			expect(second.stdout).toBe('3')
+			expect(second.success).toBe(true)
 		} finally {
 			restore()
 		}

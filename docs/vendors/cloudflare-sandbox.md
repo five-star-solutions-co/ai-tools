@@ -7,7 +7,7 @@
 | **Module id** | `cloudflare-sandbox` |
 | **Client** | `CloudflareSandboxClient` |
 
-HTTP client for the [Cloudflare Sandbox bridge](https://developers.cloudflare.com/sandbox/bridge/): create isolated containers, run commands (SSE), execute code, and read/write workspace files (text or binary).
+HTTP client for the [Cloudflare Sandbox bridge](https://developers.cloudflare.com/sandbox/bridge/): create isolated containers, run commands (SSE), execute code in a persistent interpreter context, and read/write workspace files (text or binary).
 
 The host **deploys** the bridge Worker and supplies its URL + `SANDBOX_API_KEY`. This pack does not embed the Workers Sandbox SDK.
 
@@ -17,6 +17,21 @@ The host **deploys** the bridge Worker and supplies its URL + `SANDBOX_API_KEY`.
 
 - `env` on `exec` — optional process environment when the bridge accepts `env` on the body.
 - Client `exec(input, { onStdout, onStderr })` — callbacks while walking the buffered SSE body (not true wire streaming yet).
+
+### Interpreter contexts
+
+Python, JavaScript, and TypeScript `executeCode` use a persistent interpreter context so the runtime and imports stay loaded:
+
+| Method | Bridge |
+| --- | --- |
+| `createCodeContext` | `POST /v1/sandbox/:id/context` `{ language, cwd?, env?, timeout_ms? }` → `{ id }` |
+| `runCode` | `POST /v1/sandbox/:id/run-code` `{ code, context_id, language?, timeout_ms? }` JSON logs/results |
+| `listCodeContexts` | `GET /v1/sandbox/:id/context` `{ contexts: [{ id, language?, cwd? }] }` |
+| `deleteCodeContext` | `DELETE /v1/sandbox/:id/context/:contextId` |
+
+The client keeps one context per sandbox+language. Pass `context_id` on `executeCode` to pin a context. Shell is `exec`, not `executeCode`.
+
+The stock Cloudflare bridge HTTP API does not document these routes. The host Worker must map them to Sandbox SDK `createCodeContext` / `runCode`.
 
 ### Bucket mounts (S3 / R2 / Mastra workspace FS)
 
@@ -93,7 +108,7 @@ Mounted paths are visible to all sessions in the sandbox. Destroying the sandbox
 | `cloudflare-sandbox-destroy` | `DELETE /v1/sandbox/:id` |
 | `cloudflare-sandbox-running` | `GET /v1/sandbox/:id/running` |
 | `cloudflare-sandbox-exec` | `POST …/exec` (argv + SSE) |
-| `cloudflare-sandbox-execute-code` | python3/node/sh via exec |
+| `cloudflare-sandbox-execute-code` | python/js/ts via persistent interpreter context |
 | `cloudflare-sandbox-write-file` / `read-file` | workspace files (`text` or `body_base64`; read `encoding` utf8\|base64) |
 | `cloudflare-sandbox-write-files` / `read-files` | batch files |
 | `cloudflare-sandbox-list-files` / `remove-files` | list via find / remove via rm |

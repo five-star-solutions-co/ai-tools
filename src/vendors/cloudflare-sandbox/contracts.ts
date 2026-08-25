@@ -286,25 +286,82 @@ export const deleteBridgeSessionOutputSchema = z.object({
 	deleted: z.literal(true)
 })
 
+const interpreterLanguageSchema = z.enum(['python', 'javascript', 'typescript'])
+
 export const executeCodeInputSchema = z.object({
 	sandbox_id: sandboxId,
 	code: z.string().min(1).max(MAX_ARG_CHARS).describe('Source code to run'),
-	language: z
-		.enum(['python', 'javascript', 'typescript', 'shell'])
-		.optional()
-		.describe('Runtime language (default python)'),
+	language: interpreterLanguageSchema.optional().describe('Interpreter language (default python)'),
 	timeout_ms: z
 		.int()
 		.min(1)
 		.max(MAX_EXEC_TIMEOUT_MS)
 		.optional()
 		.describe(`Exec timeout in ms (default ${DEFAULT_EXEC_TIMEOUT_MS})`),
-	session_id: z
+	context_id: z
 		.string()
 		.min(1)
 		.max(200)
 		.optional()
-		.describe('Optional bridge session id for isolated working directory and runtime state')
+		.describe('Optional interpreter context id; omit to reuse the sandbox language context')
+})
+
+export const createCodeContextInputSchema = z.object({
+	sandbox_id: sandboxId,
+	language: interpreterLanguageSchema.optional().describe('Interpreter language (default python)'),
+	cwd: z.string().min(1).max(MAX_FILE_PATH).optional().describe('Working directory (default /workspace)'),
+	env: z
+		.record(z.string().min(1).max(128), z.string().max(8_192))
+		.optional()
+		.describe('Environment variables for the interpreter context'),
+	timeout_ms: z
+		.int()
+		.min(1)
+		.max(MAX_EXEC_TIMEOUT_MS)
+		.optional()
+		.describe(`Context create timeout in ms (default ${DEFAULT_EXEC_TIMEOUT_MS})`)
+})
+
+export const createCodeContextOutputSchema = z.object({
+	sandbox_id: z.string(),
+	context_id: z.string().describe('Persistent interpreter context id'),
+	language: interpreterLanguageSchema.optional(),
+	cwd: z.string().optional()
+})
+
+export const listCodeContextsOutputSchema = z.object({
+	sandbox_id: z.string(),
+	contexts: z.array(
+		z.object({
+			context_id: z.string(),
+			language: z.string().optional(),
+			cwd: z.string().optional()
+		})
+	)
+})
+
+export const deleteCodeContextInputSchema = z.object({
+	sandbox_id: sandboxId,
+	context_id: z.string().min(1).max(200).describe('Interpreter context id to delete')
+})
+
+export const deleteCodeContextOutputSchema = z.object({
+	sandbox_id: z.string(),
+	context_id: z.string(),
+	deleted: z.literal(true)
+})
+
+export const runCodeInputSchema = z.object({
+	sandbox_id: sandboxId,
+	code: z.string().min(1).max(MAX_ARG_CHARS).describe('Source to run in the interpreter context'),
+	context_id: z.string().min(1).max(200).optional().describe('Interpreter context id; omit for the language default'),
+	language: interpreterLanguageSchema.optional().describe('Interpreter language when creating a default context'),
+	timeout_ms: z
+		.int()
+		.min(1)
+		.max(MAX_EXEC_TIMEOUT_MS)
+		.optional()
+		.describe(`Run timeout in ms (default ${DEFAULT_EXEC_TIMEOUT_MS})`)
 })
 
 /**
@@ -424,6 +481,12 @@ export type CreateBridgeSessionOutput = z.infer<typeof createBridgeSessionOutput
 export type DeleteBridgeSessionInput = z.infer<typeof deleteBridgeSessionInputSchema>
 export type DeleteBridgeSessionOutput = z.infer<typeof deleteBridgeSessionOutputSchema>
 export type ExecuteCodeInput = z.infer<typeof executeCodeInputSchema>
+export type CreateCodeContextInput = z.infer<typeof createCodeContextInputSchema>
+export type CreateCodeContextOutput = z.infer<typeof createCodeContextOutputSchema>
+export type ListCodeContextsOutput = z.infer<typeof listCodeContextsOutputSchema>
+export type DeleteCodeContextInput = z.infer<typeof deleteCodeContextInputSchema>
+export type DeleteCodeContextOutput = z.infer<typeof deleteCodeContextOutputSchema>
+export type RunCodeInput = z.infer<typeof runCodeInputSchema>
 export type MountBucketInput = z.infer<typeof mountBucketInputSchema>
 export type MountBucketOutput = z.infer<typeof mountBucketOutputSchema>
 export type UnmountBucketInput = z.infer<typeof unmountBucketInputSchema>

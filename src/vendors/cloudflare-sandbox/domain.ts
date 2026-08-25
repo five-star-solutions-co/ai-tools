@@ -3,10 +3,12 @@
  */
 
 import { isPlainObject, isString } from 'es-toolkit'
+import { z } from 'zod'
 
 import { ToolError } from '../../core/errors'
 import { base64ToBytes, utf8ToBytes } from '../../shared/bytes'
 import { MAX_FILE_BYTES } from './contracts'
+import type { ListCodeContextsOutput } from './contracts'
 
 /** Normalize a host path to the bridge URL segment under /file/… (no leading slash). */
 export function workspaceFileKey(path: string): string {
@@ -171,16 +173,80 @@ function safeJson(text: string): unknown {
 	}
 }
 
-/** Build argv for executeCode over the bridge (no native runCode route). */
-export function executeCodeArgv(language: string, code: string): string[] {
-	switch (language) {
-		case 'javascript':
-		case 'typescript':
-			return ['node', '-e', code]
-		case 'shell':
-			return ['sh', '-lc', code]
-		case 'python':
-		default:
-			return ['python3', '-c', code]
+export type InterpreterLanguage = 'python' | 'javascript' | 'typescript'
+
+/** Cloudflare interpreter `runCode` JSON. https://developers.cloudflare.com/sandbox/api/interpreter/ */
+const runCodePayloadSchema = z.object({
+	logs: z.object({
+		stdout: z.array(z.string()),
+		stderr: z.array(z.string())
+	}),
+	error: z
+		.object({
+			name: z.string(),
+			value: z.string()
+		})
+		.optional()
+})
+
+export type ParsedRunCode = {
+	stdout: string
+	stderr: string
+	success: boolean
+	exit_code: number
+	error?: string
+}
+
+export function parseRunCodePayload(data: unknown): ParsedRunCode {
+	const parsed = runCodePayloadSchema.safeParse(data)
+	if (!parsed.success) {
+		throw new ToolError('Unexpected run-code response', { code: 'upstream' })
 	}
+	const { logs, error } = parsed.data
+	const out: ParsedRunCode = {
+		stdout: logs.stdout.join(''),
+		stderr: logs.stderr.join(''),
+		success: error === undefined,
+		exit_code: error === undefined ? 0 : 1
+	}
+	if (error) out.error = error.value
+	return out
+}
+
+const createCodeContextPayloadSchema = z.object({
+	id: z.string().min(1),
+	cwd: z.string().min(1).optional()
+})
+
+export function parseCreateCodeContextPayload(data: unknown): { id: string; cwd?: string } {
+	const parsed = createCodeContextPayloadSchema.safeParse(data)
+	if (!parsed.success) {
+		throw new ToolError('Unexpected create code context response', { code: 'upstream' })
+	}
+	return {
+		id: parsed.data.id,
+		...(parsed.data.cwd && { cwd: parsed.data.cwd })
+	}
+}
+
+const listCodeContextsPayloadSchema = z.object({
+	contexts: z.array(
+		z.object({
+			id: z.string().min(1),
+			language: z.string().min(1).optional(),
+			cwd: z.string().min(1).optional()
+		})
+	)
+})
+
+export function parseListCodeContextsPayload(data: unknown): ListCodeContextsOutput['contexts'] {
+	const parsed = listCodeContextsPayloadSchema.safeParse(data)
+	if (!parsed.success) {
+		throw new ToolError('Unexpected list code contexts response', { code: 'upstream' })
+	}
+	return parsed.data.contexts.map((row) => ({
+		context_id: row.id,
+		...(row.language && { language: row.language }),
+		...(row.cwd && { cwd: row.cwd })
+	}))
 }
