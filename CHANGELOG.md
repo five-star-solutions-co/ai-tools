@@ -4,6 +4,13 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).
 
+## [3.3.1](https://github.com/five-star-solutions-co/ai-tools/compare/v3.3.0...v3.3.1) (2026-08-25)
+
+### Bug Fixes
+
+* **core:** bump bun to 1.4.0 ([c6ec52d](https://github.com/five-star-solutions-co/ai-tools/commit/c6ec52da95122dcbf7670c60b01bd5c03d3c975e))
+* **core:** keep dependencies up to date ([8ba5e64](https://github.com/five-star-solutions-co/ai-tools/commit/8ba5e64933244b564b8c81322eb71eecda9cf28d))
+
 ## [3.3.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.2.0...v3.3.0) (2026-08-25)
 
 ## [3.2.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.1.0...v3.2.0) (2026-08-24)
