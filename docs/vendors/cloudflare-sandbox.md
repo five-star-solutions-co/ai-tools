@@ -9,7 +9,7 @@
 
 HTTP client for the [Cloudflare Sandbox bridge](https://developers.cloudflare.com/sandbox/bridge/): create isolated containers, run commands (SSE), execute code in a persistent interpreter context, and read/write workspace files (text or binary).
 
-The host **deploys** the bridge Worker and supplies its URL + `SANDBOX_API_KEY`. This pack does not embed the Workers Sandbox SDK.
+The host **deploys** the bridge Worker and supplies its mount-root URL + `SANDBOX_API_KEY`. The client appends `/v1/...`, so a Worker mounted at `/sandbox` uses a `base_url` such as `https://container.example/sandbox`. This pack does not embed the Workers Sandbox SDK.
 
 **Hybrid:** keep `CloudflareSandboxClient` as the first-class host export (Workspace / agent shell). Prefer host workspace for multi-step interactive shell; use pack tools for one-shot workflow steps. Catalog: categories `compute`, `sandbox`, `cloudflare`; classification `standard`.
 
@@ -93,7 +93,7 @@ Mounted paths are visible to all sessions in the sandbox. Destroying the sandbox
 
 ```ts
 {
-  base_url: string  // bridge origin, e.g. https://sandbox-bridge.example.workers.dev
+  base_url: string  // bridge mount root, e.g. https://container.example/sandbox
   api_key: string   // Bearer SANDBOX_API_KEY
   storage?: S3Auth  // optional; required for importArtifact / exportArtifact
 }
@@ -131,7 +131,7 @@ withAuth(cloudflareSandboxModule, {
 })
 
 const client = new CloudflareSandboxClient({
-  base_url: 'https://…workers.dev',
+  base_url: 'https://container.example/sandbox',
   api_key: '…',
 })
 const { sandbox_id } = await client.create()
@@ -144,6 +144,6 @@ Seam: `@5ss/ai-tools/code-sandbox` with `provider: 'cloudflare'`.
 ## Live IT
 
 ```bash
-AI_TOOLS_CF_SANDBOX_BASE_URL=https://…workers.dev
+AI_TOOLS_CF_SANDBOX_BASE_URL=https://container.example/sandbox
 AI_TOOLS_CF_SANDBOX_API_KEY=…
 ```

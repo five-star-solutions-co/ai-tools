@@ -76,6 +76,8 @@ import type { InterpreterLanguage } from './domain'
 
 export type CloudflareSandboxClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
+const sandboxApiPath = '/v1/sandbox'
+
 export class CloudflareSandboxClient {
 	readonly #http: HttpService
 	readonly #storage: S3Client | undefined
@@ -142,7 +144,7 @@ export class CloudflareSandboxClient {
 	}
 
 	async create(): Promise<CreateSandboxOutput> {
-		const { data } = await this.#http.post('/v1/sandbox', undefined, {
+		const { data } = await this.#http.post(sandboxApiPath, undefined, {
 			label: 'Cloudflare Sandbox create'
 		})
 		if (!isPlainObject(data) || !isString(data['id'])) {
@@ -152,7 +154,7 @@ export class CloudflareSandboxClient {
 	}
 
 	async destroy(input: SandboxIdInput): Promise<DestroySandboxOutput> {
-		await this.#http.delete(`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}`, {
+		await this.#http.delete(`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}`, {
 			label: 'Cloudflare Sandbox destroy'
 		})
 		this.#forgetSandboxContexts(input.sandbox_id)
@@ -160,7 +162,7 @@ export class CloudflareSandboxClient {
 	}
 
 	async running(input: SandboxIdInput): Promise<RunningOutput> {
-		const { data } = await this.#http.get(`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/running`, {
+		const { data } = await this.#http.get(`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/running`, {
 			label: 'Cloudflare Sandbox running'
 		})
 		if (!isPlainObject(data) || typeof data['running'] !== 'boolean') {
@@ -191,7 +193,7 @@ export class CloudflareSandboxClient {
 		}
 		if (input.session_id) headers['Session-Id'] = input.session_id
 
-		const { bytes } = await this.#http.bytes('POST', `/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/exec`, {
+		const { bytes } = await this.#http.bytes('POST', `${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/exec`, {
 			body,
 			headers,
 			label: 'Cloudflare Sandbox exec'
@@ -238,7 +240,7 @@ export class CloudflareSandboxClient {
 	async createCodeContext(input: CreateCodeContextInput): Promise<CreateCodeContextOutput> {
 		const language = input.language ?? 'python'
 		const { data } = await this.#http.post(
-			`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/context`,
+			`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/context`,
 			{
 				language,
 				...(input.cwd && { cwd: input.cwd }),
@@ -257,7 +259,7 @@ export class CloudflareSandboxClient {
 	}
 
 	async listCodeContexts(input: SandboxIdInput): Promise<ListCodeContextsOutput> {
-		const { data } = await this.#http.get(`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/context`, {
+		const { data } = await this.#http.get(`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/context`, {
 			label: 'Cloudflare Sandbox listCodeContexts'
 		})
 		return {
@@ -268,7 +270,7 @@ export class CloudflareSandboxClient {
 
 	async deleteCodeContext(input: DeleteCodeContextInput): Promise<DeleteCodeContextOutput> {
 		await this.#http.delete(
-			`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/context/${encodeURIComponent(input.context_id)}`,
+			`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/context/${encodeURIComponent(input.context_id)}`,
 			{ label: 'Cloudflare Sandbox deleteCodeContext' }
 		)
 		const prefix = `${input.sandbox_id}:`
@@ -280,7 +282,7 @@ export class CloudflareSandboxClient {
 
 	async runCode(input: RunCodeInput): Promise<ExecOutput> {
 		const { data } = await this.#http.post(
-			`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/run-code`,
+			`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/run-code`,
 			{
 				code: input.code,
 				...(input.context_id && { context_id: input.context_id }),
@@ -435,9 +437,13 @@ export class CloudflareSandboxClient {
 	}
 
 	async createSession(input: SandboxIdInput): Promise<CreateBridgeSessionOutput> {
-		const { data } = await this.#http.post(`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/session`, undefined, {
-			label: 'Cloudflare Sandbox createSession'
-		})
+		const { data } = await this.#http.post(
+			`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/session`,
+			undefined,
+			{
+				label: 'Cloudflare Sandbox createSession'
+			}
+		)
 		if (!isPlainObject(data) || !isString(data['id'])) {
 			throw new ToolError('Unexpected create session response', { code: 'upstream' })
 		}
@@ -446,7 +452,7 @@ export class CloudflareSandboxClient {
 
 	async deleteSession(input: DeleteBridgeSessionInput): Promise<DeleteBridgeSessionOutput> {
 		await this.#http.delete(
-			`/v1/sandbox/${encodeURIComponent(input.sandbox_id)}/session/${encodeURIComponent(input.session_id)}`,
+			`${sandboxApiPath}/${encodeURIComponent(input.sandbox_id)}/session/${encodeURIComponent(input.session_id)}`,
 			{ label: 'Cloudflare Sandbox deleteSession' }
 		)
 		return { sandbox_id: input.sandbox_id, session_id: input.session_id, deleted: true }
@@ -503,7 +509,7 @@ export class CloudflareSandboxClient {
 		if (endpoint) body['bucket'] = data.bucket
 		else body['binding'] = data.bucket
 
-		await this.#http.post(`/v1/sandbox/${encodeURIComponent(data.sandbox_id)}/mount`, body, {
+		await this.#http.post(`${sandboxApiPath}/${encodeURIComponent(data.sandbox_id)}/mount`, body, {
 			label: 'Cloudflare Sandbox mount'
 		})
 		return {
@@ -529,7 +535,7 @@ export class CloudflareSandboxClient {
 		}
 		const data = parsed.data
 		await this.#http.post(
-			`/v1/sandbox/${encodeURIComponent(data.sandbox_id)}/unmount`,
+			`${sandboxApiPath}/${encodeURIComponent(data.sandbox_id)}/unmount`,
 			{ mountPath: data.mount_path },
 			{ label: 'Cloudflare Sandbox unmount' }
 		)
@@ -589,7 +595,7 @@ export class CloudflareSandboxClient {
 		}
 		if (sessionId) headers['Session-Id'] = sessionId
 		const { data } = await this.#http.put(
-			`/v1/sandbox/${encodeURIComponent(sandboxId)}/file/${key.split('/').map(encodeURIComponent).join('/')}`,
+			`${sandboxApiPath}/${encodeURIComponent(sandboxId)}/file/${key.split('/').map(encodeURIComponent).join('/')}`,
 			toArrayBuffer(bytes),
 			{ headers, label: 'Cloudflare Sandbox writeFile' }
 		)
@@ -604,7 +610,7 @@ export class CloudflareSandboxClient {
 		if (sessionId) headers['Session-Id'] = sessionId
 		const { bytes } = await this.#http.bytes(
 			'GET',
-			`/v1/sandbox/${encodeURIComponent(sandboxId)}/file/${key.split('/').map(encodeURIComponent).join('/')}`,
+			`${sandboxApiPath}/${encodeURIComponent(sandboxId)}/file/${key.split('/').map(encodeURIComponent).join('/')}`,
 			{ headers, label: 'Cloudflare Sandbox readFile', maxBytes: MAX_FILE_BYTES }
 		)
 		return bytes

@@ -203,6 +203,58 @@ describe('cloudflare-sandbox', () => {
 		}
 	})
 
+	test('preserves the bridge mount prefix for interpreter routes', async () => {
+		const requests: string[] = []
+		const restore = mockFetch(async (input, init) => {
+			const request = asRequest(input, init)
+			const path = `${request.method.toUpperCase()} ${new URL(request.url).pathname}`
+			requests.push(path)
+
+			switch (path) {
+				case 'POST /sandbox/v1/sandbox/sbx-prefixed/context':
+					return Response.json({ id: 'ctx-prefixed', language: 'python', cwd: '/workspace' })
+				case 'GET /sandbox/v1/sandbox/sbx-prefixed/context':
+					return Response.json({
+						contexts: [{ id: 'ctx-prefixed', language: 'python', cwd: '/workspace' }]
+					})
+				case 'POST /sandbox/v1/sandbox/sbx-prefixed/run-code':
+					return Response.json({ logs: { stdout: ['42\n'], stderr: [] } })
+				case 'DELETE /sandbox/v1/sandbox/sbx-prefixed/context/ctx-prefixed':
+					return new Response(null, { status: 204 })
+				default:
+					return new Response(`unexpected ${path}`, { status: 500 })
+			}
+		})
+
+		try {
+			const client = new CloudflareSandboxClient({
+				base_url: 'https://container.example/sandbox',
+				api_key: 'test-key'
+			})
+			const created = await client.createCodeContext({ sandbox_id: 'sbx-prefixed' })
+			await client.listCodeContexts({ sandbox_id: 'sbx-prefixed' })
+			await client.runCode({
+				sandbox_id: 'sbx-prefixed',
+				context_id: created.context_id,
+				code: 'print(42)',
+				language: 'python'
+			})
+			await client.deleteCodeContext({
+				sandbox_id: 'sbx-prefixed',
+				context_id: created.context_id
+			})
+
+			expect(requests).toEqual([
+				'POST /sandbox/v1/sandbox/sbx-prefixed/context',
+				'GET /sandbox/v1/sandbox/sbx-prefixed/context',
+				'POST /sandbox/v1/sandbox/sbx-prefixed/run-code',
+				'DELETE /sandbox/v1/sandbox/sbx-prefixed/context/ctx-prefixed'
+			])
+		} finally {
+			restore()
+		}
+	})
+
 	test('write/read body_base64 binary', async () => {
 		const payload = new Uint8Array([0, 1, 2, 255])
 		const b64 = Buffer.from(payload).toString('base64')

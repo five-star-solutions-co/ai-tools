@@ -24,7 +24,7 @@ export const cloudflareSandboxAuthSchema = z.object({
 	base_url: z
 		.string()
 		.min(1)
-		.describe('Sandbox bridge Worker origin, for example https://sandbox-bridge.example.workers.dev'),
+		.describe('Sandbox bridge base URL including any mount prefix, for example https://container.example/sandbox'),
 	api_key: z.string().min(1).describe('Bridge SANDBOX_API_KEY Bearer token'),
 	storage: s3AuthSchema
 		.optional()
