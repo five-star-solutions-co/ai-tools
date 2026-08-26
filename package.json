@@ -1,6 +1,6 @@
 {
 	"name": "@5ss/ai-tools",
-	"version": "3.3.1",
+	"version": "3.4.0",
 	"description": "Reusable AI tools with strict schemas and model-facing contracts. Define once; project to Node, edge, Mastra, AI SDK, TanStack AI, Cloudflare Workers AI, or MCP.",
 	"license": "MIT",
 	"author": "harryy",
