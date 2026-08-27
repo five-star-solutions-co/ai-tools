@@ -6,8 +6,9 @@
 import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { ToolContext } from '../../core/types'
+import { httpErrorCode, retryAfterMsFromHeader } from '../../transport/errors'
 import { HttpService } from '../../transport/http-service'
-import type { HttpServiceOptions } from '../../transport/http-service'
+import type { HttpCallOptions, HttpQueryResult, HttpServiceOptions } from '../../transport/http-service'
 import type {
 	WoocommerceAuth,
 	WoocommerceCreateCouponInput,
@@ -42,16 +43,22 @@ import type {
 	WoocommerceListCouponsOutput,
 	WoocommerceListCustomersInput,
 	WoocommerceListCustomersOutput,
+	WoocommerceListCustomersPageInput,
+	WoocommerceListCustomersPageOutput,
 	WoocommerceListOrderNotesInput,
 	WoocommerceListOrderNotesOutput,
 	WoocommerceListOrderRefundsInput,
 	WoocommerceListOrderRefundsOutput,
 	WoocommerceListOrdersInput,
 	WoocommerceListOrdersOutput,
+	WoocommerceListOrdersPageInput,
+	WoocommerceListOrdersPageOutput,
 	WoocommerceListProductCategoriesInput,
 	WoocommerceListProductCategoriesOutput,
 	WoocommerceListProductsInput,
 	WoocommerceListProductsOutput,
+	WoocommerceListProductsPageInput,
+	WoocommerceListProductsPageOutput,
 	WoocommerceListProductVariationsInput,
 	WoocommerceListProductVariationsOutput,
 	WoocommerceUpdateCouponInput,
@@ -63,10 +70,19 @@ import type {
 	WoocommerceUpdateProductInput,
 	WoocommerceUpdateProductOutput
 } from './contracts'
-import { woocommerceAuthSchema } from './contracts'
+import {
+	woocommerceAuthSchema,
+	woocommerceCustomerRawSchema,
+	woocommerceListCustomersPageInputSchema,
+	woocommerceListOrdersPageInputSchema,
+	woocommerceListProductsPageInputSchema,
+	woocommerceOrderRawSchema,
+	woocommerceProductRawSchema
+} from './contracts'
 import {
 	apiBaseUrl,
 	basicAuthHeader,
+	collectionQuery,
 	couponWriteBody,
 	customerWriteBody,
 	listPageMeta,
@@ -84,6 +100,7 @@ import {
 	parseOrderNotes,
 	parseOrderRefund,
 	parseOrderRefunds,
+	parseCollectionPage,
 	parseOrders,
 	parseProduct,
 	parseProductCategories,
@@ -92,8 +109,25 @@ import {
 	parseProducts,
 	parseProductVariation,
 	parseProductVariations,
-	productWriteBody
+	productWriteBody,
+	woocommerceErrorDetails
 } from './domain'
+
+function throwWooCommerceHttpError(operation: string, result: HttpQueryResult): never {
+	const status = result.status
+	const retryAfterMs = retryAfterMsFromHeader(result.headers.get('retry-after'))
+	const provider = woocommerceErrorDetails(result.data)
+	throw new ToolError(`${operation} failed with HTTP ${status}`, {
+		code: httpErrorCode(status),
+		retryable: status >= 500 || status === 429,
+		details: {
+			status,
+			operation,
+			...(retryAfterMs !== undefined && { retry_after_ms: retryAfterMs }),
+			...provider
+		}
+	})
+}
 
 export type WoocommerceClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
@@ -127,6 +161,13 @@ export class WoocommerceClient {
 		})
 	}
 
+	async #request(method: string, path: string, options: HttpCallOptions = {}): Promise<HttpQueryResult> {
+		const label = options.label ?? 'WooCommerce'
+		const result = await this.#http.query(method, path, { ...options, noThrow: true, label })
+		if (result.status >= 200 && result.status < 300) return result
+		throwWooCommerceHttpError(label, result)
+	}
+
 	// ── Orders ──────────────────────────────────────────────────────────────
 
 	/** GET /orders */
@@ -152,6 +193,29 @@ export class WoocommerceClient {
 			truncated: pageMeta.truncated,
 			...(pageMeta.next_cursor && { next_cursor: pageMeta.next_cursor })
 		}
+	}
+
+	/** One GET /orders request with raw records and X-WP-Total pagination. */
+	async listOrdersPage(input: WoocommerceListOrdersPageInput = {}): Promise<WoocommerceListOrdersPageOutput> {
+		const parsedInput = woocommerceListOrdersPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid WooCommerce orders page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const page = parsedInput.data.page ?? 1
+		const limit = parsedInput.data.limit ?? 10
+		const { data, headers } = await this.#request('GET', '/orders', {
+			label: 'WooCommerce listOrdersPage',
+			query: {
+				...collectionQuery(parsedInput.data),
+				...(parsedInput.data.status && { status: parsedInput.data.status }),
+				...(parsedInput.data.search && { search: parsedInput.data.search }),
+				...(parsedInput.data.customer_id !== undefined && { customer: parsedInput.data.customer_id })
+			}
+		})
+		return parseCollectionPage(data, headers, woocommerceOrderRawSchema, page, limit, 'orders')
 	}
 
 	/** GET /orders/{id} */
@@ -275,6 +339,33 @@ export class WoocommerceClient {
 		}
 	}
 
+	/** One GET /products request with raw records and X-WP-Total pagination. */
+	async listProductsPage(input: WoocommerceListProductsPageInput = {}): Promise<WoocommerceListProductsPageOutput> {
+		const parsedInput = woocommerceListProductsPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid WooCommerce products page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const page = parsedInput.data.page ?? 1
+		const limit = parsedInput.data.limit ?? 10
+		const { data, headers } = await this.#request('GET', '/products', {
+			label: 'WooCommerce listProductsPage',
+			query: {
+				...collectionQuery(parsedInput.data),
+				...(parsedInput.data.status && { status: parsedInput.data.status }),
+				...(parsedInput.data.search && { search: parsedInput.data.search }),
+				...(parsedInput.data.sku && { sku: parsedInput.data.sku }),
+				...(parsedInput.data.category !== undefined && { category: parsedInput.data.category }),
+				...(parsedInput.data.type && { type: parsedInput.data.type }),
+				...(parsedInput.data.include &&
+					parsedInput.data.include.length > 0 && { include: parsedInput.data.include.join(',') })
+			}
+		})
+		return parseCollectionPage(data, headers, woocommerceProductRawSchema, page, limit, 'products')
+	}
+
 	/** GET /products/{id} */
 	async getProduct(input: WoocommerceGetProductInput): Promise<WoocommerceGetProductOutput> {
 		const { data } = await this.#http.get(`/products/${input.product_id}`, {
@@ -365,6 +456,29 @@ export class WoocommerceClient {
 			truncated: pageMeta.truncated,
 			...(pageMeta.next_cursor && { next_cursor: pageMeta.next_cursor })
 		}
+	}
+
+	/** One GET /customers request with raw records and X-WP-Total pagination. */
+	async listCustomersPage(input: WoocommerceListCustomersPageInput = {}): Promise<WoocommerceListCustomersPageOutput> {
+		const parsedInput = woocommerceListCustomersPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid WooCommerce customers page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const page = parsedInput.data.page ?? 1
+		const limit = parsedInput.data.limit ?? 10
+		const { data, headers } = await this.#request('GET', '/customers', {
+			label: 'WooCommerce listCustomersPage',
+			query: {
+				...collectionQuery(parsedInput.data),
+				...(parsedInput.data.search && { search: parsedInput.data.search }),
+				...(parsedInput.data.email && { email: parsedInput.data.email }),
+				...(parsedInput.data.role && { role: parsedInput.data.role })
+			}
+		})
+		return parseCollectionPage(data, headers, woocommerceCustomerRawSchema, page, limit, 'customers')
 	}
 
 	/** GET /customers/{id} */

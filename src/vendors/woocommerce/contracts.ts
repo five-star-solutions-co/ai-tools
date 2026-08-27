@@ -1,7 +1,25 @@
 import { z } from 'zod'
 
+function isStoreOrigin(value: string): boolean {
+	try {
+		const url = new URL(value)
+		return (
+			url.username === '' &&
+			url.password === '' &&
+			(url.pathname === '/' || url.pathname === '') &&
+			url.search === '' &&
+			url.hash === ''
+		)
+	} catch {
+		return false
+	}
+}
+
 export const woocommerceAuthSchema = z.object({
-	store_url: z.url().describe('WooCommerce store origin, for example https://shop.example.com (no trailing path)'),
+	store_url: z
+		.url()
+		.refine(isStoreOrigin, { message: 'store_url must be an origin (no path, query, or fragment)' })
+		.describe('WooCommerce store origin, for example https://shop.example.com (no trailing path)'),
 	consumer_key: z.string().min(1).describe('WooCommerce REST API consumer key'),
 	consumer_secret: z.string().min(1).describe('WooCommerce REST API consumer secret')
 })
@@ -520,6 +538,89 @@ export const woocommerceGetProductCategoryOutputSchema = z.object({
 	category: woocommerceProductCategorySchema
 })
 
+// ── Raw collection pages (host / warehouse; not agent tools) ────────────────
+
+const woocommercePageFields = {
+	page: z.int().min(1).optional(),
+	limit: z.int().min(1).max(100).optional()
+}
+
+const woocommerceCollectionTimeFields = {
+	after: z.string().min(1).optional(),
+	before: z.string().min(1).optional(),
+	modified_after: z.string().min(1).optional(),
+	modified_before: z.string().min(1).optional(),
+	dates_are_gmt: z.boolean().optional(),
+	order: z.enum(['asc', 'desc']).optional(),
+	orderby: z.string().min(1).optional()
+}
+
+export const woocommerceRawRecordSchema = z.looseObject({
+	id: z.number().int(),
+	date_created: z.string().optional(),
+	date_created_gmt: z.string().optional(),
+	date_modified: z.string().optional(),
+	date_modified_gmt: z.string().optional()
+})
+
+export const woocommerceOrderRawSchema = woocommerceRawRecordSchema
+export const woocommerceProductRawSchema = woocommerceRawRecordSchema
+export const woocommerceCustomerRawSchema = woocommerceRawRecordSchema
+
+export const woocommercePaginationSchema = z.object({
+	page: z.int().min(1),
+	page_size: z.int().min(1),
+	total_items: z.int().nonnegative(),
+	total_pages: z.int().nonnegative(),
+	has_more: z.boolean()
+})
+
+const woocommercePageOutputMeta = {
+	pagination: woocommercePaginationSchema
+}
+
+export const woocommerceListOrdersPageInputSchema = z.strictObject({
+	...woocommercePageFields,
+	status: z.string().min(1).optional(),
+	search: z.string().min(1).optional(),
+	customer_id: z.int().positive().optional(),
+	...woocommerceCollectionTimeFields
+})
+
+export const woocommerceListOrdersPageOutputSchema = z.object({
+	items: z.array(woocommerceOrderRawSchema),
+	...woocommercePageOutputMeta
+})
+
+export const woocommerceListProductsPageInputSchema = z.strictObject({
+	...woocommercePageFields,
+	status: z.string().min(1).optional(),
+	search: z.string().min(1).optional(),
+	sku: z.string().min(1).optional(),
+	category: z.int().positive().optional(),
+	type: z.string().min(1).optional(),
+	include: z.array(z.int().positive()).min(1).max(100).optional(),
+	...woocommerceCollectionTimeFields
+})
+
+export const woocommerceListProductsPageOutputSchema = z.object({
+	items: z.array(woocommerceProductRawSchema),
+	...woocommercePageOutputMeta
+})
+
+export const woocommerceListCustomersPageInputSchema = z.strictObject({
+	...woocommercePageFields,
+	search: z.string().min(1).optional(),
+	email: z.string().min(1).optional(),
+	role: z.string().min(1).optional(),
+	...woocommerceCollectionTimeFields
+})
+
+export const woocommerceListCustomersPageOutputSchema = z.object({
+	items: z.array(woocommerceCustomerRawSchema),
+	...woocommercePageOutputMeta
+})
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type WoocommerceAddress = z.infer<typeof woocommerceAddressSchema>
@@ -593,3 +694,15 @@ export type WoocommerceListProductCategoriesInput = z.infer<typeof woocommerceLi
 export type WoocommerceListProductCategoriesOutput = z.infer<typeof woocommerceListProductCategoriesOutputSchema>
 export type WoocommerceGetProductCategoryInput = z.infer<typeof woocommerceGetProductCategoryInputSchema>
 export type WoocommerceGetProductCategoryOutput = z.infer<typeof woocommerceGetProductCategoryOutputSchema>
+
+export type WoocommerceRawRecord = z.infer<typeof woocommerceRawRecordSchema>
+export type WoocommerceOrderRaw = z.infer<typeof woocommerceOrderRawSchema>
+export type WoocommerceProductRaw = z.infer<typeof woocommerceProductRawSchema>
+export type WoocommerceCustomerRaw = z.infer<typeof woocommerceCustomerRawSchema>
+export type WoocommercePagination = z.infer<typeof woocommercePaginationSchema>
+export type WoocommerceListOrdersPageInput = z.infer<typeof woocommerceListOrdersPageInputSchema>
+export type WoocommerceListOrdersPageOutput = z.infer<typeof woocommerceListOrdersPageOutputSchema>
+export type WoocommerceListProductsPageInput = z.infer<typeof woocommerceListProductsPageInputSchema>
+export type WoocommerceListProductsPageOutput = z.infer<typeof woocommerceListProductsPageOutputSchema>
+export type WoocommerceListCustomersPageInput = z.infer<typeof woocommerceListCustomersPageInputSchema>
+export type WoocommerceListCustomersPageOutput = z.infer<typeof woocommerceListCustomersPageOutputSchema>

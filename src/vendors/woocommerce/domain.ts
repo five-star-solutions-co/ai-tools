@@ -3,6 +3,7 @@
  */
 
 import { isPlainObject, isString } from 'es-toolkit'
+import { z } from 'zod'
 
 import { ToolError } from '../../core/errors'
 import { bytesToBase64, utf8ToBytes } from '../../shared/bytes'
@@ -24,6 +25,7 @@ import type {
 	WoocommerceOrder,
 	WoocommerceOrderNote,
 	WoocommerceOrderRefund,
+	WoocommercePagination,
 	WoocommerceProduct,
 	WoocommerceProductCategory,
 	WoocommerceProductVariation,
@@ -34,7 +36,22 @@ import type {
 } from './contracts'
 
 export function storeOrigin(auth: WoocommerceAuth): string {
-	return auth.store_url.replace(/\/+$/, '')
+	let url: URL
+	try {
+		url = new URL(auth.store_url)
+	} catch {
+		throw new ToolError('Invalid WooCommerce store_url', { code: 'bad_auth' })
+	}
+	if (
+		url.username !== '' ||
+		url.password !== '' ||
+		(url.pathname !== '/' && url.pathname !== '') ||
+		url.search !== '' ||
+		url.hash !== ''
+	) {
+		throw new ToolError('WooCommerce store_url must be an origin', { code: 'bad_auth' })
+	}
+	return url.origin
 }
 
 export function apiBaseUrl(auth: WoocommerceAuth): string {
@@ -69,6 +86,90 @@ export function listPageMeta(
 		return { next_cursor: String(page + 1), truncated: true }
 	}
 	return { truncated: false }
+}
+
+export type WoocommerceCollectionQueryInput = {
+	page?: number | undefined
+	limit?: number | undefined
+	after?: string | undefined
+	before?: string | undefined
+	modified_after?: string | undefined
+	modified_before?: string | undefined
+	dates_are_gmt?: boolean | undefined
+	order?: 'asc' | 'desc' | undefined
+	orderby?: string | undefined
+}
+
+export function collectionQuery(input: WoocommerceCollectionQueryInput): Record<string, string | number | boolean> {
+	return {
+		page: input.page ?? 1,
+		per_page: input.limit ?? 10,
+		...(input.after && { after: input.after }),
+		...(input.before && { before: input.before }),
+		...(input.modified_after && { modified_after: input.modified_after }),
+		...(input.modified_before && { modified_before: input.modified_before }),
+		...(input.dates_are_gmt !== undefined && { dates_are_gmt: input.dates_are_gmt }),
+		...(input.order && { order: input.order }),
+		...(input.orderby && { orderby: input.orderby })
+	}
+}
+
+function parseWpCountHeader(headers: Headers, name: string): number {
+	const raw = headers.get(name)
+	if (raw === null || raw.length === 0) {
+		throw new ToolError(`WooCommerce response is missing ${name}`, { code: 'upstream' })
+	}
+	const n = Number.parseInt(raw, 10)
+	if (!Number.isFinite(n) || n < 0) {
+		throw new ToolError(`WooCommerce returned invalid ${name}`, { code: 'upstream' })
+	}
+	return n
+}
+
+export function parseCollectionPage<T>(
+	data: unknown,
+	headers: Headers,
+	itemSchema: z.ZodType<T>,
+	page: number,
+	pageSize: number,
+	label: string
+): { items: T[]; pagination: WoocommercePagination } {
+	const parsedItems = z.array(itemSchema).safeParse(data)
+	if (!parsedItems.success) {
+		throw new ToolError(`WooCommerce returned an invalid ${label} array`, {
+			code: 'upstream',
+			details: { issues: parsedItems.error.issues.map((issue) => issue.message) }
+		})
+	}
+	const totalItems = parseWpCountHeader(headers, 'x-wp-total')
+	const totalPages = parseWpCountHeader(headers, 'x-wp-totalpages')
+	return {
+		items: parsedItems.data,
+		pagination: {
+			page,
+			page_size: pageSize,
+			total_items: totalItems,
+			total_pages: totalPages,
+			has_more: page < totalPages
+		}
+	}
+}
+
+function looksLikeSecret(value: string): boolean {
+	return /ck_|cs_|consumer_key|consumer_secret|authorization/i.test(value)
+}
+
+export function woocommerceErrorDetails(data: unknown): {
+	woocommerce_code?: string
+	woocommerce_message?: string
+} {
+	if (!isPlainObject(data)) return {}
+	const code = data['code']
+	const message = data['message']
+	return {
+		...(isString(code) && code.length > 0 && !looksLikeSecret(code) && { woocommerce_code: code }),
+		...(isString(message) && message.length > 0 && !looksLikeSecret(message) && { woocommerce_message: message })
+	}
 }
 
 function optionalString(value: unknown): string | undefined {
