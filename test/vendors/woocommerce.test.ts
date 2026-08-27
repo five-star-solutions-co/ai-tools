@@ -289,6 +289,30 @@ describe('woocommerce', () => {
 		}
 	})
 
+	test('accepts nullable WooCommerce collection timestamps', async () => {
+		const customer = {
+			id: 90,
+			date_created: null,
+			date_created_gmt: null,
+			date_modified: null,
+			date_modified_gmt: null
+		}
+		const restore = mockFetch(
+			() =>
+				new Response(JSON.stringify([customer]), {
+					status: 200,
+					headers: { 'x-wp-total': '1', 'x-wp-totalpages': '1' }
+				})
+		)
+
+		try {
+			const result = await new WoocommerceClient(auth).listCustomersPage()
+			expect(result.items).toEqual([customer])
+		} finally {
+			restore()
+		}
+	})
+
 	test('maps modified-time collection parameters exactly', async () => {
 		const urls: URL[] = []
 		const restore = mockFetch((url) => {

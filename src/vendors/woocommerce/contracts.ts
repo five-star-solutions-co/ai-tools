@@ -557,10 +557,10 @@ const woocommerceCollectionTimeFields = {
 
 export const woocommerceRawRecordSchema = z.looseObject({
 	id: z.number().int(),
-	date_created: z.string().optional(),
-	date_created_gmt: z.string().optional(),
-	date_modified: z.string().optional(),
-	date_modified_gmt: z.string().optional()
+	date_created: z.string().nullable().optional(),
+	date_created_gmt: z.string().nullable().optional(),
+	date_modified: z.string().nullable().optional(),
+	date_modified_gmt: z.string().nullable().optional()
 })
 
 export const woocommerceOrderRawSchema = woocommerceRawRecordSchema
