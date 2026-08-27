@@ -4,6 +4,17 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).
 
+## [3.5.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.4.0...v3.5.0) (2026-08-27)
+
+### Features
+
+* **core:** clarify domain logic ([8caced9](https://github.com/five-star-solutions-co/ai-tools/commit/8caced9b1b4b5ca64383ca63200070e2963f33af))
+
+### Bug Fixes
+
+* **core:** fix bun.lock file ([9bdbe59](https://github.com/five-star-solutions-co/ai-tools/commit/9bdbe59d61781a5c563bbd738f6c759bbf427010))
+* **core:** simplify package dependencies ([43ad3b8](https://github.com/five-star-solutions-co/ai-tools/commit/43ad3b89c01cfeb2f1792da598c3263853a4aa6b))
+
 ## [3.4.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.3.1...v3.4.0) (2026-08-26)
 
 ### Features
