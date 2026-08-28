@@ -4,6 +4,12 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) from [conventional commits](https://www.conventionalcommits.org/).
 
+## [3.6.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.5.1...v3.6.0) (2026-08-28)
+
+### Features
+
+* **core:** add shipment functionality ([beb0d84](https://github.com/five-star-solutions-co/ai-tools/commit/beb0d84898c786380b56ac83c5f0d8d1d1d1178e))
+
 ## [3.5.1](https://github.com/five-star-solutions-co/ai-tools/compare/v3.5.0...v3.5.1) (2026-08-27)
 
 ## [3.5.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.4.0...v3.5.0) (2026-08-27)
