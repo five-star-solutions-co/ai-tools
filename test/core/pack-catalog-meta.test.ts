@@ -28,6 +28,7 @@ async function loadPackModule(key: string): Promise<{ id: string; categories: re
 		'qdrant',
 		'resend',
 		's3',
+		'shipstation',
 		'slack',
 		'sqs',
 		'supabase-vector',

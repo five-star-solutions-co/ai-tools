@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-27T15:21:13.044Z",
+	"generatedAt": "2026-08-28T17:21:59.940Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -1721,6 +1721,41 @@
 			"moduleId": "scheduler",
 			"moduleIdSource": "src/modules/scheduler/module.ts",
 			"logo": "logos/scheduler.svg"
+		},
+		{
+			"key": "shipstation",
+			"lane": "vendors",
+			"entry": "src/vendors/shipstation/index.ts",
+			"entryKey": "vendors/shipstation/index",
+			"exportNames": [
+				"ShipstationAuth",
+				"ShipstationClient",
+				"ShipstationClientOptions",
+				"ShipstationLabelRaw",
+				"ShipstationListLabelsPageInput",
+				"ShipstationListLabelsPageOutput",
+				"ShipstationListShipmentsPageInput",
+				"ShipstationListShipmentsPageOutput",
+				"ShipstationPagination",
+				"ShipstationShipmentRaw",
+				"shipstationAuthSchema",
+				"shipstationLabelRawSchema",
+				"shipstationListLabelsPageInputSchema",
+				"shipstationListLabelsPageOutputSchema",
+				"shipstationListLabelsResponseSchema",
+				"shipstationListLabelsTool",
+				"shipstationListShipmentsPageInputSchema",
+				"shipstationListShipmentsPageOutputSchema",
+				"shipstationListShipmentsResponseSchema",
+				"shipstationListShipmentsTool",
+				"shipstationModule",
+				"shipstationPaginationSchema",
+				"shipstationShipmentRawSchema"
+			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
+			"moduleId": "shipstation",
+			"moduleIdSource": "src/vendors/shipstation/module.ts"
 		},
 		{
 			"key": "skills",

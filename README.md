@@ -161,6 +161,7 @@ defineTool / defineModule
 | `@5ss/ai-tools/woocommerce` | orders, notes, refunds, products, variations, customers, coupons, categories | [woocommerce](./docs/vendors/woocommerce.md) |
 | `@5ss/ai-tools/katana` | sales/purchase/manufacturing orders, products, materials, customers, suppliers, inventory | [katana](./docs/vendors/katana.md) |
 | `@5ss/ai-tools/amazon-sp-api` | orders + items, FBA inventory, reports + documents, catalog search | [amazon-sp-api](./docs/vendors/amazon-sp-api.md) |
+| `@5ss/ai-tools/shipstation` | paginated labels and shipments | [shipstation](./docs/vendors/shipstation.md) |
 
 Auth fields are **snake_case** (`api_key`, `bot_token`, `access_key_id`, …).
 

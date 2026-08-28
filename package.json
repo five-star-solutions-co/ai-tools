@@ -166,6 +166,10 @@
 			"types": "./dist/modules/scheduler/index.d.ts",
 			"default": "./dist/modules/scheduler/index.js"
 		},
+		"./shipstation": {
+			"types": "./dist/vendors/shipstation/index.d.ts",
+			"default": "./dist/vendors/shipstation/index.js"
+		},
 		"./skills": {
 			"types": "./dist/modules/skills/index.d.ts",
 			"default": "./dist/modules/skills/index.js"

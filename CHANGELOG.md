@@ -135,6 +135,10 @@ Public surfaces removed or renamed since **v1.6.1** — next release **must** be
 | `mergeToolContext` / adapter `createContext` | Explicit `undefined` fields **do not** erase base `signal` / `fetch` / `auth` / `now` |
 | MCP `context` | Still accepts static `ToolContext` **or** factory `() => ToolContext \| Promise<…>` (and deprecated `contextFactory`) |
 
+### Added
+
+- ShipStation V2 vendor pack with API-key auth and paginated label and shipment read tools.
+
 ### Notes (compat preserved)
 
 - Adapter `createContext` callbacks use the installed framework execution-context types.

@@ -31,6 +31,7 @@ export const moduleKeys = [
 	'resend',
 	's3',
 	'scheduler',
+	'shipstation',
 	'skills',
 	'slack',
 	'sqs',
