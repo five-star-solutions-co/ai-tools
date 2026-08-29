@@ -5,14 +5,13 @@ Tool: **[semantic-release](https://semantic-release.gitbook.io/)** on `main`.
 
 ## How it works
 
-**Conventional commits** are the only automatic signal for the next version.
+Every push to `main` that lands commits since the last tag cuts a release. Commit **type** only chooses the bump, never whether to release.
 
 | Commit | Release |
 | --- | --- |
 | `feat:` / `feat(scope):` | **minor** |
-| `fix:` / `perf:` / `refactor:` / `revert:` | **patch** |
 | `BREAKING CHANGE:` in body or `type!:` | **major** |
-| `chore:` `docs:` `test:` `ci:` `style:` `build:` | no release |
+| anything else (`fix:`, `chore:`, `docs:`, `test:`, `ci:`, `style:`, `build:`, `perf:`, `refactor:`, untyped) | **patch** |
 
 ```text
 push to main
@@ -24,7 +23,7 @@ push to main
        → npm publish via OIDC Trusted Publisher (no NPM_TOKEN)
 ```
 
-If nothing releasable has landed since the last tag, semantic-release exits 0 and does nothing.
+The bot `chore(release): … [skip ci]` commit is skipped in the workflow so that push cannot loop. If HEAD is already the latest tag (no new commits), semantic-release exits 0 and does nothing.
 
 ## One-time setup
 

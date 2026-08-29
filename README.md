@@ -200,13 +200,13 @@ Codegen owns `package.json` exports for packs under `src/modules|vendors/<key>/`
 
 ## Release
 
-**[semantic-release](https://semantic-release.gitbook.io/)** on `main` from **conventional commits**. No manual version bump.
+**[semantic-release](https://semantic-release.gitbook.io/)** on every push to `main`. No manual version bump. Commit type only chooses the bump.
 
 | Commit | Version |
 | --- | --- |
 | `feat:` | minor |
-| `fix:` / `perf:` / `refactor:` | patch |
 | `BREAKING CHANGE` / `type!:` | major |
+| anything else | patch |
 
 Details: [docs/versioning.md](./docs/versioning.md).
 

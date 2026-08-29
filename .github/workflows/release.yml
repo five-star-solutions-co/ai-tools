@@ -1,4 +1,4 @@
-# semantic-release on main: conventional commits → version, changelog, tag, npm.
+# semantic-release on main: every push with new commits → version, changelog, tag, npm.
 # npm Trusted Publisher must point at this workflow file: release.yml
 # Package: @5ss/ai-tools · Repo: five-star-solutions-co/ai-tools
 # No NPM_TOKEN / NODE_AUTH_TOKEN — OIDC only (id-token: write).
