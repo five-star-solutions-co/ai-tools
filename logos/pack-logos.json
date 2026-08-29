@@ -29,6 +29,7 @@
 	"resend": "resend",
 	"s3": "amazon",
 	"scheduler": "scheduler",
+	"shipstation": "shipstation",
 	"skills": "skills",
 	"slack": "slack",
 	"sqs": "amazon",

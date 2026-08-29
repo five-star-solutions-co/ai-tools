@@ -82,4 +82,5 @@ Downloaded from [Lucide](https://lucide.dev) / `lucide-static@0.469.0` (ISC). Se
 
 | Logo | Source |
 | --- | --- |
+| `shipstation` | [ShipStation primary logo](https://www.shipstation.com/wp-content/uploads/2026/02/logo-ss-primary-rgb-1-1.svg) |
 | `teams` | Wikimedia Commons [Microsoft Office Teams (2025–present)](https://upload.wikimedia.org/wikipedia/commons/0/07/Microsoft_Office_Teams_%282025%E2%80%93present%29.svg) |

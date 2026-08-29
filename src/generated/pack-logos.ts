@@ -53,6 +53,8 @@ const svg_resend =
 	'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" color="#000" fill="currentColor">\n  <title>Resend</title>\n  <style>@media (prefers-color-scheme:dark){:root{color:#fff}}</style>\n  <path d="M14.679 0c4.648 0 7.413 2.765 7.413 6.434s-2.765 6.434-7.413 6.434H12.33L24 24h-8.245l-8.88-8.44c-.636-.588-.93-1.273-.93-1.86 0-.831.587-1.565 1.713-1.883l4.574-1.224c1.737-.465 2.936-1.81 2.936-3.572 0-2.153-1.761-3.4-3.939-3.4H0V0z"/>\n</svg>'
 const svg_scheduler =
 	'<!-- Lucide icon "clock" from lucide-static@0.469.0 (ISC) — https://lucide.dev -->\n<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" color="#000">\n  <title>Scheduler</title>\n  <style>@media (prefers-color-scheme:dark){:root{color:#fff}}</style>\n  <circle cx="12" cy="12" r="10" />\n  <polyline points="12 6 12 12 16 14" />\n</svg>'
+const svg_shipstation =
+	'<svg\n\txmlns="http://www.w3.org/2000/svg"\n\twidth="24"\n\theight="24"\n\tviewBox="-0.25 -0.25 67.8 67.8"\n>\n\t<title>ShipStation</title>\n\t<path\n\t\tfill="#00E664"\n\t\td="M58.61,19.67c0-2.43.99-4.64,2.58-6.23,0,0,0,0,0,0l-7.32-7.33s0,0,0,0c-1.6,1.59-3.8,2.58-6.23,2.58-4.87,0-8.82-3.95-8.82-8.82h0s-5.18,0-5.18,0h-5.18c0,4.87-3.95,8.82-8.82,8.82-2.43,0-4.64-.99-6.23-2.58,0,0,0,0,0,0l-7.32,7.33s0,0,0,0c1.59,1.6,2.58,3.8,2.58,6.23,0,4.87-3.95,8.82-8.82,8.82,0,0,0,0,0,0v10.36s0,0,0,0c4.87,0,8.82,3.95,8.82,8.82,0,2.43-.99,4.64-2.58,6.23,0,0,0,0,0,0l7.32,7.33s0,0,0,0c1.6-1.59,3.8-2.58,6.23-2.58,4.87,0,8.82,3.95,8.82,8.82h0s5.18,0,5.18,0h5.18c0-4.87,3.95-8.82,8.82-8.82,2.43,0,4.64.99,6.23,2.58,0,0,0,0,0,0l7.32-7.33s0,0,0,0c-1.59-1.6-2.58-3.8-2.58-6.23,0-4.87,3.95-8.82,8.82-8.82,0,0,0,0,0,0v-10.36s0,0,0,0c-4.87,0-8.82-3.95-8.82-8.82ZM50.61,43.46l-16.97,9.8-16.97-9.8v-19.6l16.97-9.8,16.97,9.8v19.6Z"\n\t/>\n</svg>'
 const svg_skills =
 	'<!-- Lucide icon "sparkles" from lucide-static@0.469.0 (ISC) — https://lucide.dev -->\n<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" color="#000">\n  <title>Skills</title>\n  <style>@media (prefers-color-scheme:dark){:root{color:#fff}}</style>\n  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />\n  <path d="M20 3v4" />\n  <path d="M22 5h-4" />\n  <path d="M4 17v2" />\n  <path d="M5 18H3" />\n</svg>'
 const svg_slack =
@@ -106,6 +108,7 @@ export const packLogosByModuleId: Readonly<Record<string, string>> = {
 	resend: svg_resend,
 	s3: svg_amazon,
 	scheduler: svg_scheduler,
+	shipstation: svg_shipstation,
 	skills: svg_skills,
 	slack: svg_slack,
 	sqs: svg_amazon,
