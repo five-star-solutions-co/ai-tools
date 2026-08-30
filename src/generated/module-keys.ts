@@ -41,6 +41,7 @@ export const moduleKeys = [
 	'telegram',
 	'textract',
 	'vector-store',
+	'walmart',
 	'web-fetch',
 	'woocommerce'
 ] as const

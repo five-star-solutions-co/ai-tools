@@ -86,6 +86,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@5ss/ai-tools/katana` | [katana](./vendors/katana.md) |
 | `@5ss/ai-tools/amazon-sp-api` | [amazon-sp-api](./vendors/amazon-sp-api.md) |
 | `@5ss/ai-tools/shipstation` | [shipstation](./vendors/shipstation.md) |
+| `@5ss/ai-tools/walmart` | [walmart](./vendors/walmart.md) |
 
 ### Vertical kits (not published)
 

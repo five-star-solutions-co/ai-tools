@@ -189,6 +189,100 @@ describe('s3', () => {
 		}
 	})
 
+	test('bounded get omits If-Match for a weak ETag', async () => {
+		const original = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			if (req.method === 'HEAD') {
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-length': '3', etag: 'W/"weak"' }
+				})
+			}
+			expect(req.method).toBe('GET')
+			expect(req.headers.get('if-match')).toBeNull()
+			return new Response(new Uint8Array([1, 2, 3]), {
+				status: 206,
+				headers: { 'content-length': '3', 'content-range': 'bytes 0-2/3', etag: 'W/"weak"' }
+			})
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client(auth)
+			const bytes = await client.getBytes('weak.bin', { maxBytes: 10 })
+			expect([...bytes]).toEqual([1, 2, 3])
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('bounded get refreshes metadata and retries one precondition failure', async () => {
+		const original = globalThis.fetch
+		let heads = 0
+		let gets = 0
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			if (req.method === 'HEAD') {
+				heads += 1
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-length': '3', etag: heads === 1 ? '"v1"' : '"v2"' }
+				})
+			}
+			gets += 1
+			expect(req.headers.get('if-match')).toBe(gets === 1 ? '"v1"' : '"v2"')
+			if (gets === 1) return new Response('changed', { status: 412 })
+			return new Response(new Uint8Array([4, 5, 6]), {
+				status: 206,
+				headers: { 'content-length': '3', 'content-range': 'bytes 0-2/3', etag: '"v2"' }
+			})
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client(auth)
+			const bytes = await client.getBytes('changed.bin', { maxBytes: 10 })
+			expect([...bytes]).toEqual([4, 5, 6])
+			expect(heads).toBe(2)
+			expect(gets).toBe(2)
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
+	test('range get refreshes metadata and retries one precondition failure', async () => {
+		const original = globalThis.fetch
+		let heads = 0
+		let gets = 0
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const req = input instanceof Request ? input : new Request(input, init)
+			if (req.method === 'HEAD') {
+				heads += 1
+				return new Response(null, {
+					status: 200,
+					headers: { 'content-length': '3', etag: heads === 1 ? '"v1"' : '"v2"' }
+				})
+			}
+			gets += 1
+			expect(req.headers.get('range')).toBe('bytes=0-2')
+			expect(req.headers.get('if-match')).toBe(gets === 1 ? '"v1"' : '"v2"')
+			if (gets === 1) return new Response('changed', { status: 412 })
+			return new Response(new Uint8Array([7, 8, 9]), {
+				status: 206,
+				headers: { 'content-length': '3', 'content-range': 'bytes 0-2/3', etag: '"v2"' }
+			})
+		}) as typeof globalThis.fetch
+
+		try {
+			const client = new S3Client(auth)
+			const ranged = await client.getBytesRange('changed.bin', { start_byte: 0, end_byte: 2 })
+			expect([...ranged.bytes]).toEqual([7, 8, 9])
+			expect(heads).toBe(2)
+			expect(gets).toBe(2)
+		} finally {
+			globalThis.fetch = original
+		}
+	})
+
 	test('getBytes maxBytes rejects oversized HEAD without GET body', async () => {
 		const original = globalThis.fetch
 		let gets = 0

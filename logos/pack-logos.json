@@ -40,5 +40,6 @@
 	"textract": "textract",
 	"vector-store": "vector-store",
 	"web-fetch": "web-fetch",
+	"walmart": "walmart",
 	"woocommerce": "woocommerce"
 }

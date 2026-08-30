@@ -90,6 +90,11 @@ function assertByteLimit(maxBytes: number): void {
 	}
 }
 
+function strongEtagCondition(etag: string | undefined): string | undefined {
+	if (!etag || etag.startsWith('W/')) return undefined
+	return `"${etag}"`
+}
+
 export class S3Client {
 	readonly #auth: S3Auth
 	readonly #aws: AwsService
@@ -194,7 +199,8 @@ export class S3Client {
 	async #getBoundedWire(
 		wireKey: string,
 		maxBytes: number,
-		limitMessage: string
+		limitMessage: string,
+		retryOnPreconditionFailure = true
 	): Promise<{ bytes: Uint8Array; headers: Headers; head: HeadObjectOutput }> {
 		assertByteLimit(maxBytes)
 		const head = await this.#headWire(wireKey)
@@ -210,7 +216,8 @@ export class S3Client {
 		}
 
 		const headers: Record<string, string> = { Range: `bytes=0-${maxBytes}` }
-		if (head.etag) headers['If-Match'] = head.etag.startsWith('"') ? head.etag : `"${head.etag}"`
+		const ifMatch = strongEtagCondition(head.etag)
+		if (ifMatch) headers['If-Match'] = ifMatch
 
 		let response
 		try {
@@ -230,6 +237,9 @@ export class S3Client {
 				)
 			}
 			if (isToolError(error) && error.details?.['status'] === 412) {
+				if (retryOnPreconditionFailure) {
+					return this.#getBoundedWire(wireKey, maxBytes, limitMessage, false)
+				}
 				throw new ToolError('Object changed during download', {
 					code: 'upstream',
 					details: { status: 412, key: this.#publicKey(wireKey) },
@@ -496,6 +506,15 @@ export class S3Client {
 			tooLarge(MAX_OBJECT_BYTES, requestedBytes, 'Byte range exceeds download limit')
 		}
 
+		return this.#getBytesRangeWire(wireKey, range, requestedBytes)
+	}
+
+	async #getBytesRangeWire(
+		wireKey: string,
+		range: S3ByteRange,
+		requestedBytes: number,
+		retryOnPreconditionFailure = true
+	): Promise<S3ByteRangeResult> {
 		const head = await this.#headWire(wireKey)
 		if (!head.exists) objectNotFound()
 		if (head.content_length !== undefined && range.start_byte >= head.content_length) {
@@ -508,7 +527,8 @@ export class S3Client {
 		const headers: Record<string, string> = {
 			Range: `bytes=${range.start_byte}-${range.end_byte}`
 		}
-		if (head.etag) headers['If-Match'] = head.etag.startsWith('"') ? head.etag : `"${head.etag}"`
+		const ifMatch = strongEtagCondition(head.etag)
+		if (ifMatch) headers['If-Match'] = ifMatch
 
 		let response
 		try {
@@ -519,6 +539,9 @@ export class S3Client {
 			})
 		} catch (error) {
 			if (isToolError(error) && error.details?.['status'] === 412) {
+				if (retryOnPreconditionFailure) {
+					return this.#getBytesRangeWire(wireKey, range, requestedBytes, false)
+				}
 				throw new ToolError('Object changed during download', {
 					code: 'upstream',
 					details: { status: 412, key: this.#publicKey(wireKey) },

@@ -206,6 +206,10 @@
 			"types": "./dist/modules/vector-store/index.d.ts",
 			"default": "./dist/modules/vector-store/index.js"
 		},
+		"./walmart": {
+			"types": "./dist/vendors/walmart/index.d.ts",
+			"default": "./dist/vendors/walmart/index.js"
+		},
 		"./web-fetch": {
 			"types": "./dist/modules/web-fetch/index.d.ts",
 			"default": "./dist/modules/web-fetch/index.js"

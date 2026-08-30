@@ -164,6 +164,7 @@ Public surfaces removed or renamed since **v1.6.1** — next release **must** be
 ### Added
 
 - ShipStation V2 vendor pack with API-key auth and paginated label and shipment read tools.
+- Walmart Marketplace US vendor pack with OAuth, paginated orders, items, returns, reconciliation dates, and host-facing report download bytes.
 
 ### Notes (compat preserved)
 
