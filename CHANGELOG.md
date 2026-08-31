@@ -4,6 +4,12 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.9.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.8.0...v3.9.0) (2026-08-31)
+
+### Features
+
+* **core:** improve ai-tools integration with wayfair ([8109ca2](https://github.com/five-star-solutions-co/ai-tools/commit/8109ca22bd9a286fd0c48bae9914817edac6baed))
+
 ## [3.8.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.7.3...v3.8.0) (2026-08-30)
 
 ### Features
