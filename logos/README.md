@@ -85,3 +85,4 @@ Downloaded from [Lucide](https://lucide.dev) / `lucide-static@0.469.0` (ISC). Se
 | `shipstation` | [ShipStation primary logo](https://www.shipstation.com/wp-content/uploads/2026/02/logo-ss-primary-rgb-1-1.svg) |
 | `teams` | Wikimedia Commons [Microsoft Office Teams (2025–present)](https://upload.wikimedia.org/wikipedia/commons/0/07/Microsoft_Office_Teams_%282025%E2%80%93present%29.svg) |
 | `walmart` | [Walmart Brand Center Spark](https://brandcenter.walmart.com/brand/brand-identity/spark) |
+| `wayfair` | Wikimedia Commons [Wayfair 2024 logo](https://commons.wikimedia.org/wiki/File:Wayfair_2024_logo.svg), sourced from Wayfair |

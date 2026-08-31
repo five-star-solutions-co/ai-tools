@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-30T14:13:27.620Z",
+	"generatedAt": "2026-08-31T14:33:25.271Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -2395,6 +2395,42 @@
 			"moduleId": "walmart",
 			"moduleIdSource": "src/vendors/walmart/module.ts",
 			"logo": "logos/walmart.svg"
+		},
+		{
+			"key": "wayfair",
+			"lane": "vendors",
+			"entry": "src/vendors/wayfair/index.ts",
+			"entryKey": "vendors/wayfair/index",
+			"exportNames": [
+				"WayfairAuth",
+				"WayfairCatalogProductRaw",
+				"WayfairClient",
+				"WayfairClientOptions",
+				"WayfairDropshipPurchaseOrderRaw",
+				"WayfairListCatalogPageInput",
+				"WayfairListCatalogPageOutput",
+				"WayfairListDropshipOrdersInput",
+				"WayfairListDropshipOrdersOutput",
+				"wayfairAuthSchema",
+				"wayfairCatalogProductRawSchema",
+				"wayfairCatalogResponseSchema",
+				"wayfairCatalogSkuRawSchema",
+				"wayfairDropshipPurchaseOrderRawSchema",
+				"wayfairDropshipPurchaseOrdersResponseSchema",
+				"wayfairListCatalogPageInputSchema",
+				"wayfairListCatalogPageOutputSchema",
+				"wayfairListCatalogTool",
+				"wayfairListDropshipOrdersInputSchema",
+				"wayfairListDropshipOrdersOutputSchema",
+				"wayfairListDropshipOrdersTool",
+				"wayfairModule",
+				"wayfairPurchaseOrderProductRawSchema"
+			],
+			"runtime": "both",
+			"nodeFormats": ["esm", "cjs"],
+			"moduleId": "wayfair",
+			"moduleIdSource": "src/vendors/wayfair/module.ts",
+			"logo": "logos/wayfair.svg"
 		},
 		{
 			"key": "web-fetch",

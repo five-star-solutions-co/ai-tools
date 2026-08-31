@@ -36,6 +36,7 @@ async function loadPackModule(key: string): Promise<{ id: string; categories: re
 		'telegram',
 		'textract',
 		'walmart',
+		'wayfair',
 		'woocommerce'
 	].includes(key)
 	const root = isVendor ? 'vendors' : 'modules'

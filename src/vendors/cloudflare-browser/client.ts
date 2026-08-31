@@ -152,11 +152,15 @@ export class CloudflareBrowserClient {
 			setJavaScriptEnabled: true
 		}
 		if (kind === 'pdf') {
-			body['preferCSSPageSize'] = true
-			body['printBackground'] = true
+			body['pdfOptions'] = {
+				preferCSSPageSize: true,
+				printBackground: true
+			}
 		} else {
-			body['fullPage'] = true
-			body['type'] = 'png'
+			body['screenshotOptions'] = {
+				fullPage: true,
+				type: 'png'
+			}
 			if ('viewport' in input && input.viewport) {
 				const viewport: Record<string, unknown> = {
 					width: input.viewport.width,

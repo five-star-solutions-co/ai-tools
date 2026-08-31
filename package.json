@@ -210,6 +210,10 @@
 			"types": "./dist/vendors/walmart/index.d.ts",
 			"default": "./dist/vendors/walmart/index.js"
 		},
+		"./wayfair": {
+			"types": "./dist/vendors/wayfair/index.d.ts",
+			"default": "./dist/vendors/wayfair/index.js"
+		},
 		"./web-fetch": {
 			"types": "./dist/modules/web-fetch/index.d.ts",
 			"default": "./dist/modules/web-fetch/index.js"

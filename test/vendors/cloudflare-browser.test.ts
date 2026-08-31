@@ -71,7 +71,7 @@ describe('cloudflare-browser', () => {
 		expect(requests).toHaveLength(3)
 	})
 
-	test('render payloads use the Cloudflare top-level option contract', async () => {
+	test('render payloads use the Cloudflare quick-action option contract', async () => {
 		const bodies: Record<string, unknown>[] = []
 		const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 			const request = input instanceof Request ? input : new Request(input, init)
@@ -106,23 +106,33 @@ describe('cloudflare-browser', () => {
 		)
 
 		await client.renderPdf({ source: { url: 'https://example.com' } })
-		await client.renderScreenshot({ source: { url: 'https://example.com' } })
+		await client.renderScreenshot({
+			source: { url: 'https://example.com' },
+			viewport: { device_scale_factor: 2, height: 1080, width: 1920 }
+		})
 
 		expect(bodies[0]).toMatchObject({
-			printBackground: true,
-			preferCSSPageSize: true,
+			pdfOptions: {
+				preferCSSPageSize: true,
+				printBackground: true
+			},
 			setJavaScriptEnabled: true,
 			url: 'https://example.com'
 		})
-		expect(bodies[0]).not.toHaveProperty('pdfOptions')
+		expect(bodies[0]).not.toHaveProperty('preferCSSPageSize')
+		expect(bodies[0]).not.toHaveProperty('printBackground')
 		expect(bodies[0]).not.toHaveProperty('rejectResourceTypes')
 		expect(bodies[1]).toMatchObject({
-			fullPage: true,
+			screenshotOptions: {
+				fullPage: true,
+				type: 'png'
+			},
 			setJavaScriptEnabled: true,
-			type: 'png',
-			url: 'https://example.com'
+			url: 'https://example.com',
+			viewport: { deviceScaleFactor: 2, height: 1080, width: 1920 }
 		})
-		expect(bodies[1]).not.toHaveProperty('screenshotOptions')
+		expect(bodies[1]).not.toHaveProperty('fullPage')
+		expect(bodies[1]).not.toHaveProperty('type')
 		expect(bodies[1]).not.toHaveProperty('rejectResourceTypes')
 	})
 
