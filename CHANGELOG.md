@@ -4,6 +4,12 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.9.2](https://github.com/five-star-solutions-co/ai-tools/compare/v3.9.1...v3.9.2) (2026-09-05)
+
+### Code Refactoring
+
+* **core:** improve client boundaries ([453c2d5](https://github.com/five-star-solutions-co/ai-tools/commit/453c2d53a7a298ce4b2b39a256868da6f53c4c9d))
+
 ## [3.9.1](https://github.com/five-star-solutions-co/ai-tools/compare/v3.9.0...v3.9.1) (2026-08-31)
 
 ### Code Refactoring
