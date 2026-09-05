@@ -4,6 +4,12 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.9.3](https://github.com/five-star-solutions-co/ai-tools/compare/v3.9.2...v3.9.3) (2026-09-05)
+
+### Code Refactoring
+
+* **core:** Improve Walmart client pagination ([4595bb3](https://github.com/five-star-solutions-co/ai-tools/commit/4595bb37ad8afd114b0b3547be5339957bf886e6))
+
 ## [3.9.2](https://github.com/five-star-solutions-co/ai-tools/compare/v3.9.1...v3.9.2) (2026-09-05)
 
 ### Code Refactoring
