@@ -244,7 +244,29 @@ export const shipstationCarrierIdInputSchema = z.strictObject({
 	carrier_id: z.string().min(1).describe('ShipStation V2 carrier id')
 })
 
-export const shipstationListCarriersOutputSchema = z.object({ items: z.array(shipstationCarrierRawSchema) })
+export const shipstationListCarriersInputSchema = z.strictObject({
+	page: shipstationPageSchema,
+	page_size: z.int().min(1).optional().describe('Records per page; defaults to 25'),
+	include_extended_details: z
+		.boolean()
+		.optional()
+		.describe('Include carrier packages and advanced options; defaults to true')
+})
+
+export const shipstationCarrierErrorSchema = z.looseObject({
+	error_source: z.string().optional(),
+	error_type: z.string().optional(),
+	error_code: z.string(),
+	message: z.string()
+})
+
+export const shipstationListCarriersOutputSchema = z.object({
+	items: z.array(shipstationCarrierRawSchema),
+	pagination: shipstationPaginationSchema.extend({ page_size: z.int().min(1) }),
+	errors: z.array(shipstationCarrierErrorSchema),
+	partial: z.boolean(),
+	request_id: z.string().optional()
+})
 export const shipstationGetCarrierOutputSchema = shipstationCarrierRawSchema
 export const shipstationListCarrierServicesOutputSchema = z.object({
 	items: z.array(shipstationCarrierServiceRawSchema)
@@ -320,7 +342,14 @@ export const shipstationListFulfillmentsResponseSchema = z.looseObject({
 	pages: z.int().nonnegative()
 })
 
-export const shipstationListCarriersResponseSchema = z.looseObject({ carriers: z.array(shipstationCarrierRawSchema) })
+export const shipstationListCarriersResponseSchema = z.looseObject({
+	carriers: z.array(shipstationCarrierRawSchema),
+	total: z.int().nonnegative(),
+	page: z.int().min(1),
+	pages: z.int().nonnegative(),
+	errors: z.array(shipstationCarrierErrorSchema).default([]),
+	request_id: z.string().optional()
+})
 export const shipstationListCarrierServicesResponseSchema = z.looseObject({
 	services: z.array(shipstationCarrierServiceRawSchema)
 })
@@ -356,6 +385,8 @@ export type ShipstationListFulfillmentsPageInput = z.infer<typeof shipstationLis
 export type ShipstationListFulfillmentsPageOutput = z.infer<typeof shipstationListFulfillmentsPageOutputSchema>
 export type ShipstationCarrierIdInput = z.infer<typeof shipstationCarrierIdInputSchema>
 export type ShipstationListCarriersOutput = z.infer<typeof shipstationListCarriersOutputSchema>
+export type ShipstationListCarriersInput = z.infer<typeof shipstationListCarriersInputSchema>
+export type ShipstationCarrierError = z.infer<typeof shipstationCarrierErrorSchema>
 export type ShipstationGetCarrierOutput = z.infer<typeof shipstationGetCarrierOutputSchema>
 export type ShipstationListCarrierServicesOutput = z.infer<typeof shipstationListCarrierServicesOutputSchema>
 export type ShipstationListCarrierPackagesOutput = z.infer<typeof shipstationListCarrierPackagesOutputSchema>

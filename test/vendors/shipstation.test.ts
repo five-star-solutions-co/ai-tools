@@ -163,7 +163,7 @@ describe('shipstation', () => {
 				expect(request.headers.get('Authorization')).toBeNull()
 
 				if (url.pathname === '/v2/carriers') {
-					return new Response(JSON.stringify({ carriers: [{ carrier_id: 'se-carrier-1' }] }), { status: 200 })
+					return Response.json({ carriers: [{ carrier_id: 'se-carrier-1' }], total: 1, page: 1, pages: 1 })
 				}
 				if (url.pathname.endsWith('/services')) {
 					return new Response(JSON.stringify({ services: [{ service_code: 'ups_ground', name: 'UPS Ground' }] }), {
@@ -191,6 +191,106 @@ describe('shipstation', () => {
 		expect((await client.listCarrierServices({ carrier_id: 'se-carrier-1' })).items[0]?.service_code).toBe('ups_ground')
 		expect((await client.listCarrierPackages({ carrier_id: 'se-carrier-1' })).items[0]?.package_code).toBe('package')
 		expect((await client.listCarrierOptions({ carrier_id: 'se-carrier-1' })).items[0]?.name).toBe('bill_to_party')
+	})
+
+	test('exposes carrier page controls, metadata, and raw fields without fetching additional pages', async () => {
+		let requests = 0
+		const client = new ShipstationClient(auth, {
+			fetch: async (input, init) => {
+				requests += 1
+				const request = new Request(input, init)
+				const url = new URL(request.url)
+				expect(url.origin + url.pathname).toBe('https://api.shipstation.com/v2/carriers')
+				expect(url.searchParams.get('page')).toBe('2')
+				expect(url.searchParams.get('page_size')).toBe('1')
+				expect(url.searchParams.get('include_extended_details')).toBe('false')
+				expect(request.headers.get('API-Key')).toBe(auth.v2_api_key)
+				expect(request.headers.get('Authorization')).toBeNull()
+				return Response.json({
+					carriers: [{ carrier_id: 'se-2', disabled_by_billing_plan: true }],
+					total: 3,
+					page: 2,
+					pages: 3,
+					request_id: 'request-2',
+					errors: []
+				})
+			}
+		})
+		expect(await client.listCarriers({ page: 2, page_size: 1, include_extended_details: false })).toEqual({
+			items: [{ carrier_id: 'se-2', disabled_by_billing_plan: true }],
+			pagination: { total: 3, page: 2, pages: 3, page_size: 1, has_more: true },
+			request_id: 'request-2',
+			errors: [],
+			partial: false
+		})
+		expect(requests).toBe(1)
+	})
+
+	test.each([200, 207])('preserves carrier errors at HTTP %i through the agent tool', async (status) => {
+		const errors = [
+			{
+				error_source: 'carrier',
+				error_type: 'system',
+				error_code: 'unspecified',
+				message: 'Carrier unavailable',
+				carrier_id: 'se-2'
+			}
+		]
+		const tool = shipstationModule.tools.find((item) => item.id === 'shipstation-list-carriers')
+		if (!tool) throw new Error('Missing carriers tool')
+		const result = await runTool(
+			tool,
+			{ page: 1 },
+			{
+				auth,
+				fetch: async () =>
+					Response.json({ carriers: [{ carrier_id: 'se-1' }], total: 2, page: 1, pages: 1, errors }, { status })
+			}
+		)
+		expect(result).toMatchObject({ items: [{ carrier_id: 'se-1' }], partial: true, errors })
+	})
+
+	test('does not describe HTTP 207 as complete when errors are empty or omitted', async () => {
+		const client = new ShipstationClient(auth, {
+			fetch: async () => Response.json({ carriers: [], total: 0, page: 1, pages: 0 }, { status: 207 })
+		})
+		expect(await client.listCarriers()).toMatchObject({ partial: true, errors: [] })
+	})
+
+	test('accepts an authoritative empty carrier page and uses explicit default pagination', async () => {
+		const client = new ShipstationClient(auth, {
+			fetch: async (input, init) => {
+				const url = new URL(new Request(input, init).url)
+				expect(url.searchParams.get('page')).toBe('1')
+				expect(url.searchParams.get('page_size')).toBe('25')
+				return Response.json({ carriers: [], total: 0, page: 1, pages: 0 })
+			}
+		})
+		expect(await client.listCarriers()).toEqual({
+			items: [],
+			pagination: { total: 0, page: 1, pages: 0, page_size: 25, has_more: false },
+			errors: [],
+			partial: false
+		})
+	})
+
+	test.each([
+		{ carriers: [] },
+		{ carriers: [], total: 0, page: 1, pages: 0, errors: 'failed' },
+		{ carriers: [], total: 0, page: 1, pages: 0, errors: [{}] }
+	])('rejects malformed carrier completeness or error metadata', async (body) => {
+		const client = new ShipstationClient(auth, { fetch: async () => Response.json(body) })
+		expect((await rejectionOf(client.listCarriers())).code).toBe('upstream')
+	})
+
+	test('rejects invalid carrier page inputs before HTTP', async () => {
+		const client = new ShipstationClient(auth, {
+			fetch: async () => {
+				throw new Error('Unexpected request')
+			}
+		})
+		expect((await rejectionOf(client.listCarriers({ page: 0 }))).code).toBe('bad_input')
+		expect((await rejectionOf(client.listCarriers({ page_size: 0 }))).code).toBe('bad_input')
 	})
 
 	test('lists legacy V1 orders with Basic auth and mapped query fields', async () => {

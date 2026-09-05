@@ -1,5 +1,3 @@
-import { z } from 'zod'
-
 import { defineModule, defineTool } from '../../core/define'
 import { ShipstationClient } from './client'
 import {
@@ -8,6 +6,7 @@ import {
 	shipstationGetCarrierOutputSchema,
 	shipstationListCarrierOptionsOutputSchema,
 	shipstationListCarrierPackagesOutputSchema,
+	shipstationListCarriersInputSchema,
 	shipstationListCarriersOutputSchema,
 	shipstationListCarrierServicesOutputSchema,
 	shipstationListFulfillmentsPageInputSchema,
@@ -21,8 +20,6 @@ import {
 	shipstationListStoresInputSchema,
 	shipstationListStoresOutputSchema
 } from './contracts'
-
-const emptyInputSchema = z.strictObject({}).describe('No input fields')
 
 export const shipstationListLabelsTool = defineTool({
 	id: 'shipstation-list-labels',
@@ -75,8 +72,9 @@ export const shipstationListFulfillmentsTool = defineTool({
 export const shipstationListCarriersTool = defineTool({
 	id: 'shipstation-list-carriers',
 	name: 'shipstationListCarriers',
-	description: 'List connected V2 ShipStation carrier accounts and their available shipping capabilities.',
-	inputSchema: emptyInputSchema,
+	description:
+		'List one V2 page of connected ShipStation carrier accounts and shipping capabilities. Pagination and partial-response errors are included; partial results are not a complete account inventory.',
+	inputSchema: shipstationListCarriersInputSchema,
 	outputSchema: shipstationListCarriersOutputSchema,
 	sideEffect: 'read',
 	runtime: 'both',
@@ -84,7 +82,7 @@ export const shipstationListCarriersTool = defineTool({
 	network: true,
 	supportsCancel: true,
 	tags: ['carriers', 'shipping'],
-	execute: async (_input, ctx) => ShipstationClient.fromContext(ctx).listCarriers()
+	execute: async (input, ctx) => ShipstationClient.fromContext(ctx).listCarriers(input)
 })
 
 export const shipstationGetCarrierTool = defineTool({

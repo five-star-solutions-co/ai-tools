@@ -2,6 +2,7 @@ export { ShipstationClient } from './client'
 export type { ShipstationClientOptions } from './client'
 export {
 	shipstationAuthSchema,
+	shipstationCarrierErrorSchema,
 	shipstationCarrierIdInputSchema,
 	shipstationCarrierOptionRawSchema,
 	shipstationCarrierPackageRawSchema,
@@ -14,6 +15,7 @@ export {
 	shipstationListCarrierOptionsResponseSchema,
 	shipstationListCarrierPackagesOutputSchema,
 	shipstationListCarrierPackagesResponseSchema,
+	shipstationListCarriersInputSchema,
 	shipstationListCarriersOutputSchema,
 	shipstationListCarriersResponseSchema,
 	shipstationListCarrierServicesOutputSchema,
@@ -42,6 +44,7 @@ export {
 } from './contracts'
 export type {
 	ShipstationAuth,
+	ShipstationCarrierError,
 	ShipstationCarrierIdInput,
 	ShipstationCarrierOptionRaw,
 	ShipstationCarrierPackageRaw,
@@ -52,6 +55,7 @@ export type {
 	ShipstationLabelRaw,
 	ShipstationListCarrierOptionsOutput,
 	ShipstationListCarrierPackagesOutput,
+	ShipstationListCarriersInput,
 	ShipstationListCarriersOutput,
 	ShipstationListCarrierServicesOutput,
 	ShipstationListFulfillmentsPageInput,

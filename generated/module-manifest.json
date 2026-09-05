@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-08-31T14:33:25.271Z",
+	"generatedAt": "2026-09-05T01:09:38.776Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -1729,6 +1729,7 @@
 			"entryKey": "vendors/shipstation/index",
 			"exportNames": [
 				"ShipstationAuth",
+				"ShipstationCarrierError",
 				"ShipstationCarrierIdInput",
 				"ShipstationCarrierOptionRaw",
 				"ShipstationCarrierPackageRaw",
@@ -1742,6 +1743,7 @@
 				"ShipstationListCarrierOptionsOutput",
 				"ShipstationListCarrierPackagesOutput",
 				"ShipstationListCarrierServicesOutput",
+				"ShipstationListCarriersInput",
 				"ShipstationListCarriersOutput",
 				"ShipstationListFulfillmentsPageInput",
 				"ShipstationListFulfillmentsPageOutput",
@@ -1758,6 +1760,7 @@
 				"ShipstationShipmentRaw",
 				"ShipstationStoreRaw",
 				"shipstationAuthSchema",
+				"shipstationCarrierErrorSchema",
 				"shipstationCarrierIdInputSchema",
 				"shipstationCarrierOptionRawSchema",
 				"shipstationCarrierPackageRawSchema",
@@ -1776,6 +1779,7 @@
 				"shipstationListCarrierServicesOutputSchema",
 				"shipstationListCarrierServicesResponseSchema",
 				"shipstationListCarrierServicesTool",
+				"shipstationListCarriersInputSchema",
 				"shipstationListCarriersOutputSchema",
 				"shipstationListCarriersResponseSchema",
 				"shipstationListCarriersTool",

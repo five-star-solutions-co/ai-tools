@@ -57,6 +57,15 @@ Each client method performs exactly one provider request. Paginated methods retu
 
 Labels explicitly expose `shipment_cost`, `insurance_cost`, `carrier_id`, `service_code`, `tracking_number`, `voided`, and `refund_details` while preserving all other provider fields.
 
+`listCarriers({ page, page_size, include_extended_details })` also returns normalized pagination, the provider's
+`errors`, optional `request_id`, and `partial`. HTTP 207 or a nonempty errors array sets `partial: true`, including
+when a 207 response omits errors. Callers must not treat a partial page as a complete inventory. Missing or malformed
+pagination/error metadata is rejected, except omitted errors on a successful response normalize to an empty array.
+The client and `shipstation-list-carriers` tool expose the same contract. Each call remains one request; callers
+own traversal, retry, and deciding whether a complete scan is authoritative.
+
+Reference: [ShipStation V2 carriers API](https://docs.shipstation.com/apis/openapi/carriers).
+
 V2 inputs retain ShipStation's snake-case query names. V1 order and store inputs use the pack's snake-case convention and map to ShipStation's camel-case query names at the client boundary.
 
 ShipStation's default V2 API plan allows 200 requests per minute. HTTP 429 responses become retryable `ToolError` values and preserve `Retry-After` as `details.retry_after_ms`; the host owns coordinated retry and pacing.

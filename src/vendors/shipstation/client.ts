@@ -17,6 +17,7 @@ import type {
 	ShipstationGetCarrierOutput,
 	ShipstationListCarrierOptionsOutput,
 	ShipstationListCarrierPackagesOutput,
+	ShipstationListCarriersInput,
 	ShipstationListCarriersOutput,
 	ShipstationListCarrierServicesOutput,
 	ShipstationListFulfillmentsPageInput,
@@ -36,6 +37,7 @@ import {
 	shipstationCarrierRawSchema,
 	shipstationListCarrierOptionsResponseSchema,
 	shipstationListCarrierPackagesResponseSchema,
+	shipstationListCarriersInputSchema,
 	shipstationListCarriersResponseSchema,
 	shipstationListCarrierServicesResponseSchema,
 	shipstationListFulfillmentsPageInputSchema,
@@ -214,15 +216,32 @@ export class ShipstationClient {
 		}
 	}
 
-	/** V2 GET /carriers. */
-	async listCarriers(): Promise<ShipstationListCarriersOutput> {
-		const { data } = await this.#v2.get('/carriers', { label: 'ShipStation listCarriers' })
+	/** One V2 GET /carriers page, including partial-response errors. */
+	async listCarriers(input: ShipstationListCarriersInput = {}): Promise<ShipstationListCarriersOutput> {
+		const parsedInput = parseInput(shipstationListCarriersInputSchema, input, 'Invalid ShipStation carriers page input')
+		const pageSize = parsedInput.page_size ?? DEFAULT_PAGE_SIZE
+		const { data, status } = await this.#v2.get('/carriers', {
+			label: 'ShipStation listCarriers',
+			query: { ...parsedInput, page: parsedInput.page ?? 1, page_size: pageSize }
+		})
 		const response = parseResponse(
 			shipstationListCarriersResponseSchema,
 			data,
 			'ShipStation returned an invalid carriers response'
 		)
-		return { items: response.carriers }
+		return {
+			items: response.carriers,
+			pagination: {
+				total: response.total,
+				page: response.page,
+				pages: response.pages,
+				page_size: pageSize,
+				has_more: response.page < response.pages
+			},
+			errors: response.errors,
+			partial: status === 207 || response.errors.length > 0,
+			...(response.request_id && { request_id: response.request_id })
+		}
 	}
 
 	/** V2 GET /carriers/{carrier_id}. */
