@@ -134,21 +134,49 @@ export const walmartListOrdersPageOutputSchema = z.object({
 	truncated: z.boolean()
 })
 
-export const walmartListItemsPageInputSchema = z.strictObject({
-	cursor: z.string().min(1).optional().describe('Provider next_cursor; omit for the first page'),
-	offset: z.int().min(0).max(10_000).optional().describe('Zero-based item offset; defaults to 0'),
-	limit: z.int().min(1).max(1000).optional().describe('Items per page, from 1 to 1000; defaults to 20'),
-	sku: z.string().min(1).optional().describe('Seller SKU filter'),
-	gtin: z.string().length(14).optional().describe('14-digit GTIN filter'),
-	lifecycle_status: z.enum(['ACTIVE', 'ARCHIVED', 'RETIRED']).optional().describe('Item lifecycle status'),
-	published_status: z.enum(['PUBLISHED', 'UNPUBLISHED', 'INPROGRESS']).optional().describe('Item publication status'),
-	variant_group_id: z.string().min(1).optional().describe('Walmart variant group id filter'),
-	condition: z.string().min(1).optional().describe('Walmart item condition filter'),
-	availability: z.enum(['In_stock', 'Out_of_stock', 'Preorder']).optional().describe('Item availability filter'),
-	show_duplicate_item_info: z.boolean().optional().describe('Include duplicate-item information'),
-	include_customer_favorites_status: z.boolean().optional().describe('Include customer-favorite status'),
-	bundle_type: z.literal('VIRTUALPACK').optional().describe('Restrict results to virtual packs')
-})
+export const walmartListItemsPageInputSchema = z
+	.strictObject({
+		cursor: z
+			.string()
+			.min(1)
+			.optional()
+			.describe('Provider next_cursor; pass with its next_offset. Omit for the first page'),
+		offset: z
+			.int()
+			.min(0)
+			.optional()
+			.describe(
+				'Pass next_offset with a cursor as local progress. Without a cursor, provider offset is at most 10000; defaults to 0'
+			),
+		limit: z.int().min(1).max(1000).optional().describe('Items per page, from 1 to 1000; defaults to 20'),
+		sku: z.string().min(1).optional().describe('Seller SKU filter'),
+		gtin: z.string().length(14).optional().describe('14-digit GTIN filter'),
+		lifecycle_status: z.enum(['ACTIVE', 'ARCHIVED', 'RETIRED']).optional().describe('Item lifecycle status'),
+		published_status: z.enum(['PUBLISHED', 'UNPUBLISHED', 'INPROGRESS']).optional().describe('Item publication status'),
+		variant_group_id: z.string().min(1).optional().describe('Walmart variant group id filter'),
+		condition: z.string().min(1).optional().describe('Walmart item condition filter'),
+		availability: z.enum(['In_stock', 'Out_of_stock', 'Preorder']).optional().describe('Item availability filter'),
+		show_duplicate_item_info: z.boolean().optional().describe('Include duplicate-item information'),
+		include_customer_favorites_status: z.boolean().optional().describe('Include customer-favorite status'),
+		bundle_type: z.literal('VIRTUALPACK').optional().describe('Restrict results to virtual packs')
+	})
+	.superRefine((input, context) => {
+		const continuation = input.cursor !== undefined && input.cursor !== '*'
+		if (continuation && input.offset === undefined) {
+			context.addIssue({
+				code: 'custom',
+				path: ['offset'],
+				message: 'Pass next_offset with the item cursor to preserve pagination progress'
+			})
+		}
+		if (!continuation && input.offset !== undefined && input.offset > 10_000) {
+			context.addIssue({
+				code: 'custom',
+				path: ['offset'],
+				message: 'Provider item offset must be at most 10000; use cursor pagination for larger catalogs'
+			})
+		}
+	})
 
 export const walmartListItemsPageOutputSchema = z.object({
 	items: z.array(walmartItemRawSchema),

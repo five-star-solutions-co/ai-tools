@@ -215,16 +215,17 @@ export class WalmartClient {
 		}
 	}
 
-	/** One GET /v3/items request. Cursor and offset are both exposed because Walmart's item cursor is reusable. */
+	/** One GET /v3/items request. With a cursor, offset is local progress, never a provider query parameter. */
 	async listItemsPage(input: WalmartListItemsPageInput = {}): Promise<WalmartListItemsPageOutput> {
 		const parsedInput = parseInput(walmartListItemsPageInputSchema, input, 'Invalid Walmart items page input')
 		const offset = parsedInput.offset ?? 0
 		const limit = parsedInput.limit ?? DEFAULT_ITEMS_LIMIT
+		const continuation = parsedInput.cursor !== undefined && parsedInput.cursor !== '*'
 		const { data } = await this.#get('/v3/items', 'Walmart Marketplace listItemsPage', {
 			nextCursor: parsedInput.cursor ?? '*',
-			offset,
+			...(!continuation && { offset }),
 			limit,
-			...(parsedInput.cursor
+			...(continuation
 				? {}
 				: {
 						...(parsedInput.sku && { sku: parsedInput.sku }),
@@ -251,6 +252,14 @@ export class WalmartClient {
 		const nextOffset = offset + response.items.length
 		const truncated = nextOffset < response.total_items
 		const nextCursor = response.next_cursor ?? undefined
+		if (
+			nextOffset > response.total_items ||
+			response.items.length > limit ||
+			(truncated && response.items.length === 0) ||
+			(truncated && nextOffset > 10_000 && (!nextCursor || nextCursor === '*'))
+		) {
+			throw new ToolError('Walmart Marketplace returned inconsistent item pagination', { code: 'upstream' })
+		}
 		return {
 			items: response.items,
 			total_count: response.total_items,
