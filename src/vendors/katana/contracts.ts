@@ -37,6 +37,38 @@ export const katanaSupplierRawSchema = katanaRawRecordSchema
 export const katanaPurchaseOrderRawSchema = katanaRawRecordSchema
 export const katanaManufacturingOrderRawSchema = katanaRawRecordSchema
 
+const katanaRawDecimalSchema = z.union([z.number(), z.string()]).nullable().optional()
+
+export const katanaSalesOrderRowRawSchema = katanaRawRecordSchema.extend({
+	sales_order_id: z.int(),
+	variant_id: z.int().optional(),
+	quantity: katanaRawDecimalSchema,
+	price_per_unit: katanaRawDecimalSchema,
+	total_discount: katanaRawDecimalSchema,
+	total: katanaRawDecimalSchema,
+	total_in_base_currency: katanaRawDecimalSchema,
+	cogs_value: katanaRawDecimalSchema
+})
+
+export const katanaPurchaseOrderRowRawSchema = katanaRawRecordSchema.extend({
+	purchase_order_id: z.int(),
+	variant_id: z.int().optional(),
+	quantity: katanaRawDecimalSchema,
+	price_per_unit: katanaRawDecimalSchema,
+	total: katanaRawDecimalSchema,
+	total_in_base_currency: katanaRawDecimalSchema,
+	purchase_uom_conversion_rate: katanaRawDecimalSchema
+})
+
+export const katanaManufacturingOrderRecipeRowRawSchema = katanaRawRecordSchema.extend({
+	manufacturing_order_id: z.int(),
+	variant_id: z.int().optional(),
+	planned_quantity_per_unit: katanaRawDecimalSchema,
+	total_actual_quantity: katanaRawDecimalSchema,
+	cost: katanaRawDecimalSchema,
+	ingredient_availability: z.string().nullable().optional()
+})
+
 export const katanaInventoryRawSchema = z.looseObject({
 	variant_id: z.number().int(),
 	location_id: z.number().int(),
@@ -75,6 +107,56 @@ export const katanaListSalesOrdersPageInputSchema = z.strictObject({
 	customer_id: z.int().positive().optional(),
 	order_no: z.string().min(1).optional(),
 	location_id: z.int().positive().optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListSalesOrderRowsPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	ids: z.array(z.int().positive()).min(1).optional(),
+	sales_order_ids: z.array(z.int().positive()).min(1).optional(),
+	variant_id: z.int().positive().optional(),
+	location_id: z.int().positive().optional(),
+	tax_rate_id: z.int().positive().optional(),
+	linked_manufacturing_order_id: z.int().positive().optional(),
+	product_availability: z.enum(['IN_STOCK', 'EXPECTED', 'PICKED', 'NOT_AVAILABLE', 'NOT_APPLICABLE']).optional(),
+	extend: z.array(z.literal('variant')).min(1).optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListPurchaseOrderRowsPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	ids: z.array(z.int().positive()).min(1).optional(),
+	purchase_order_id: z.int().positive().optional(),
+	variant_id: z.int().positive().optional(),
+	tax_rate_id: z.int().positive().optional(),
+	group_id: z.int().positive().optional(),
+	location_id: z.int().positive().optional(),
+	created_at_min: katanaTimestampFilterSchema,
+	created_at_max: katanaTimestampFilterSchema,
+	updated_at_min: katanaTimestampFilterSchema,
+	updated_at_max: katanaTimestampFilterSchema,
+	include_deleted: z.boolean().optional()
+})
+
+export const katanaListManufacturingOrderRecipeRowsPageInputSchema = z.strictObject({
+	page: katanaPageSchema,
+	limit: katanaPageLimitSchema,
+	ids: z.array(z.int().positive()).min(1).optional(),
+	manufacturing_order_id: z.int().positive().optional(),
+	variant_id: z.int().positive().optional(),
+	ingredient_availability: z
+		.enum(['PROCESSED', 'IN_STOCK', 'NOT_AVAILABLE', 'EXPECTED', 'NO_RECIPE', 'NOT_APPLICABLE'])
+		.optional(),
 	created_at_min: katanaTimestampFilterSchema,
 	created_at_max: katanaTimestampFilterSchema,
 	updated_at_min: katanaTimestampFilterSchema,
@@ -178,6 +260,19 @@ const katanaPageOutputMeta = {
 	pagination: katanaPaginationSchema,
 	rate_limit: katanaRateLimitSchema.optional()
 }
+
+export const katanaListSalesOrderRowsPageOutputSchema = z.object({
+	items: z.array(katanaSalesOrderRowRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListPurchaseOrderRowsPageOutputSchema = z.object({
+	items: z.array(katanaPurchaseOrderRowRawSchema),
+	...katanaPageOutputMeta
+})
+export const katanaListManufacturingOrderRecipeRowsPageOutputSchema = z.object({
+	items: z.array(katanaManufacturingOrderRecipeRowRawSchema),
+	...katanaPageOutputMeta
+})
 
 export const katanaListSalesOrdersPageOutputSchema = z.object({
 	items: z.array(katanaSalesOrderRawSchema),
@@ -758,6 +853,19 @@ export const katanaListInventoryOutputSchema = z.object({
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type KatanaRawRecord = z.infer<typeof katanaRawRecordSchema>
+export type KatanaSalesOrderRowRawRecord = z.infer<typeof katanaSalesOrderRowRawSchema>
+export type KatanaPurchaseOrderRowRawRecord = z.infer<typeof katanaPurchaseOrderRowRawSchema>
+export type KatanaManufacturingOrderRecipeRowRawRecord = z.infer<typeof katanaManufacturingOrderRecipeRowRawSchema>
+export type KatanaListSalesOrderRowsPageInput = z.infer<typeof katanaListSalesOrderRowsPageInputSchema>
+export type KatanaListSalesOrderRowsPageOutput = z.infer<typeof katanaListSalesOrderRowsPageOutputSchema>
+export type KatanaListPurchaseOrderRowsPageInput = z.infer<typeof katanaListPurchaseOrderRowsPageInputSchema>
+export type KatanaListPurchaseOrderRowsPageOutput = z.infer<typeof katanaListPurchaseOrderRowsPageOutputSchema>
+export type KatanaListManufacturingOrderRecipeRowsPageInput = z.infer<
+	typeof katanaListManufacturingOrderRecipeRowsPageInputSchema
+>
+export type KatanaListManufacturingOrderRecipeRowsPageOutput = z.infer<
+	typeof katanaListManufacturingOrderRecipeRowsPageOutputSchema
+>
 export type KatanaInventoryRawRecord = z.infer<typeof katanaInventoryRawSchema>
 export type KatanaPagination = z.infer<typeof katanaPaginationSchema>
 export type KatanaRateLimit = z.infer<typeof katanaRateLimitSchema>

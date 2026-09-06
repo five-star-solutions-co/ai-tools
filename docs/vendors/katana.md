@@ -57,16 +57,19 @@ The client exposes one-request host methods for connector-owned pagination and p
 
 ```ts
 listSalesOrdersPage(input)
+listSalesOrderRowsPage(input)
 listProductsPage(input)
 listMaterialsPage(input)
 listCustomersPage(input)
 listSuppliersPage(input)
 listPurchaseOrdersPage(input)
+listPurchaseOrderRowsPage(input)
 listManufacturingOrdersPage(input)
+listManufacturingOrderRecipeRowsPage(input)
 listInventoryPage(input)
 ```
 
-Each method performs one `GET`, accepts provider `page` and `limit` values from 1 to 250, and returns:
+Each method performs one `GET`, accepts a positive provider `page` and a `limit` from 1 to 250, and returns:
 
 ```ts
 {
@@ -92,6 +95,42 @@ Katana list payloads accept both the current `{ data: [...] }` envelope and a di
 Entity page inputs expose each endpoint's supported timestamp window fields, plus `include_deleted` where supported. Products and materials also expose `include_archived`. Inventory intentionally has no timestamp filters and accepts only its documented sync filters: `location_id`, `variant_id[]`, `include_archived`, and `extend`, where `extend` is limited to `variant` and `location`.
 
 Raw entity schemas require only numeric `id` plus optional creation, update, and deletion timestamps. Raw inventory requires the `variant_id` and `location_id` composite identity. All raw schemas use `z.looseObject`, so variants, rows, addresses, custom fields, linked resources, archive state, inventory quantities, and provider-added fields survive parsing.
+
+### Raw component collections
+
+These host methods expose individual component records, not enriched parent orders. Each returns its typed raw
+`items`, required `pagination`, and optional `rate_limit` through the existing page parser. They do not add agent tools,
+auto-paginate, normalize money, or perform additional parent/variant lookups.
+
+| Client method | Provider collection | Required raw identity | Supported parent filter |
+| --- | --- | --- | --- |
+| `listSalesOrderRowsPage` | [`GET /sales_order_rows`](https://developer.katanamrp.com/reference/getallsalesorderrows) | `id`, `sales_order_id` | `sales_order_ids: number[]` |
+| `listPurchaseOrderRowsPage` | [`GET /purchase_order_rows`](https://developer.katanamrp.com/reference/getallpurchaseorderrows) | `id`, `purchase_order_id` | `purchase_order_id: number` |
+| `listManufacturingOrderRecipeRowsPage` | [`GET /manufacturing_order_recipe_rows`](https://developer.katanamrp.com/reference/getallmanufacturingorderreciperows) | `id`, `manufacturing_order_id` | `manufacturing_order_id: number` |
+
+All three support `ids`, `variant_id`, `created_at_min/max`, `updated_at_min/max`, and `include_deleted`. Sales rows
+also support `location_id`, `tax_rate_id`, `linked_manufacturing_order_id`, `product_availability`, and
+`extend: ['variant']`. Purchase rows support `tax_rate_id`, `group_id`, and `location_id`. Recipe rows support
+`ingredient_availability`. Input schemas reject unsupported filters. Omitted filters remain omitted, including
+`include_deleted`; explicitly pass `true` when a sync needs soft-deleted records.
+
+`katanaSalesOrderRowRawSchema`, `katanaPurchaseOrderRowRawSchema`, and `katanaManufacturingOrderRecipeRowRawSchema`
+retain the provider's creation/update/deletion timestamps and extra fields. Quantity, cost and monetary fields retain
+their original numbers, decimal strings, or nulls without coercion or rounding. Each has a public
+`Katana…RawRecord` type. Input/output schemas and types follow the existing `katanaList…PageInputSchema`,
+`katanaList…PageOutputSchema`, `KatanaList…PageInput`, and `KatanaList…PageOutput` naming.
+
+The host owns connection scope, checkpointing, update-window overlap and deletion reconciliation. A returned page or
+timestamp filter is not proof of a complete, atomic provider snapshot. The SDK preserves `deleted_at`; it does not
+delete warehouse records. The existing `querySalesOrders` enrichment uses `listSalesOrderRowsPage` internally.
+
+Local mocked regressions cover all three endpoints with direct/enveloped data, parent/ID filters, boolean false,
+timestamp windows, empty and nonterminal pages, caller-driven pagination, raw decimal precision, malformed/mixed
+rows, missing/broken pagination and rate headers, and HTTP 401/403/422/429/500 including `Retry-After`.
+Live validation remains host-owned: verify each collection with more than one page; compare exact row and parent IDs,
+timestamps and a known soft-deleted row with `include_deleted` both off and on; verify unchanged filters across pages,
+`last_page`, and rate metadata before enabling warehouse component synchronization. No live provider request or release
+is implied by the local tests.
 
 ### Composite query (`querySalesOrders`)
 

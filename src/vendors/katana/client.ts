@@ -50,6 +50,8 @@ import type {
 	KatanaListManufacturingOrdersOutput,
 	KatanaListManufacturingOrdersPageInput,
 	KatanaListManufacturingOrdersPageOutput,
+	KatanaListManufacturingOrderRecipeRowsPageInput,
+	KatanaListManufacturingOrderRecipeRowsPageOutput,
 	KatanaListMaterialsInput,
 	KatanaListMaterialsOutput,
 	KatanaListMaterialsPageInput,
@@ -62,10 +64,14 @@ import type {
 	KatanaListPurchaseOrdersOutput,
 	KatanaListPurchaseOrdersPageInput,
 	KatanaListPurchaseOrdersPageOutput,
+	KatanaListPurchaseOrderRowsPageInput,
+	KatanaListPurchaseOrderRowsPageOutput,
 	KatanaListSalesOrdersInput,
 	KatanaListSalesOrdersOutput,
 	KatanaListSalesOrdersPageInput,
 	KatanaListSalesOrdersPageOutput,
+	KatanaListSalesOrderRowsPageInput,
+	KatanaListSalesOrderRowsPageOutput,
 	KatanaListSuppliersInput,
 	KatanaListSuppliersOutput,
 	KatanaListSuppliersPageInput,
@@ -88,19 +94,24 @@ import {
 	katanaListCustomersPageInputSchema,
 	katanaListInventoryPageInputSchema,
 	katanaListManufacturingOrdersPageInputSchema,
+	katanaListManufacturingOrderRecipeRowsPageInputSchema,
 	katanaListMaterialsPageInputSchema,
 	katanaListProductsPageInputSchema,
 	katanaListPurchaseOrdersPageInputSchema,
+	katanaListPurchaseOrderRowsPageInputSchema,
 	katanaListSalesOrdersPageInputSchema,
+	katanaListSalesOrderRowsPageInputSchema,
 	katanaListSuppliersPageInputSchema,
 	katanaCustomerRawSchema,
 	katanaInventoryRawSchema,
 	katanaManufacturingOrderRawSchema,
+	katanaManufacturingOrderRecipeRowRawSchema,
 	katanaMaterialRawSchema,
 	katanaProductRawSchema,
 	katanaPurchaseOrderRawSchema,
-	katanaRawRecordSchema,
+	katanaPurchaseOrderRowRawSchema,
 	katanaSalesOrderRawSchema,
+	katanaSalesOrderRowRawSchema,
 	katanaSupplierRawSchema
 } from './contracts'
 import {
@@ -214,6 +225,24 @@ export class KatanaClient {
 			}
 		})
 		return parseKatanaPage(result.data, result.headers, katanaSalesOrderRawSchema, 'sales orders')
+	}
+
+	/** One GET /sales_order_rows request with raw rows and response metadata. */
+	async listSalesOrderRowsPage(
+		input: KatanaListSalesOrderRowsPageInput = {}
+	): Promise<KatanaListSalesOrderRowsPageOutput> {
+		const parsedInput = katanaListSalesOrderRowsPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Katana sales order rows page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const result = await this.#http.get('/sales_order_rows', {
+			label: 'Katana listSalesOrderRowsPage',
+			query: { ...parsedInput.data, page: parsedInput.data.page ?? 1, limit: parsedInput.data.limit ?? 50 }
+		})
+		return parseKatanaPage(result.data, result.headers, katanaSalesOrderRowRawSchema, 'sales order rows')
 	}
 
 	/** GET /sales_orders/{id} */
@@ -337,16 +366,12 @@ export class KatanaClient {
 		let cursor: string | undefined
 		for (let page = 0; page < 100; page += 1) {
 			const pageNum = pageFromCursor(cursor)
-			const result = await this.#http.get('/sales_order_rows', {
-				label: 'Katana listSalesOrderRows',
-				query: {
-					page: pageNum,
-					limit: pageSize,
-					sales_order_ids: salesOrderIds,
-					extend: ['variant']
-				}
+			const parsed = await this.listSalesOrderRowsPage({
+				page: pageNum,
+				limit: pageSize,
+				sales_order_ids: salesOrderIds,
+				extend: ['variant']
 			})
-			const parsed = parseKatanaPage(result.data, result.headers, katanaRawRecordSchema, 'sales order rows')
 			out.push(...parsed.items.map(parseSalesOrderRow))
 			if (parsed.pagination.last_page) break
 			cursor = String(parsed.pagination.page + 1)
@@ -686,6 +711,24 @@ export class KatanaClient {
 		return parseKatanaPage(result.data, result.headers, katanaPurchaseOrderRawSchema, 'purchase orders')
 	}
 
+	/** One GET /purchase_order_rows request with raw rows and response metadata. */
+	async listPurchaseOrderRowsPage(
+		input: KatanaListPurchaseOrderRowsPageInput = {}
+	): Promise<KatanaListPurchaseOrderRowsPageOutput> {
+		const parsedInput = katanaListPurchaseOrderRowsPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Katana purchase order rows page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const result = await this.#http.get('/purchase_order_rows', {
+			label: 'Katana listPurchaseOrderRowsPage',
+			query: { ...parsedInput.data, page: parsedInput.data.page ?? 1, limit: parsedInput.data.limit ?? 50 }
+		})
+		return parseKatanaPage(result.data, result.headers, katanaPurchaseOrderRowRawSchema, 'purchase order rows')
+	}
+
 	/** GET /purchase_orders/{id} */
 	async getPurchaseOrder(input: KatanaGetPurchaseOrderInput): Promise<KatanaGetPurchaseOrderOutput> {
 		const { data } = await this.#http.get(`/purchase_orders/${input.purchase_order_id}`, {
@@ -763,6 +806,29 @@ export class KatanaClient {
 			}
 		})
 		return parseKatanaPage(result.data, result.headers, katanaManufacturingOrderRawSchema, 'manufacturing orders')
+	}
+
+	/** One GET /manufacturing_order_recipe_rows request with raw rows and response metadata. */
+	async listManufacturingOrderRecipeRowsPage(
+		input: KatanaListManufacturingOrderRecipeRowsPageInput = {}
+	): Promise<KatanaListManufacturingOrderRecipeRowsPageOutput> {
+		const parsedInput = katanaListManufacturingOrderRecipeRowsPageInputSchema.safeParse(input)
+		if (!parsedInput.success) {
+			throw new ToolError('Invalid Katana manufacturing order recipe rows page input', {
+				code: 'bad_input',
+				details: { issues: parsedInput.error.issues.map((issue) => issue.message) }
+			})
+		}
+		const result = await this.#http.get('/manufacturing_order_recipe_rows', {
+			label: 'Katana listManufacturingOrderRecipeRowsPage',
+			query: { ...parsedInput.data, page: parsedInput.data.page ?? 1, limit: parsedInput.data.limit ?? 50 }
+		})
+		return parseKatanaPage(
+			result.data,
+			result.headers,
+			katanaManufacturingOrderRecipeRowRawSchema,
+			'manufacturing order recipe rows'
+		)
 	}
 
 	/** GET /manufacturing_orders/{id} */
