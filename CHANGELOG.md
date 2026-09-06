@@ -4,6 +4,16 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.10.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.9.3...v3.10.0) (2026-09-06)
+
+### Features
+
+* **test:** add katana-component-pages tests ([26bc9de](https://github.com/five-star-solutions-co/ai-tools/commit/26bc9de261a43c1488778fdb1cb10a6f6b7774c8))
+
+### Code Refactoring
+
+* **core:** simplify katana API interface ([5c9379f](https://github.com/five-star-solutions-co/ai-tools/commit/5c9379fbd77b690f98e3b541a8f0302ecc8c8114))
+
 ## [3.9.3](https://github.com/five-star-solutions-co/ai-tools/compare/v3.9.2...v3.9.3) (2026-09-05)
 
 ### Code Refactoring
