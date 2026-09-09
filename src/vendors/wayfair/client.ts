@@ -3,6 +3,7 @@
  * Host: `new WayfairClient(auth)`. Agent tools: `fromContext(ctx)`.
  */
 
+import { isPlainObject } from 'es-toolkit'
 import { z } from 'zod'
 import type { output, ZodType } from 'zod'
 
@@ -14,12 +15,18 @@ import type { HttpServiceOptions } from '../../transport/http-service'
 import type {
 	WayfairAcceptDropshipOrderInput,
 	WayfairAuth,
+	WayfairConfirmCancellationRequestsInput,
 	WayfairDropshipOrderDetails,
 	WayfairGetDropshipOrderInput,
 	WayfairListCatalogPageInput,
 	WayfairListCatalogPageOutput,
 	WayfairListDropshipOrdersInput,
 	WayfairListDropshipOrdersOutput,
+	WayfairListCancellationRequestsByOrdersInput,
+	WayfairListCancellationRequestsByWarehousesInput,
+	WayfairListCancellationRequestsOutput,
+	WayfairRejectCancellationRequestsInput,
+	WayfairRespondCancellationRequestsOutput,
 	WayfairSendShipmentNoticeInput,
 	WayfairTransactionStatus
 } from './contracts'
@@ -28,18 +35,26 @@ import {
 	wayfairAcceptDropshipOrderResponseSchema,
 	wayfairAuthSchema,
 	wayfairCatalogResponseSchema,
+	wayfairCancellationRequestsByOrdersResponseSchema,
+	wayfairCancellationRequestsByWarehousesResponseSchema,
+	wayfairConfirmCancellationRequestsInputSchema,
+	wayfairConfirmCancellationRequestsResponseSchema,
 	wayfairDropshipPurchaseOrdersResponseSchema,
 	wayfairGetDropshipOrderInputSchema,
 	wayfairGetDropshipOrderResponseSchema,
 	wayfairListCatalogPageInputSchema,
 	wayfairListDropshipOrdersInputSchema,
+	wayfairListCancellationRequestsByOrdersInputSchema,
+	wayfairListCancellationRequestsByWarehousesInputSchema,
+	wayfairRejectCancellationRequestsInputSchema,
+	wayfairRejectCancellationRequestsResponseSchema,
 	wayfairSendShipmentNoticeInputSchema,
 	wayfairSendShipmentNoticeResponseSchema
 } from './contracts'
 import { acceptOrderVariables, shipmentNoticeVariables } from './domain'
 
 const WAYFAIR_TOKEN_BASE = 'https://sso.auth.wayfair.com'
-const WAYFAIR_CATALOG_BASE = 'https://api.wayfair.io'
+const WAYFAIR_SUPPLIER_BASE = 'https://api.wayfair.io'
 const WAYFAIR_ORDER_BASE = 'https://api.wayfair.com'
 const WAYFAIR_AUDIENCE = 'https://api.wayfair.com/'
 const DEFAULT_CATALOG_PAGE_SIZE = 25
@@ -149,6 +164,41 @@ mutation SendShipmentNotice($notice: ShipNoticeInput!) {
   }
 }`
 
+const CANCELLATION_REQUEST_FIELDS = `
+  requestId status requestedAt
+  cancellationReason { reason }
+  purchaseOrder { poNumber warehouse { warehouseId } }
+  cancelledProduct { partNumber cancellationQuantity { originalQuantity cancelledQuantity } }
+`
+
+const CANCELLATION_REQUESTS_BY_ORDERS_QUERY = `
+query CancellationRequestsByOrders($poInput: LineItemCancellationRequestByPurchaseOrdersInput!) {
+  lineItemCancellationRequestByPurchaseOrders(poInput: $poInput) {
+    ${CANCELLATION_REQUEST_FIELDS}
+  }
+}`
+
+const CANCELLATION_REQUESTS_BY_WAREHOUSES_QUERY = `
+query CancellationRequestsByWarehouses($warehouseInput: LineItemCancellationRequestByWarehousesInput!) {
+  lineItemCancellationRequestByWarehouses(warehouseInput: $warehouseInput) {
+    ${CANCELLATION_REQUEST_FIELDS}
+  }
+}`
+
+const CONFIRM_CANCELLATION_REQUESTS_MUTATION = `
+mutation ConfirmCancellationRequests($confirmationInputs: [ConfirmLineItemCancellationRequestInput!]!) {
+  confirmLineItemCancellationRequest(confirmationInputs: $confirmationInputs) {
+    requestId status errorCode errorMessage
+  }
+}`
+
+const REJECT_CANCELLATION_REQUESTS_MUTATION = `
+mutation RejectCancellationRequests($rejectionInputs: [RejectLineItemCancellationRequestInput!]!) {
+  rejectLineItemCancellationRequest(rejectionInputs: $rejectionInputs) {
+    requestId status errorCode errorMessage
+  }
+}`
+
 export type WayfairClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
 function parseInput<TSchema extends ZodType>(schema: TSchema, input: unknown, message: string): output<TSchema> {
@@ -179,9 +229,16 @@ function graphqlError(message: string, issues: readonly string[]): never {
 
 function assertOrderGraphqlResult(errors: readonly unknown[] | undefined, operation: string): void {
 	if (errors?.length) {
+		const categories = errors.map((error) =>
+			isPlainObject(error) && isPlainObject(error['extensions']) ? error['extensions']['category'] : undefined
+		)
 		// Mutation errors may echo addresses or other submitted data. Do not expose those messages.
 		throw new ToolError(`Wayfair Supplier ${operation} failed`, {
-			code: 'upstream',
+			code: categories.includes('PERMISSION_DENIED')
+				? 'forbidden'
+				: categories.includes('BAD_REQUEST')
+					? 'bad_input'
+					: 'upstream',
 			details: { error_count: errors.length }
 		})
 	}
@@ -224,7 +281,7 @@ query DropshipPurchaseOrders {
 export class WayfairClient {
 	readonly #auth: WayfairAuth
 	readonly #tokenHttp: HttpService
-	readonly #catalogHttp: HttpService
+	readonly #supplierHttp: HttpService
 	readonly #orderHttp: HttpService
 	#accessToken: string | undefined
 	#accessTokenExpiresAt = 0
@@ -240,7 +297,7 @@ export class WayfairClient {
 		}
 		this.#auth = parsed.data
 		this.#tokenHttp = new HttpService({ ...options, baseURL: WAYFAIR_TOKEN_BASE, label: 'Wayfair Supplier' })
-		this.#catalogHttp = new HttpService({ ...options, baseURL: WAYFAIR_CATALOG_BASE, label: 'Wayfair Supplier' })
+		this.#supplierHttp = new HttpService({ ...options, baseURL: WAYFAIR_SUPPLIER_BASE, label: 'Wayfair Supplier' })
 		this.#orderHttp = new HttpService({ ...options, baseURL: WAYFAIR_ORDER_BASE, label: 'Wayfair Supplier' })
 	}
 
@@ -295,7 +352,7 @@ export class WayfairClient {
 		const parsedInput = parseInput(wayfairListCatalogPageInputSchema, input, 'Invalid Wayfair catalog page input')
 		const page = parsedInput.page ?? 1
 		const pageSize = parsedInput.page_size ?? DEFAULT_CATALOG_PAGE_SIZE
-		const { data } = await this.#catalogHttp.post(
+		const { data } = await this.#supplierHttp.post(
 			'/v1/supplier-catalog-api/graphql',
 			{
 				query: SUPPLIER_CATALOG_QUERY,
@@ -444,5 +501,127 @@ export class WayfairClient {
 		const transaction = response.data?.purchaseOrders?.shipment
 		if (!transaction) throw new ToolError('Wayfair Supplier returned no shipment transaction', { code: 'upstream' })
 		return transaction
+	}
+
+	/** Retrieve requests for up to 50 POs without confirming or rejecting any request. */
+	async listCancellationRequestsByOrders(
+		input: WayfairListCancellationRequestsByOrdersInput
+	): Promise<WayfairListCancellationRequestsOutput> {
+		const parsedInput = parseInput(
+			wayfairListCancellationRequestsByOrdersInputSchema,
+			input,
+			'Invalid Wayfair cancellation purchase order input'
+		)
+		const { data } = await this.#supplierHttp.post(
+			'/v1/supplier-order-api/graphql',
+			{
+				query: CANCELLATION_REQUESTS_BY_ORDERS_QUERY,
+				variables: { poInput: { poNumbers: parsedInput.po_numbers } }
+			},
+			{ label: 'Wayfair Supplier listCancellationRequestsByOrders', headers: await this.#headers() }
+		)
+		const response = parseResponse(
+			wayfairCancellationRequestsByOrdersResponseSchema,
+			data,
+			'Wayfair Supplier returned invalid cancellation requests'
+		)
+		assertOrderGraphqlResult(response.errors, 'listCancellationRequestsByOrders')
+		if (!response.data) throw new ToolError('Wayfair Supplier returned no cancellation data', { code: 'upstream' })
+		return { items: response.data.lineItemCancellationRequestByPurchaseOrders }
+	}
+
+	/** One read for up to 50 warehouses, with an explicit status and optional date window. */
+	async listCancellationRequestsByWarehouses(
+		input: WayfairListCancellationRequestsByWarehousesInput
+	): Promise<WayfairListCancellationRequestsOutput> {
+		const parsedInput = parseInput(
+			wayfairListCancellationRequestsByWarehousesInputSchema,
+			input,
+			'Invalid Wayfair cancellation warehouse input'
+		)
+		const { data } = await this.#supplierHttp.post(
+			'/v1/supplier-order-api/graphql',
+			{
+				query: CANCELLATION_REQUESTS_BY_WAREHOUSES_QUERY,
+				variables: {
+					warehouseInput: {
+						warehouseIds: parsedInput.warehouse_ids,
+						status: parsedInput.status,
+						...(parsedInput.from_datetime !== undefined && { fromDatetime: parsedInput.from_datetime }),
+						...(parsedInput.to_datetime !== undefined && { toDatetime: parsedInput.to_datetime })
+					}
+				}
+			},
+			{ label: 'Wayfair Supplier listCancellationRequestsByWarehouses', headers: await this.#headers() }
+		)
+		const response = parseResponse(
+			wayfairCancellationRequestsByWarehousesResponseSchema,
+			data,
+			'Wayfair Supplier returned invalid warehouse cancellation requests'
+		)
+		assertOrderGraphqlResult(response.errors, 'listCancellationRequestsByWarehouses')
+		if (!response.data) throw new ToolError('Wayfair Supplier returned no cancellation data', { code: 'upstream' })
+		return { items: response.data.lineItemCancellationRequestByWarehouses }
+	}
+
+	/** One native batch, preserving SUCCESS/FAILURE for each request. Never replays the mutation. */
+	async confirmCancellationRequests(
+		input: WayfairConfirmCancellationRequestsInput
+	): Promise<WayfairRespondCancellationRequestsOutput> {
+		const parsedInput = parseInput(
+			wayfairConfirmCancellationRequestsInputSchema,
+			input,
+			'Invalid Wayfair cancellation confirmation input'
+		)
+		const { data } = await this.#supplierHttp.post(
+			'/v1/supplier-order-api/graphql',
+			{
+				query: CONFIRM_CANCELLATION_REQUESTS_MUTATION,
+				variables: { confirmationInputs: parsedInput.request_ids.map((requestId) => ({ requestId })) }
+			},
+			{ label: 'Wayfair Supplier confirmCancellationRequests', headers: await this.#headers() }
+		)
+		const response = parseResponse(
+			wayfairConfirmCancellationRequestsResponseSchema,
+			data,
+			'Wayfair Supplier returned invalid cancellation confirmations'
+		)
+		assertOrderGraphqlResult(response.errors, 'confirmCancellationRequests')
+		if (!response.data)
+			throw new ToolError('Wayfair Supplier returned no cancellation response data', { code: 'upstream' })
+		return { items: response.data.confirmLineItemCancellationRequest }
+	}
+
+	/** Reject up to 100 pending cancellation requests, each with an explicit reason. */
+	async rejectCancellationRequests(
+		input: WayfairRejectCancellationRequestsInput
+	): Promise<WayfairRespondCancellationRequestsOutput> {
+		const parsedInput = parseInput(
+			wayfairRejectCancellationRequestsInputSchema,
+			input,
+			'Invalid Wayfair cancellation rejection input'
+		)
+		const { data } = await this.#supplierHttp.post(
+			'/v1/supplier-order-api/graphql',
+			{
+				query: REJECT_CANCELLATION_REQUESTS_MUTATION,
+				variables: {
+					rejectionInputs: parsedInput.requests.map((request) => ({
+						requestId: request.request_id,
+						reason: request.reason
+					}))
+				}
+			},
+			{ label: 'Wayfair Supplier rejectCancellationRequests', headers: await this.#headers() }
+		)
+		const response = parseResponse(
+			wayfairRejectCancellationRequestsResponseSchema,
+			data,
+			'Wayfair Supplier returned invalid cancellation rejections'
+		)
+		assertOrderGraphqlResult(response.errors, 'rejectCancellationRequests')
+		if (!response.data)
+			throw new ToolError('Wayfair Supplier returned no cancellation response data', { code: 'upstream' })
+		return { items: response.data.rejectLineItemCancellationRequest }
 	}
 }

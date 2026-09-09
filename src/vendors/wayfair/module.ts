@@ -3,12 +3,18 @@ import { WayfairClient } from './client'
 import {
 	wayfairAcceptDropshipOrderInputSchema,
 	wayfairAuthSchema,
+	wayfairConfirmCancellationRequestsInputSchema,
 	wayfairDropshipOrderDetailsSchema,
 	wayfairGetDropshipOrderInputSchema,
 	wayfairListCatalogPageInputSchema,
 	wayfairListCatalogPageOutputSchema,
 	wayfairListDropshipOrdersInputSchema,
 	wayfairListDropshipOrdersOutputSchema,
+	wayfairListCancellationRequestsByOrdersInputSchema,
+	wayfairListCancellationRequestsByWarehousesInputSchema,
+	wayfairListCancellationRequestsOutputSchema,
+	wayfairRejectCancellationRequestsInputSchema,
+	wayfairRespondCancellationRequestsOutputSchema,
 	wayfairSendShipmentNoticeInputSchema,
 	wayfairTransactionStatusSchema
 } from './contracts'
@@ -94,11 +100,77 @@ export const wayfairSendShipmentNoticeTool = defineTool({
 	execute: async (input, ctx) => WayfairClient.fromContext(ctx).sendShipmentNotice(input)
 })
 
+export const wayfairListCancellationRequestsByOrdersTool = defineTool({
+	id: 'wayfair-list-cancellation-requests-by-orders',
+	name: 'wayfairListCancellationRequestsByOrders',
+	description:
+		'Read Wayfair line-item cancellation requests for one to 50 purchase order numbers. Returns request IDs, status, reason, warehouse, and quantities. Does not confirm or reject requests. No cursor is provided.',
+	inputSchema: wayfairListCancellationRequestsByOrdersInputSchema,
+	outputSchema: wayfairListCancellationRequestsOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	idempotent: true,
+	network: true,
+	supportsCancel: true,
+	tags: ['orders', 'cancellations'],
+	execute: async (input, ctx) => WayfairClient.fromContext(ctx).listCancellationRequestsByOrders(input)
+})
+
+export const wayfairListCancellationRequestsByWarehousesTool = defineTool({
+	id: 'wayfair-list-cancellation-requests-by-warehouses',
+	name: 'wayfairListCancellationRequestsByWarehouses',
+	description:
+		'Read Wayfair line-item cancellation requests for one to 50 warehouses, filtered by pending or cancelled status and optional date range. Does not confirm or reject requests. No cursor is provided.',
+	inputSchema: wayfairListCancellationRequestsByWarehousesInputSchema,
+	outputSchema: wayfairListCancellationRequestsOutputSchema,
+	sideEffect: 'read',
+	runtime: 'both',
+	idempotent: true,
+	network: true,
+	supportsCancel: true,
+	tags: ['orders', 'cancellations'],
+	execute: async (input, ctx) => WayfairClient.fromContext(ctx).listCancellationRequestsByWarehouses(input)
+})
+
+export const wayfairConfirmCancellationRequestsTool = defineTool({
+	id: 'wayfair-confirm-cancellation-requests',
+	name: 'wayfairConfirmCancellationRequests',
+	description:
+		'Confirm one to 100 pending Wayfair line-item cancellation requests. This accepts the requested cancellations, not the purchase orders. Returns per-request SUCCESS or FAILURE; inspect each result. Already processed requests cannot be confirmed again.',
+	inputSchema: wayfairConfirmCancellationRequestsInputSchema,
+	outputSchema: wayfairRespondCancellationRequestsOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	idempotent: false,
+	requiresConfirmation: true,
+	network: true,
+	supportsCancel: true,
+	tags: ['orders', 'cancellations'],
+	execute: async (input, ctx) => WayfairClient.fromContext(ctx).confirmCancellationRequests(input)
+})
+
+export const wayfairRejectCancellationRequestsTool = defineTool({
+	id: 'wayfair-reject-cancellation-requests',
+	name: 'wayfairRejectCancellationRequests',
+	description:
+		'Reject one to 100 pending Wayfair line-item cancellation requests, each with a reason up to 500 characters. This refuses the cancellation, not the original order. Returns per-request SUCCESS or FAILURE; inspect each result. Already processed requests cannot be rejected again.',
+	inputSchema: wayfairRejectCancellationRequestsInputSchema,
+	outputSchema: wayfairRespondCancellationRequestsOutputSchema,
+	sideEffect: 'write',
+	runtime: 'both',
+	idempotent: false,
+	requiresConfirmation: true,
+	network: true,
+	supportsCancel: true,
+	tags: ['orders', 'cancellations'],
+	execute: async (input, ctx) => WayfairClient.fromContext(ctx).rejectCancellationRequests(input)
+})
+
 export const wayfairModule = defineModule({
 	id: 'wayfair',
 	title: 'Wayfair Supplier',
 	description:
-		'Wayfair Supplier production catalog and dropship orders, including order details, acceptance, and shipment notices.',
+		'Wayfair Supplier production catalog and orders, including dropship fulfillment and cancellation requests.',
 	runtime: 'both',
 	auth: { type: 'custom', schema: wayfairAuthSchema },
 	categories: ['commerce', 'marketplace'],
@@ -109,6 +181,10 @@ export const wayfairModule = defineModule({
 		wayfairListDropshipOrdersTool,
 		wayfairGetDropshipOrderTool,
 		wayfairAcceptDropshipOrderTool,
-		wayfairSendShipmentNoticeTool
+		wayfairSendShipmentNoticeTool,
+		wayfairListCancellationRequestsByOrdersTool,
+		wayfairListCancellationRequestsByWarehousesTool,
+		wayfairConfirmCancellationRequestsTool,
+		wayfairRejectCancellationRequestsTool
 	]
 })

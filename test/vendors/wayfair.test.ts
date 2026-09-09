@@ -5,10 +5,19 @@ import { runTool, ToolError, validateModule, withAuth } from '../../src/core'
 import {
 	WayfairClient,
 	wayfairAcceptDropshipOrderInputSchema,
+	wayfairConfirmCancellationRequestsInputSchema,
+	wayfairListCancellationRequestsByOrdersInputSchema,
+	wayfairListCancellationRequestsByWarehousesInputSchema,
 	wayfairModule,
+	wayfairRejectCancellationRequestsInputSchema,
 	wayfairSendShipmentNoticeInputSchema
 } from '../../src/vendors/wayfair'
-import type { WayfairAcceptDropshipOrderInput, WayfairSendShipmentNoticeInput } from '../../src/vendors/wayfair'
+import type {
+	WayfairAcceptDropshipOrderInput,
+	WayfairCancellationRequest,
+	WayfairCancellationResponse,
+	WayfairSendShipmentNoticeInput
+} from '../../src/vendors/wayfair'
 
 const auth = {
 	client_id: 'wayfair-client-id',
@@ -40,9 +49,13 @@ describe('wayfair', () => {
 		expect(validateModule(wayfairModule).ok).toBe(true)
 		expect(wayfairModule.tools.map((tool) => tool.id).sort()).toEqual([
 			'wayfair-accept-dropship-order',
+			'wayfair-confirm-cancellation-requests',
 			'wayfair-get-dropship-order',
+			'wayfair-list-cancellation-requests-by-orders',
+			'wayfair-list-cancellation-requests-by-warehouses',
 			'wayfair-list-catalog',
 			'wayfair-list-dropship-orders',
+			'wayfair-reject-cancellation-requests',
 			'wayfair-send-shipment-notice'
 		])
 	})
@@ -220,6 +233,495 @@ describe('wayfair', () => {
 			retryable: true,
 			details: { status: 429, retry_after_ms: 30_000 }
 		})
+	})
+})
+
+const cancellationRequest: WayfairCancellationRequest = {
+	requestId: '4',
+	status: 'CANCELLATION_PENDING_SUPPLIER_CONFIRMATION',
+	requestedAt: '2026-09-09T10:15:30-04:00',
+	cancellationReason: { reason: 'No longer needed' },
+	purchaseOrder: { poNumber: 'CS12345678', warehouse: { warehouseId: 2683 } },
+	cancelledProduct: {
+		partNumber: 'SKU-1',
+		cancellationQuantity: { originalQuantity: 3, cancelledQuantity: 1 }
+	}
+}
+
+const cancellationResults: WayfairCancellationResponse[] = [
+	{ requestId: 4, status: 'SUCCESS', errorCode: 0, errorMessage: '' },
+	{ requestId: '5', status: 'FAILURE', errorCode: 103, errorMessage: 'Request is already processed' },
+	{ requestId: '6', status: 'SUCCESS', errorCode: null, errorMessage: null }
+]
+
+function cancellationClient(handler: (request: Request) => Response | Promise<Response>): WayfairClient {
+	return new WayfairClient(auth, {
+		fetch: async (input, init) => {
+			const request = new Request(input, init)
+			if (new URL(request.url).pathname === '/oauth/token') return tokenResponse()
+			expect(request.url).toBe('https://api.wayfair.io/v1/supplier-order-api/graphql')
+			expect(request.method).toBe('POST')
+			expect(request.headers.get('Authorization')).toBe('Bearer wayfair-access-token')
+			expect(request.headers.get('Content-Type')).toBe('application/json')
+			return handler(request)
+		}
+	})
+}
+
+describe('wayfair cancellation request lifecycle', () => {
+	test('reads requests by purchase orders without mutations and preserves nullable fields and statuses', async () => {
+		const items: WayfairCancellationRequest[] = [
+			cancellationRequest,
+			{ ...cancellationRequest, requestId: 5, status: 'CANCELLED', cancellationReason: null },
+			{
+				...cancellationRequest,
+				requestId: '6',
+				status: 'CANCELLATION_REJECTED',
+				cancelledProduct: { partNumber: 'SKU-1', cancellationQuantity: null }
+			}
+		]
+		let calls = 0
+		const client = cancellationClient(async (request) => {
+			calls += 1
+			const body = graphqlBodySchema.parse(await request.json())
+			expect(body.query).toContain('$poInput: LineItemCancellationRequestByPurchaseOrdersInput!')
+			expect(body.query).toContain('lineItemCancellationRequestByPurchaseOrders(poInput: $poInput)')
+			expect(body.query).toContain('cancellationQuantity { originalQuantity cancelledQuantity }')
+			expect(body.query).not.toContain('mutation')
+			expect(body.query).not.toContain('confirmLineItemCancellationRequest')
+			expect(body.query).not.toContain('rejectLineItemCancellationRequest')
+			expect(body.query).not.toContain('CS12345678')
+			expect(body.variables).toEqual({ poInput: { poNumbers: ['CS12345678'] } })
+			return Response.json({ data: { lineItemCancellationRequestByPurchaseOrders: items } })
+		})
+		expect(await client.listCancellationRequestsByOrders({ po_numbers: ['CS12345678'] })).toEqual({ items })
+		expect(calls).toBe(1)
+	})
+
+	test('maps warehouse status and optional date filters without inventing pagination or writes', async () => {
+		for (const filters of [
+			{},
+			{ from_datetime: '2026-09-01T00:00:00Z' },
+			{ to_datetime: '2026-09-09T10:15:30-04:00' },
+			{ from_datetime: '2026-09-09T14:15:29Z', to_datetime: '2026-09-09T10:15:30-04:00' }
+		]) {
+			let calls = 0
+			const client = cancellationClient(async (request) => {
+				calls += 1
+				const body = graphqlBodySchema.parse(await request.json())
+				expect(body.query).toContain('$warehouseInput: LineItemCancellationRequestByWarehousesInput!')
+				expect(body.query).toContain('lineItemCancellationRequestByWarehouses(warehouseInput: $warehouseInput)')
+				expect(body.query).not.toContain('mutation')
+				expect(body.query).not.toContain('cursor')
+				expect(body.variables).toEqual({
+					warehouseInput: {
+						warehouseIds: [2683],
+						status: 'CANCELLED',
+						...(filters.from_datetime && { fromDatetime: filters.from_datetime }),
+						...(filters.to_datetime && { toDatetime: filters.to_datetime })
+					}
+				})
+				return Response.json({ data: { lineItemCancellationRequestByWarehouses: [] } })
+			})
+			expect(
+				await client.listCancellationRequestsByWarehouses({
+					warehouse_ids: [2683],
+					status: 'CANCELLED',
+					...filters
+				})
+			).toEqual({ items: [] })
+			expect(calls).toBe(1)
+		}
+	})
+
+	test('confirms one native batch and preserves mixed per-request results', async () => {
+		let calls = 0
+		const client = cancellationClient(async (request) => {
+			calls += 1
+			const body = graphqlBodySchema.parse(await request.json())
+			expect(body.query).toContain('$confirmationInputs: [ConfirmLineItemCancellationRequestInput!]!')
+			expect(body.query).toContain('confirmLineItemCancellationRequest(confirmationInputs: $confirmationInputs)')
+			expect(body.variables).toEqual({ confirmationInputs: [{ requestId: 4 }, { requestId: '5' }, { requestId: '6' }] })
+			return Response.json({ data: { confirmLineItemCancellationRequest: cancellationResults } })
+		})
+		expect(await client.confirmCancellationRequests({ request_ids: [4, '5', '6'] })).toEqual({
+			items: cancellationResults
+		})
+		expect(calls).toBe(1)
+	})
+
+	test('rejects requests using the documented response key and puts reasons only in variables', async () => {
+		const reason = 'Already shipped " }) { confirmLineItemCancellationRequest } #'
+		let calls = 0
+		const client = cancellationClient(async (request) => {
+			calls += 1
+			const body = graphqlBodySchema.parse(await request.json())
+			expect(body.query).toContain('$rejectionInputs: [RejectLineItemCancellationRequestInput!]!')
+			expect(body.query).toContain('rejectLineItemCancellationRequest(rejectionInputs: $rejectionInputs)')
+			expect(body.query).not.toContain(reason)
+			expect(body.variables).toEqual({
+				rejectionInputs: [
+					{ requestId: 4, reason },
+					{ requestId: '5', reason: 'Already processed' },
+					{ requestId: '6', reason: 'Shipped' }
+				]
+			})
+			return Response.json({ data: { rejectLineItemCancellationRequest: cancellationResults } })
+		})
+		expect(
+			await client.rejectCancellationRequests({
+				requests: [
+					{ request_id: 4, reason },
+					{ request_id: '5', reason: 'Already processed' },
+					{ request_id: '6', reason: 'Shipped' }
+				]
+			})
+		).toEqual({ items: cancellationResults })
+		expect(calls).toBe(1)
+	})
+
+	test('rejects invalid direct-client inputs before auth or vendor HTTP', async () => {
+		let calls = 0
+		const client = new WayfairClient(auth, {
+			fetch: async () => {
+				calls += 1
+				throw new Error('network must not be called')
+			}
+		})
+		const invalid = [
+			client.listCancellationRequestsByOrders({ po_numbers: [] }),
+			client.listCancellationRequestsByOrders({ po_numbers: ['INVALID-PO'] }),
+			client.listCancellationRequestsByOrders({ po_numbers: Array.from({ length: 51 }, () => 'CS123') }),
+			client.listCancellationRequestsByWarehouses({ warehouse_ids: [], status: 'CANCELLED' }),
+			client.listCancellationRequestsByWarehouses({ warehouse_ids: [1.5], status: 'CANCELLED' }),
+			client.listCancellationRequestsByWarehouses({ warehouse_ids: [2_147_483_648], status: 'CANCELLED' }),
+			client.listCancellationRequestsByWarehouses({
+				warehouse_ids: Array.from({ length: 51 }, () => 2683),
+				status: 'CANCELLED'
+			}),
+			client.confirmCancellationRequests({ request_ids: [] }),
+			client.confirmCancellationRequests({ request_ids: [''] }),
+			client.confirmCancellationRequests({ request_ids: [1.5] }),
+			client.confirmCancellationRequests({ request_ids: Array.from({ length: 101 }, (_, index) => index) }),
+			client.rejectCancellationRequests({ requests: [] }),
+			client.rejectCancellationRequests({ requests: [{ request_id: '4', reason: '' }] }),
+			client.rejectCancellationRequests({ requests: [{ request_id: '4', reason: ' \n\t ' }] }),
+			client.rejectCancellationRequests({ requests: [{ request_id: '4', reason: 'x'.repeat(501) }] }),
+			client.rejectCancellationRequests({
+				requests: Array.from({ length: 101 }, (_, index) => ({
+					request_id: index,
+					reason: 'Already shipped'
+				}))
+			})
+		]
+		for (const promise of invalid) expect(await rejectionOf(promise)).toMatchObject({ code: 'bad_input' })
+		expect(calls).toBe(0)
+	})
+
+	test('accepts exact batch limits and follows the published PO validation pattern', () => {
+		expect(
+			wayfairListCancellationRequestsByOrdersInputSchema.safeParse({
+				po_numbers: Array.from({ length: 50 }, (_, index) => `CS${index}`)
+			}).success
+		).toBe(true)
+		expect(wayfairListCancellationRequestsByOrdersInputSchema.safeParse({ po_numbers: ['CS', 'cs123'] }).success).toBe(
+			true
+		)
+		expect(
+			wayfairListCancellationRequestsByWarehousesInputSchema.safeParse({
+				warehouse_ids: Array.from({ length: 50 }, (_, index) => index),
+				status: 'CANCELLED'
+			}).success
+		).toBe(true)
+		expect(
+			wayfairConfirmCancellationRequestsInputSchema.safeParse({
+				request_ids: Array.from({ length: 100 }, (_, index) => index)
+			}).success
+		).toBe(true)
+		expect(
+			wayfairRejectCancellationRequestsInputSchema.safeParse({
+				requests: Array.from({ length: 100 }, (_, index) => ({ request_id: index, reason: 'x'.repeat(500) }))
+			}).success
+		).toBe(true)
+	})
+
+	test('requires a documented warehouse filter status and rejects unknown auth inputs', () => {
+		for (const input of [
+			{ warehouse_ids: [2683] },
+			{ warehouse_ids: [2683], status: 'CANCELLATION_REJECTED' },
+			{ warehouse_ids: [2683], status: 'CANCELLED', client_secret: 'not-a-tool-input' }
+		]) {
+			expect(wayfairListCancellationRequestsByWarehousesInputSchema.safeParse(input).success).toBe(false)
+		}
+		expect(
+			wayfairListCancellationRequestsByOrdersInputSchema.safeParse({
+				po_numbers: ['CS123'],
+				client_id: 'not-a-tool-input'
+			}).success
+		).toBe(false)
+		expect(
+			wayfairConfirmCancellationRequestsInputSchema.safeParse({
+				request_ids: ['4'],
+				auth
+			}).success
+		).toBe(false)
+		expect(
+			wayfairRejectCancellationRequestsInputSchema.safeParse({
+				requests: [{ request_id: '4', reason: 'Shipped', client_secret: 'not-a-tool-input' }]
+			}).success
+		).toBe(false)
+	})
+
+	test('validates calendar dates, timezones and chronological date ranges before HTTP', async () => {
+		const client = new WayfairClient(auth, {
+			fetch: async () => {
+				throw new Error('unexpected HTTP')
+			}
+		})
+		for (const filters of [
+			{ from_datetime: '2026-02-30T12:00:00Z' },
+			{ from_datetime: '2026-09-09T12:00:00' },
+			{ to_datetime: '2026-09-09' },
+			{ from_datetime: '2026-09-09T14:15:30Z', to_datetime: '2026-09-09T10:15:30-04:00' },
+			{ from_datetime: '2026-09-09T14:15:31Z', to_datetime: '2026-09-09T10:15:30-04:00' }
+		]) {
+			expect(
+				await rejectionOf(
+					client.listCancellationRequestsByWarehouses({
+						warehouse_ids: [2683],
+						status: 'CANCELLED',
+						...filters
+					})
+				)
+			).toMatchObject({ code: 'bad_input' })
+		}
+	})
+
+	test('maps documented GraphQL categories without exposing upstream messages or paths', async () => {
+		for (const [extensions, code] of [
+			[{ category: 'PERMISSION_DENIED' }, 'forbidden'],
+			[{ category: 'BAD_REQUEST' }, 'bad_input'],
+			[{ category: 'INTERNAL' }, 'upstream'],
+			[null, 'upstream'],
+			['invalid', 'upstream'],
+			[{}, 'upstream']
+		] as const) {
+			const client = cancellationClient(() =>
+				Response.json({
+					data: null,
+					errors: [{ message: 'Sensitive submitted reason', extensions, path: ['Sensitive resource'] }]
+				})
+			)
+			for (const promise of [
+				client.listCancellationRequestsByOrders({ po_numbers: ['CS123'] }),
+				client.listCancellationRequestsByWarehouses({ warehouse_ids: [2683], status: 'CANCELLED' }),
+				client.confirmCancellationRequests({ request_ids: ['4'] }),
+				client.rejectCancellationRequests({ requests: [{ request_id: '4', reason: 'Already shipped' }] })
+			]) {
+				const error = await rejectionOf(promise)
+				expect(error).toMatchObject({ code, retryable: false, details: { error_count: 1 } })
+				expect(JSON.stringify(error)).not.toContain('Sensitive')
+				expect(error.message).not.toContain('Sensitive')
+			}
+		}
+	})
+
+	test('rejects absent, null or malformed lists rather than inventing empty results', async () => {
+		for (const [field, invoke] of [
+			[
+				'lineItemCancellationRequestByPurchaseOrders',
+				(client: WayfairClient) => client.listCancellationRequestsByOrders({ po_numbers: ['CS123'] })
+			],
+			[
+				'lineItemCancellationRequestByWarehouses',
+				(client: WayfairClient) =>
+					client.listCancellationRequestsByWarehouses({ warehouse_ids: [2683], status: 'CANCELLED' })
+			],
+			[
+				'confirmLineItemCancellationRequest',
+				(client: WayfairClient) => client.confirmCancellationRequests({ request_ids: ['4'] })
+			],
+			[
+				'rejectLineItemCancellationRequest',
+				(client: WayfairClient) =>
+					client.rejectCancellationRequests({ requests: [{ request_id: '4', reason: 'Shipped' }] })
+			]
+		] as const) {
+			for (const body of [{}, { data: null }, { data: {} }, { data: { [field]: null } }, { data: { [field]: [{}] } }]) {
+				expect(await rejectionOf(invoke(cancellationClient(() => Response.json(body))))).toMatchObject({
+					code: 'upstream',
+					retryable: false
+				})
+			}
+			expect(await invoke(cancellationClient(() => Response.json({ data: { [field]: [] } })))).toEqual({ items: [] })
+		}
+		const wrongKey = cancellationClient(() =>
+			Response.json({
+				data: { confirmLineItemCancellationRequest: cancellationResults }
+			})
+		)
+		expect(
+			await rejectionOf(
+				wrongKey.rejectCancellationRequests({
+					requests: [{ request_id: '4', reason: 'Shipped' }]
+				})
+			)
+		).toMatchObject({ code: 'upstream' })
+	})
+
+	test('fails on top-level GraphQL errors even when partial data is present', async () => {
+		const client = cancellationClient(() =>
+			Response.json({
+				data: { confirmLineItemCancellationRequest: cancellationResults },
+				errors: [{ message: 'Partial response', extensions: { category: 'INTERNAL' } }]
+			})
+		)
+		expect(await rejectionOf(client.confirmCancellationRequests({ request_ids: [4, '5', '6'] }))).toMatchObject({
+			code: 'upstream',
+			retryable: false,
+			details: { error_count: 1 }
+		})
+	})
+
+	test('never replays confirmation or rejection after HTTP or uncertain network failures', async () => {
+		for (const [status, code] of [
+			[401, 'bad_auth'],
+			[403, 'forbidden'],
+			[429, 'rate_limited'],
+			[500, 'upstream'],
+			[503, 'upstream'],
+			[0, 'upstream']
+		] as const) {
+			let calls = 0
+			const client = cancellationClient(() => {
+				calls += 1
+				if (status === 0) throw new TypeError('Connection lost')
+				return new Response(null, { status, headers: { 'Retry-After': '30' } })
+			})
+			for (const promise of [
+				client.confirmCancellationRequests({ request_ids: ['4'] }),
+				client.rejectCancellationRequests({ requests: [{ request_id: '5', reason: 'Already shipped' }] })
+			]) {
+				const error = await rejectionOf(promise)
+				expect(error.code).toBe(code)
+				if (status === 429) expect(error.details).toMatchObject({ retry_after_ms: 30_000 })
+			}
+			expect(calls).toBe(2)
+		}
+	})
+
+	test('reuses a token across catalog and cancellation reads without leaking catalog headers', async () => {
+		let tokens = 0
+		const client = new WayfairClient(auth, {
+			fetch: async (input, init) => {
+				const request = new Request(input, init)
+				if (request.url === 'https://sso.auth.wayfair.com/oauth/token') {
+					tokens += 1
+					return tokenResponse()
+				}
+				expect(request.headers.get('Authorization')).toBe('Bearer wayfair-access-token')
+				if (request.url === 'https://api.wayfair.io/v1/supplier-catalog-api/graphql') {
+					expect(request.headers.get('X-SELECTED-SUPPLIER-ID')).toBe('2683')
+					return Response.json({
+						data: {
+							supplierCatalog: {
+								supplierId: 2683,
+								pageInfo: { page: 1, pageSize: 25, hasNextPage: false, totalPages: 0 },
+								products: []
+							}
+						}
+					})
+				}
+				expect(request.url).toBe('https://api.wayfair.io/v1/supplier-order-api/graphql')
+				expect(request.headers.get('X-SELECTED-SUPPLIER-ID')).toBeNull()
+				return Response.json({ data: { lineItemCancellationRequestByPurchaseOrders: [] } })
+			}
+		})
+		await client.listCatalogPage()
+		await client.listCancellationRequestsByOrders({ po_numbers: ['CS123'] })
+		await client.listCatalogPage()
+		expect(tokens).toBe(1)
+	})
+
+	test('binds all cancellation tools to host auth with accurate side effects', async () => {
+		const module = withAuth(wayfairModule, auth)
+		for (const [id, input, field, items, sideEffect] of [
+			[
+				'wayfair-list-cancellation-requests-by-orders',
+				{ po_numbers: ['CS123'] },
+				'lineItemCancellationRequestByPurchaseOrders',
+				[cancellationRequest],
+				'read'
+			],
+			[
+				'wayfair-list-cancellation-requests-by-warehouses',
+				{ warehouse_ids: [2683], status: 'CANCELLED' },
+				'lineItemCancellationRequestByWarehouses',
+				[],
+				'read'
+			],
+			[
+				'wayfair-confirm-cancellation-requests',
+				{ request_ids: [4, '5', '6'] },
+				'confirmLineItemCancellationRequest',
+				cancellationResults,
+				'write'
+			],
+			[
+				'wayfair-reject-cancellation-requests',
+				{ requests: [{ request_id: 4, reason: 'Shipped' }] },
+				'rejectLineItemCancellationRequest',
+				[cancellationResults[0]],
+				'write'
+			]
+		] as const) {
+			const tool = module.tools.find((entry) => entry.id === id)
+			if (!tool) throw new Error('missing Wayfair cancellation tool')
+			expect(tool.meta).toMatchObject({ sideEffect, idempotent: sideEffect === 'read', supportsCancel: true })
+			if (sideEffect === 'write') expect(tool.meta.requiresConfirmation).toBe(true)
+			const output = await runTool(tool, input, {
+				auth: { client_id: 'must-not-override', client_secret: 'wrong', supplier_id: 99 },
+				fetch: async (requestInput, init) => {
+					const request = new Request(requestInput, init)
+					if (new URL(request.url).pathname === '/oauth/token') {
+						expect(await request.json()).toMatchObject({
+							client_id: 'wayfair-client-id',
+							client_secret: 'wayfair-client-secret'
+						})
+						return tokenResponse()
+					}
+					expect(request.url).toBe('https://api.wayfair.io/v1/supplier-order-api/graphql')
+					return Response.json({ data: { [field]: items } })
+				}
+			})
+			expect(output).toEqual({ items })
+		}
+	})
+
+	test('propagates abort signals to cancellation mutations', async () => {
+		for (const invoke of [
+			(client: WayfairClient) => client.confirmCancellationRequests({ request_ids: ['4'] }),
+			(client: WayfairClient) =>
+				client.rejectCancellationRequests({ requests: [{ request_id: '4', reason: 'Shipped' }] })
+		]) {
+			const controller = new AbortController()
+			let writes = 0
+			const client = new WayfairClient(auth, {
+				signal: controller.signal,
+				fetch: async (input, init) => {
+					const request = new Request(input, init)
+					if (new URL(request.url).pathname === '/oauth/token') {
+						controller.abort()
+						return tokenResponse()
+					}
+					writes += 1
+					expect(request.signal.aborted).toBe(true)
+					throw new DOMException('Aborted', 'AbortError')
+				}
+			})
+			expect(await rejectionOf(invoke(client))).toMatchObject({ code: 'timeout' })
+			expect(writes).toBe(1)
+		}
 	})
 })
 

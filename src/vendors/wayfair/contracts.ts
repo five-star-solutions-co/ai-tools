@@ -413,3 +413,159 @@ export type WayfairSmallParcelShipmentInput = z.infer<typeof wayfairSmallParcelS
 export type WayfairLargeParcelShipmentInput = z.infer<typeof wayfairLargeParcelShipmentInputSchema>
 export type WayfairSendShipmentNoticeInput = z.infer<typeof wayfairSendShipmentNoticeInputSchema>
 export type WayfairTransactionStatus = z.infer<typeof wayfairTransactionStatusSchema>
+
+export const wayfairCancellationFilterStatusSchema = z.enum(['CANCELLATION_PENDING_SUPPLIER_CONFIRMATION', 'CANCELLED'])
+
+export const wayfairCancellationStatusSchema = z.enum([
+	'CANCELLATION_PENDING_SUPPLIER_CONFIRMATION',
+	'CANCELLED',
+	'CANCELLATION_REJECTED'
+])
+
+const wayfairCancellationDateTimeSchema = z.iso.datetime({ offset: true })
+
+export const wayfairCancellationRequestSchema = z.object({
+	requestId: wayfairIdentifierSchema,
+	status: wayfairCancellationStatusSchema,
+	requestedAt: wayfairCancellationDateTimeSchema,
+	cancellationReason: z.object({ reason: z.string() }).nullable(),
+	purchaseOrder: z.object({
+		poNumber: z.string().min(1),
+		warehouse: z.object({ warehouseId: z.int32() })
+	}),
+	cancelledProduct: z.object({
+		partNumber: z.string().min(1),
+		cancellationQuantity: z
+			.object({
+				originalQuantity: z.int32(),
+				cancelledQuantity: z.int32()
+			})
+			.nullable()
+	})
+})
+
+export const wayfairListCancellationRequestsByOrdersInputSchema = z.strictObject({
+	po_numbers: z
+		.array(z.string().regex(/^[A-Za-z]{2}\d*$/))
+		.min(1)
+		.max(50)
+		.describe('One to 50 purchase order numbers, each with two letters followed by digits')
+})
+
+export const wayfairListCancellationRequestsByWarehousesInputSchema = z
+	.strictObject({
+		warehouse_ids: z
+			.array(z.int32())
+			.min(1)
+			.max(50)
+			.describe('One to 50 warehouse IDs whose cancellation requests should be retrieved'),
+		status: wayfairCancellationFilterStatusSchema.describe(
+			'Required request status: pending supplier confirmation or cancelled'
+		),
+		from_datetime: wayfairCancellationDateTimeSchema
+			.optional()
+			.describe('Earliest request time as an RFC 3339 date-time with a timezone'),
+		to_datetime: wayfairCancellationDateTimeSchema
+			.optional()
+			.describe('Latest request time as an RFC 3339 date-time with a timezone; must be later than from_datetime')
+	})
+	.refine(
+		(input) =>
+			input.from_datetime === undefined ||
+			input.to_datetime === undefined ||
+			Date.parse(input.from_datetime) < Date.parse(input.to_datetime),
+		'from_datetime must be earlier than to_datetime'
+	)
+
+export const wayfairListCancellationRequestsOutputSchema = z.object({
+	items: z.array(wayfairCancellationRequestSchema)
+})
+
+export const wayfairConfirmCancellationRequestsInputSchema = z.strictObject({
+	request_ids: z
+		.array(wayfairIdentifierSchema)
+		.min(1)
+		.max(100)
+		.describe('One to 100 pending cancellation request IDs to confirm; these are not purchase order numbers')
+})
+
+export const wayfairCancellationRejectionInputSchema = z.strictObject({
+	request_id: wayfairIdentifierSchema.describe('Pending cancellation request ID to reject'),
+	reason: z
+		.string()
+		.min(1)
+		.max(500)
+		.refine((value) => value.trim().length > 0, 'Provide a nonblank rejection reason')
+		.describe('Reason for rejecting this cancellation request, up to 500 characters')
+})
+
+export const wayfairRejectCancellationRequestsInputSchema = z.strictObject({
+	requests: z
+		.array(wayfairCancellationRejectionInputSchema)
+		.min(1)
+		.max(100)
+		.describe('One to 100 pending cancellation requests, each with its own rejection reason')
+})
+
+export const wayfairCancellationResponseSchema = z.object({
+	requestId: wayfairIdentifierSchema,
+	status: z.enum(['SUCCESS', 'FAILURE']),
+	errorCode: z.int32().nullable(),
+	errorMessage: z.string().nullable()
+})
+
+export const wayfairRespondCancellationRequestsOutputSchema = z.object({
+	items: z.array(wayfairCancellationResponseSchema)
+})
+
+export const wayfairCancellationRequestsByOrdersResponseSchema = z.object({
+	data: z
+		.object({
+			lineItemCancellationRequestByPurchaseOrders: z.array(wayfairCancellationRequestSchema)
+		})
+		.nullish(),
+	errors: z.array(wayfairGraphqlErrorSchema).optional()
+})
+
+export const wayfairCancellationRequestsByWarehousesResponseSchema = z.object({
+	data: z
+		.object({
+			lineItemCancellationRequestByWarehouses: z.array(wayfairCancellationRequestSchema)
+		})
+		.nullish(),
+	errors: z.array(wayfairGraphqlErrorSchema).optional()
+})
+
+export const wayfairConfirmCancellationRequestsResponseSchema = z.object({
+	data: z
+		.object({
+			confirmLineItemCancellationRequest: z.array(wayfairCancellationResponseSchema)
+		})
+		.nullish(),
+	errors: z.array(wayfairGraphqlErrorSchema).optional()
+})
+
+export const wayfairRejectCancellationRequestsResponseSchema = z.object({
+	data: z
+		.object({
+			rejectLineItemCancellationRequest: z.array(wayfairCancellationResponseSchema)
+		})
+		.nullish(),
+	errors: z.array(wayfairGraphqlErrorSchema).optional()
+})
+
+export type WayfairCancellationFilterStatus = z.infer<typeof wayfairCancellationFilterStatusSchema>
+export type WayfairCancellationStatus = z.infer<typeof wayfairCancellationStatusSchema>
+export type WayfairCancellationRequest = z.infer<typeof wayfairCancellationRequestSchema>
+export type WayfairCancellationResponse = z.infer<typeof wayfairCancellationResponseSchema>
+export type WayfairCancellationRejectionInput = z.infer<typeof wayfairCancellationRejectionInputSchema>
+export type WayfairListCancellationRequestsByOrdersInput = z.infer<
+	typeof wayfairListCancellationRequestsByOrdersInputSchema
+>
+export type WayfairListCancellationRequestsByWarehousesInput = z.infer<
+	typeof wayfairListCancellationRequestsByWarehousesInputSchema
+>
+export type WayfairListCancellationRequestsOutput = z.infer<typeof wayfairListCancellationRequestsOutputSchema>
+export type WayfairConfirmCancellationRequestsInput = z.infer<typeof wayfairConfirmCancellationRequestsInputSchema>
+export type WayfairRejectCancellationRequestsInput = z.infer<typeof wayfairRejectCancellationRequestsInputSchema>
+export type WayfairRespondCancellationRequestsOutput = z.infer<typeof wayfairRespondCancellationRequestsOutputSchema>

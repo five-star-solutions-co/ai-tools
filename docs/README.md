@@ -87,7 +87,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@5ss/ai-tools/amazon-sp-api` | [amazon-sp-api](./vendors/amazon-sp-api.md) |
 | `@5ss/ai-tools/shipstation` | [shipstation](./vendors/shipstation.md) |
 | `@5ss/ai-tools/walmart` | [walmart](./vendors/walmart.md) |
-| `@5ss/ai-tools/wayfair` | [wayfair](./vendors/wayfair.md) — catalog, dropship order reads, acceptance, and shipment notices |
+| `@5ss/ai-tools/wayfair` | [wayfair](./vendors/wayfair.md) — catalog, dropship fulfillment, and cancellation requests |
 
 ### Vertical kits (not published)
 

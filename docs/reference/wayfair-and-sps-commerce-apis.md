@@ -2,7 +2,7 @@
 
 Public documentation inspected September 9, 2026. This is a contract/coverage reference, not a claim of live certification or complete package coverage. Project delivery is tracked in Beads epic `ai-tools-p6r`.
 
-The current Wayfair pack contains catalog v1 reads and the dropship order lifecycle described in [its pack documentation](../vendors/wayfair.md). **SPS Commerce has no implemented pack or public import yet.** Remaining Wayfair families are tracked in `ai-tools-p6r.2`, SPS implementation in `ai-tools-p6r.3`, and documentation conflicts in `ai-tools-p6r.4`.
+The current Wayfair pack contains catalog v1 reads, the dropship order lifecycle, and line-item cancellation queries/confirmation/rejection described in [its pack documentation](../vendors/wayfair.md). **SPS Commerce has no implemented pack or public import yet.** Remaining Wayfair families are tracked in `ai-tools-p6r.2`, SPS implementation in `ai-tools-p6r.3`, and documentation conflicts in `ai-tools-p6r.4`.
 
 Only supported, publicly documented integration operations belong in these packs. Portal account administration, OAuth consent routes, placeholder mutations, and internal APIs are not model-facing business tools.
 
@@ -26,7 +26,7 @@ Auth uses `POST https://sso.auth.wayfair.com/oauth/token`, `client_credentials`,
 
 ### Operation coverage
 
-`Q` means query; `M` means mutation. Names retain documented GraphQL nesting. Except for the first two rows, these operations are not yet implemented.
+`Q` means query; `M` means mutation. Names retain documented GraphQL nesting. The last column distinguishes implemented operations from remaining work.
 
 | Family / public reference | Endpoint | Documented operations | Current pack |
 | --- | --- | --- | --- |
@@ -43,7 +43,7 @@ Auth uses `POST https://sso.auth.wayfair.com/oauth/token`, `client_credentials`,
 | [Registration and labels](https://developer.wayfair.io/posts/docs/shipping-api/reference/GraphQL/v1.0.0) | Orders | Q `labelGenerationEvents`; M `purchaseOrders.register` | Not implemented |
 | [Shipping documents](https://developer.wayfair.io/posts/docs/shipping-api/reference/REST/v1.0.0) | REST below | GET BOL, packing slip, shipping label | Not implemented |
 | [Consolidated BOL](https://developer.wayfair.io/posts/docs/consolidated-bol-documentation-api/reference/GraphQL/v1.0.0) | Supplier | Q `consolidatedBolDocument` | Not implemented |
-| [Cancellations](https://developer.wayfair.io/posts/docs/order-cancellation-api/reference/GraphQL/v1.0.0) | Supplier | Q `lineItemCancellationRequestByPurchaseOrders`, `lineItemCancellationRequestByWarehouses`; M `confirmLineItemCancellationRequest`, `rejectLineItemCancellationRequest` | Not implemented |
+| [Cancellations](https://developer.wayfair.io/posts/docs/order-cancellation-api/reference/GraphQL/v1.0.0) | Supplier | Q `lineItemCancellationRequestByPurchaseOrders`, `lineItemCancellationRequestByWarehouses`; M `confirmLineItemCancellationRequest`, `rejectLineItemCancellationRequest` | Queries by PO/warehouse, native confirmation/rejection batches with per-request results |
 | [Multichannel fulfillment](https://developer.wayfair.io/posts/docs/castlegate-order-api/reference/GraphQL/v1.0.0) | Supplier | Q `fulfillmentOrderDetails`, `fulfillmentOrderDetailsList`, `warehouseShippingAdvices`; M `cancelFulfillmentOrder`, `createFulfillmentOrder` | Not implemented |
 | [Advertising](https://developer.wayfair.io/posts/docs/advertising-api/reference/REST/v1.0.0) | Advertising | POST `/reports`; GET `/reports?reportId=...`; POST `/campaign/{id}` | Not implemented |
 
@@ -57,6 +57,7 @@ Shipping document paths are `GET /v1/bill_of_lading/{purchaseOrderNumber}`, `GET
 - The inventory-adjustment mutation `adjustmentMutationNotAvailable` is explicitly a placeholder (“Nothing to see here, yet!”). It must not become a tool.
 - Catalog production paths disagree between the endpoint table and examples. Do not silently normalize `/v1` away or assume catalog v1 is catalog v2.
 - Cancellation's header names an inbound-milestone scope, which appears copied. Its write entitlement is not established by that example.
+- Cancellation's rejection error example uses the confirmation response key, contrary to its declared mutation and successful example. The pack follows the declared rejection key. PO validation follows the published `^[A-Za-z]{2}\d*$` pattern, which is more permissive than the prose's two-letters-plus-digits description.
 - Inventory examples disagree with the declared `[inventoryInput!]!` type and select `id`, which the displayed transaction type does not expose. Sandbox supports only `TRUE_UP`; inputs beyond 500 lines are truncated. A client must not silently lose excess inventory updates.
 - Advertising's route version, page version, and repeated base-path headings disagree. Full request URLs, not duplicated headings, establish path composition.
 - No separate invoice/payment/returns operation contract was established from this public navigation. Supplier-facing marketing is not proof of an endpoint.
