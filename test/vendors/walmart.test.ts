@@ -38,6 +38,121 @@ describe('walmart', () => {
 		expect(() => new WalmartClient({ client_id: '', client_secret: '' })).toThrow(ToolError)
 	})
 
+	test.each([undefined, null, 0, '0', '200', 200])(
+		'uses the requested Orders page size when the provider limit is %j',
+		async (limit) => {
+			const client = new WalmartClient(auth, {
+				fetch: async (input) => {
+					const url = new URL(new Request(input).url)
+					if (url.pathname === '/v3/token') return tokenResponse()
+					expect(url.searchParams.get('limit')).toBe('200')
+					return Response.json({
+						list: {
+							meta: { totalCount: 1, limit },
+							elements: { order: [{ purchaseOrderId: 'PO-1' }] }
+						}
+					})
+				}
+			})
+			expect(await client.listOrdersPage({ limit: 200 })).toEqual({
+				items: [{ purchaseOrderId: 'PO-1' }],
+				total_count: 1,
+				limit: 200,
+				truncated: false
+			})
+		}
+	)
+
+	test.each([undefined, null, 0, '0', '37', 37])(
+		'preserves the opaque Orders continuation and its page size with provider limit %j',
+		async (limit) => {
+			const cursor = '?limit=37&nextCursor=page%2B2%2Fopaque'
+			const nextCursor = '?limit=37&nextCursor=next-page'
+			const client = new WalmartClient(auth, {
+				fetch: async (input) => {
+					const url = new URL(new Request(input).url)
+					if (url.pathname === '/v3/token') return tokenResponse()
+					expect(url.search).toBe(cursor)
+					return Response.json({
+						list: {
+							meta: { totalCount: 3, limit, nextCursor },
+							elements: { order: [{ purchaseOrderId: 'PO-2' }, { purchaseOrderId: 'PO-3' }] }
+						}
+					})
+				}
+			})
+			expect(await client.listOrdersPage({ cursor, limit: 1 })).toEqual({
+				items: [{ purchaseOrderId: 'PO-2' }, { purchaseOrderId: 'PO-3' }],
+				total_count: 3,
+				limit: 37,
+				truncated: true,
+				next_cursor: nextCursor
+			})
+		}
+	)
+
+	test.each([true, -1, 1.5, '', 'invalid-limit'])(
+		'keeps rejecting malformed Orders page-size metadata: %j',
+		async (limit) => {
+			const client = new WalmartClient(auth, {
+				fetch: async (input) => {
+					if (new URL(new Request(input).url).pathname === '/v3/token') return tokenResponse()
+					return Response.json({ list: { meta: { totalCount: 0, limit }, elements: null } })
+				}
+			})
+			const error = await rejectionOf(client.listOrdersPage())
+			expect(error.details).toMatchObject({ issue_code: 'walmart_orders_response_invalid' })
+			if (!(error.cause instanceof z.ZodError)) throw new Error('Expected structured validation cause')
+			expect(error.cause.issues[0]?.path).toEqual(['list', 'meta', 'limit'])
+		}
+	)
+
+	test.each([37, '37'])('preserves a valid provider page size %j over the requested size', async (limit) => {
+		const client = new WalmartClient(auth, {
+			fetch: async (input) => {
+				if (new URL(new Request(input).url).pathname === '/v3/token') return tokenResponse()
+				return Response.json({
+					list: { meta: { totalCount: 1, limit }, elements: { order: { purchaseOrderId: 'PO-1' } } }
+				})
+			}
+		})
+		expect((await client.listOrdersPage({ limit: 200 })).limit).toBe(37)
+		expect((await client.listOrdersPage({ cursor: '?limit=200&nextCursor=next' })).limit).toBe(37)
+	})
+
+	test.each(['0', '201', '-1', '1.5', '', 'invalid-limit'])(
+		'rejects an invalid Orders cursor page size %j before HTTP',
+		async (limit) => {
+			let requests = 0
+			const client = new WalmartClient(auth, {
+				fetch: async () => {
+					requests += 1
+					throw new Error('Unexpected HTTP request')
+				}
+			})
+			expect(await rejectionOf(client.listOrdersPage({ cursor: `?limit=${limit}&nextCursor=next` }))).toMatchObject({
+				code: 'bad_input'
+			})
+			expect(requests).toBe(0)
+		}
+	)
+
+	test('uses the existing Orders default when neither the request nor response supplies a page size', async () => {
+		const client = new WalmartClient(auth, {
+			fetch: async (input) => {
+				if (new URL(new Request(input).url).pathname === '/v3/token') return tokenResponse()
+				return Response.json({ list: { meta: { totalCount: 0 }, elements: null } })
+			}
+		})
+		expect(await client.listOrdersPage()).toEqual({ items: [], total_count: 0, limit: 100, truncated: false })
+		expect(await client.listOrdersPage({ cursor: '?nextCursor=terminal' })).toEqual({
+			items: [],
+			total_count: 0,
+			limit: 100,
+			truncated: false
+		})
+	})
+
 	test.each([undefined, null, {}, { order: null }, { order: [] }])(
 		'accepts an explicitly empty orders page with elements %j',
 		async (elements) => {
@@ -497,7 +612,7 @@ describe('walmart', () => {
 		})
 	})
 
-	test('runs the orders tool through bound OAuth credentials', async () => {
+	test.each([undefined, null, 0, '0', '1', 1])('runs the orders tool with provider page size %j', async (limit) => {
 		const tool = withAuth(walmartModule, auth).tools.find((entry) => entry.id === 'walmart-list-orders')
 		if (!tool) throw new Error('missing Walmart orders tool')
 
@@ -510,7 +625,7 @@ describe('walmart', () => {
 					if (url.pathname === '/v3/token') return tokenResponse()
 					return new Response(
 						JSON.stringify({
-							list: { meta: { totalCount: 0, limit: 1 }, elements: null }
+							list: { meta: { totalCount: 0, limit }, elements: null }
 						}),
 						{ status: 200 }
 					)

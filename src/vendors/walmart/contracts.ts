@@ -51,7 +51,10 @@ export const walmartOrdersResponseSchema = z
 		list: z.looseObject({
 			meta: z.looseObject({
 				totalCount: z.int().nonnegative(),
-				limit: z.int().positive(),
+				limit: z.preprocess((value) => {
+					const limit = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value
+					return limit === null || limit === 0 ? undefined : limit
+				}, z.int().positive().optional()),
 				nextCursor: z.string().nullable().optional()
 			}),
 			elements: z

@@ -178,13 +178,21 @@ export class WalmartClient {
 	/** One GET /v3/orders request. Provider nextCursor fragments are appended verbatim on subsequent pages. */
 	async listOrdersPage(input: WalmartListOrdersPageInput = {}): Promise<WalmartListOrdersPageOutput> {
 		const parsedInput = parseInput(walmartListOrdersPageInputSchema, input, 'Invalid Walmart orders page input')
+		const cursorLimit = parsedInput.cursor ? new URLSearchParams(parsedInput.cursor).get('limit') : null
+		const requestedLimit = parsedInput.cursor
+			? parseInput(
+					walmartListOrdersPageInputSchema.shape.limit.unwrap(),
+					cursorLimit === null ? DEFAULT_ORDERS_LIMIT : Number(cursorLimit),
+					'Invalid Walmart orders cursor page size'
+				)
+			: (parsedInput.limit ?? DEFAULT_ORDERS_LIMIT)
 		const { data } = await this.#get(
 			pagePath('/v3/orders', parsedInput.cursor),
 			'Walmart Marketplace listOrdersPage',
 			parsedInput.cursor
 				? undefined
 				: {
-						limit: parsedInput.limit ?? DEFAULT_ORDERS_LIMIT,
+						limit: requestedLimit,
 						...(parsedInput.sku && { sku: parsedInput.sku }),
 						...(parsedInput.customer_order_id && { customerOrderId: parsedInput.customer_order_id }),
 						...(parsedInput.purchase_order_id && { purchaseOrderId: parsedInput.purchase_order_id }),
@@ -221,7 +229,8 @@ export class WalmartClient {
 		return {
 			items: response.list.elements.order,
 			total_count: response.list.meta.totalCount,
-			limit: response.list.meta.limit,
+			// Some Orders responses omit or zero the page-size echo, including continuations.
+			limit: response.list.meta.limit ?? requestedLimit,
 			truncated: Boolean(nextCursor),
 			...(nextCursor && { next_cursor: nextCursor })
 		}

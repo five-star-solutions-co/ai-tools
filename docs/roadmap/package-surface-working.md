@@ -64,7 +64,7 @@ This is **not** a second architecture lock. It tracks inventory, migration, open
 | `vendors/teams` | Done | Bot Framework pack + messaging seam provider |
 | `vendors/imessage` | Done | Photon Advanced iMessage HTTP outbound pack + messaging seam provider; inbound webhooks = host (no pack webhook.ts) |
 | `vendors/katana` component pages | Source-ready, 2026-09-06 | Public raw sales-order rows, purchase-order rows and manufacturing recipe rows via the existing client/page parser. See [Katana](../vendors/katana.md); upstream release and host integration remain separate. |
-| `vendors/walmart` Orders parsing | Source repair, 2026-09-09 | Normalize omitted/null collections only when metadata explicitly reports zero matches and no continuation. Preserve explicit terminal arrays and reject malformed or contradictory responses. Response errors retain bounded Zod causes plus content-free stage issue codes. Tracked in `ai-tools-wok`; package release and host adoption remain separate. |
+| `vendors/walmart` Orders parsing | Source repair, 2026-09-09 | Normalize omitted/null collections only when metadata explicitly reports zero matches and no continuation. Preserve explicit terminal arrays and reject malformed or contradictory responses. Normalize digit-string page-size echoes; omitted/null/zero echoes use the request or cursor page size without rewriting the cursor. Response errors retain bounded Zod causes plus content-free stage issue codes. Tracked in `ai-tools-wok`; package release and host adoption remain separate. |
 
 ### B. Host apps (what stays outside this package)
 
