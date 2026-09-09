@@ -1,5 +1,5 @@
 /**
- * Wayfair Supplier production read client.
+ * Wayfair Supplier production client.
  * Host: `new WayfairClient(auth)`. Agent tools: `fromContext(ctx)`.
  */
 
@@ -12,19 +12,31 @@ import type { ToolContext } from '../../core/types'
 import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
 import type {
+	WayfairAcceptDropshipOrderInput,
 	WayfairAuth,
+	WayfairDropshipOrderDetails,
+	WayfairGetDropshipOrderInput,
 	WayfairListCatalogPageInput,
 	WayfairListCatalogPageOutput,
 	WayfairListDropshipOrdersInput,
-	WayfairListDropshipOrdersOutput
+	WayfairListDropshipOrdersOutput,
+	WayfairSendShipmentNoticeInput,
+	WayfairTransactionStatus
 } from './contracts'
 import {
+	wayfairAcceptDropshipOrderInputSchema,
+	wayfairAcceptDropshipOrderResponseSchema,
 	wayfairAuthSchema,
 	wayfairCatalogResponseSchema,
 	wayfairDropshipPurchaseOrdersResponseSchema,
+	wayfairGetDropshipOrderInputSchema,
+	wayfairGetDropshipOrderResponseSchema,
 	wayfairListCatalogPageInputSchema,
-	wayfairListDropshipOrdersInputSchema
+	wayfairListDropshipOrdersInputSchema,
+	wayfairSendShipmentNoticeInputSchema,
+	wayfairSendShipmentNoticeResponseSchema
 } from './contracts'
+import { acceptOrderVariables, shipmentNoticeVariables } from './domain'
 
 const WAYFAIR_TOKEN_BASE = 'https://sso.auth.wayfair.com'
 const WAYFAIR_CATALOG_BASE = 'https://api.wayfair.io'
@@ -68,6 +80,75 @@ query SupplierCatalog($supplierId: Int!, $paginationOptions: PaginationOptions) 
   }
 }`
 
+const DROPSHIP_ORDER_DETAILS_QUERY = `
+query DropshipOrderDetails($poNumber: String!) {
+  getDropshipPurchaseOrders(poNumbers: [$poNumber], limit: 2) {
+    id
+    storePrefix
+    poNumber
+    poDate
+    orderId
+    supplierId
+    estimatedShipDate
+    scheduledDeliveryDate
+    deliveryMethodCode
+    customerName
+    customerEmail
+    salesChannelName
+    orderType
+    shippingInfo {
+      shipSpeed
+      carrierCode
+      poolPointAgent { id name }
+      crossDockAgent { id name }
+      deliveryAgent { id name }
+    }
+    warehouse {
+      id
+      name
+      address { name address1 address2 address3 city state country postalCode phoneNumber }
+    }
+    products {
+      partNumber quantity price pieceCount totalCost name weight totalWeight
+      estShipDate fillDate sku isCancelled isTscaCompliant
+      twoDayGuaranteeDeliveryDeadline customComment
+    }
+    shipTo { name address1 address2 address3 city state country postalCode phoneNumber }
+    billTo { name address1 address2 address3 city state country postalCode phoneNumber }
+    billingInfo { vatNumber }
+  }
+}`
+
+// Item arrays default to ten entries upstream; counts describe the complete transaction.
+const TRANSACTION_FIELDS = `
+  id handle status submittedAt completedAt
+  itemCount errorCount errors { key message }
+  completedCount completed { key message }
+  processingCount processing { key message }
+`
+
+const ACCEPT_DROPSHIP_ORDER_MUTATION = `
+mutation AcceptDropshipOrder(
+  $poNumber: String!,
+  $shipSpeed: ShipSpeed!,
+  $lineItems: [AcceptedLineItemInput!]!
+) {
+  purchaseOrders {
+    accept(poNumber: $poNumber, shipSpeed: $shipSpeed, lineItems: $lineItems) {
+      ${TRANSACTION_FIELDS}
+    }
+  }
+}`
+
+const SHIPMENT_NOTICE_MUTATION = `
+mutation SendShipmentNotice($notice: ShipNoticeInput!) {
+  purchaseOrders {
+    shipment(notice: $notice) {
+      ${TRANSACTION_FIELDS}
+    }
+  }
+}`
+
 export type WayfairClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
 
 function parseInput<TSchema extends ZodType>(schema: TSchema, input: unknown, message: string): output<TSchema> {
@@ -94,6 +175,16 @@ function parseResponse<TSchema extends ZodType>(schema: TSchema, data: unknown, 
 
 function graphqlError(message: string, issues: readonly string[]): never {
 	throw new ToolError(message, { code: 'upstream', details: { issues } })
+}
+
+function assertOrderGraphqlResult(errors: readonly unknown[] | undefined, operation: string): void {
+	if (errors?.length) {
+		// Mutation errors may echo addresses or other submitted data. Do not expose those messages.
+		throw new ToolError(`Wayfair Supplier ${operation} failed`, {
+			code: 'upstream',
+			details: { error_count: errors.length }
+		})
+	}
 }
 
 function graphqlString(value: string): string {
@@ -278,5 +369,80 @@ export class WayfairClient {
 		if (!response.data) graphqlError('Wayfair Supplier returned no dropship purchase order data', [])
 		const items = response.data.getDropshipPurchaseOrders
 		return { items, limit, limit_reached: items.length === limit }
+	}
+
+	/** One exact PO read, including the customer details required for fulfillment. Never acknowledges it. */
+	async getDropshipOrder(input: WayfairGetDropshipOrderInput): Promise<WayfairDropshipOrderDetails> {
+		const parsedInput = parseInput(wayfairGetDropshipOrderInputSchema, input, 'Invalid Wayfair purchase order input')
+		const { data } = await this.#orderHttp.post(
+			'/v1/graphql',
+			{
+				query: DROPSHIP_ORDER_DETAILS_QUERY,
+				variables: { poNumber: parsedInput.po_number }
+			},
+			{ label: 'Wayfair Supplier getDropshipOrder', headers: await this.#headers() }
+		)
+		const response = parseResponse(
+			wayfairGetDropshipOrderResponseSchema,
+			data,
+			'Wayfair Supplier returned invalid purchase order details'
+		)
+		assertOrderGraphqlResult(response.errors, 'getDropshipOrder')
+		if (!response.data) throw new ToolError('Wayfair Supplier returned no order data', { code: 'upstream' })
+		const items = response.data.getDropshipPurchaseOrders
+		const order = items[0]
+		if (!order) throw new ToolError('Wayfair purchase order was not found', { code: 'not_found' })
+		if (items.length !== 1 || order.poNumber !== parsedInput.po_number) {
+			throw new ToolError('Wayfair Supplier returned an unexpected purchase order', { code: 'upstream' })
+		}
+		return order
+	}
+
+	/** purchaseOrders.accept. Submission state and per-item errors are returned without optimistic success. */
+	async acceptDropshipOrder(input: WayfairAcceptDropshipOrderInput): Promise<WayfairTransactionStatus> {
+		const parsedInput = parseInput(
+			wayfairAcceptDropshipOrderInputSchema,
+			input,
+			'Invalid Wayfair order acceptance input'
+		)
+		const { data } = await this.#orderHttp.post(
+			'/v1/graphql',
+			{
+				query: ACCEPT_DROPSHIP_ORDER_MUTATION,
+				variables: acceptOrderVariables(parsedInput)
+			},
+			{ label: 'Wayfair Supplier acceptDropshipOrder', headers: await this.#headers() }
+		)
+		const response = parseResponse(
+			wayfairAcceptDropshipOrderResponseSchema,
+			data,
+			'Wayfair Supplier returned an invalid order acceptance'
+		)
+		assertOrderGraphqlResult(response.errors, 'acceptDropshipOrder')
+		const transaction = response.data?.purchaseOrders?.accept
+		if (!transaction) throw new ToolError('Wayfair Supplier returned no acceptance transaction', { code: 'upstream' })
+		return transaction
+	}
+
+	/** purchaseOrders.shipment. Sends one ASN; never retries or treats submission as completed processing. */
+	async sendShipmentNotice(input: WayfairSendShipmentNoticeInput): Promise<WayfairTransactionStatus> {
+		const parsedInput = parseInput(wayfairSendShipmentNoticeInputSchema, input, 'Invalid Wayfair shipment notice input')
+		const { data } = await this.#orderHttp.post(
+			'/v1/graphql',
+			{
+				query: SHIPMENT_NOTICE_MUTATION,
+				variables: shipmentNoticeVariables(parsedInput)
+			},
+			{ label: 'Wayfair Supplier sendShipmentNotice', headers: await this.#headers() }
+		)
+		const response = parseResponse(
+			wayfairSendShipmentNoticeResponseSchema,
+			data,
+			'Wayfair Supplier returned an invalid shipment notice transaction'
+		)
+		assertOrderGraphqlResult(response.errors, 'sendShipmentNotice')
+		const transaction = response.data?.purchaseOrders?.shipment
+		if (!transaction) throw new ToolError('Wayfair Supplier returned no shipment transaction', { code: 'upstream' })
+		return transaction
 	}
 }

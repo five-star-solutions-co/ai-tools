@@ -87,7 +87,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | `@5ss/ai-tools/amazon-sp-api` | [amazon-sp-api](./vendors/amazon-sp-api.md) |
 | `@5ss/ai-tools/shipstation` | [shipstation](./vendors/shipstation.md) |
 | `@5ss/ai-tools/walmart` | [walmart](./vendors/walmart.md) |
-| `@5ss/ai-tools/wayfair` | [wayfair](./vendors/wayfair.md) |
+| `@5ss/ai-tools/wayfair` | [wayfair](./vendors/wayfair.md) — catalog, dropship order reads, acceptance, and shipment notices |
 
 ### Vertical kits (not published)
 
@@ -107,6 +107,7 @@ Capability modules we own. Multi-provider seams take `{ provider, … }` on host
 | [provider-seam](./specs/provider-seam.md) | Multi-provider capability modules |
 | [artifacts-extract-convert](./specs/artifacts-extract-convert.md) | ArtifactRef extract / render |
 | [http-and-aws-services](./reference/http-and-aws-services.md) | Transport classes |
+| [Wayfair and SPS Commerce API inventory](./reference/wayfair-and-sps-commerce-apis.md) | Public endpoint coverage, current pack boundaries, and documentation gaps |
 | [package-surface-working](./roadmap/package-surface-working.md) | Delivery board (working) |
 | [integration-tests](./integration-tests.md) | Live vendor + seam tests; Docker + local Supabase ports |
 
