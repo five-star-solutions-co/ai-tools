@@ -4,6 +4,12 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.11.2](https://github.com/five-star-solutions-co/ai-tools/compare/v3.11.1...v3.11.2) (2026-09-09)
+
+### Styles
+
+* **core:** normalize omitted/null collections ([89ae811](https://github.com/five-star-solutions-co/ai-tools/commit/89ae811022cce20422022ad69fb5bf79382bb2fe))
+
 ## [3.11.1](https://github.com/five-star-solutions-co/ai-tools/compare/v3.11.0...v3.11.1) (2026-09-09)
 
 ### Code Refactoring
