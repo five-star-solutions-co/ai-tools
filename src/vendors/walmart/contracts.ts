@@ -41,22 +41,48 @@ export const walmartReturnOrderRawSchema = z.looseObject({
 	status: z.string().nullable().optional()
 })
 
-const walmartOrderCollectionSchema = z
-	.union([z.array(walmartOrderRawSchema), walmartOrderRawSchema])
-	.transform((value) => (Array.isArray(value) ? value : [value]))
+const walmartOrderCollectionSchema = z.preprocess(
+	(value) => (Array.isArray(value) ? value : [value]),
+	z.array(walmartOrderRawSchema)
+)
 
-export const walmartOrdersResponseSchema = z.looseObject({
-	list: z.looseObject({
-		meta: z.looseObject({
-			totalCount: z.int().nonnegative(),
-			limit: z.int().positive(),
-			nextCursor: z.string().nullable().optional()
-		}),
-		elements: z.looseObject({
-			order: walmartOrderCollectionSchema
+export const walmartOrdersResponseSchema = z
+	.looseObject({
+		list: z.looseObject({
+			meta: z.looseObject({
+				totalCount: z.int().nonnegative(),
+				limit: z.int().positive(),
+				nextCursor: z.string().nullable().optional()
+			}),
+			elements: z
+				.looseObject({
+					order: walmartOrderCollectionSchema.nullish()
+				})
+				.nullish()
 		})
 	})
-})
+	.superRefine((response, context) => {
+		const { meta, elements } = response.list
+		const order = elements?.order
+		// An omitted collection is empty only when the provider explicitly confirms no matches.
+		if (
+			(!order && (meta.totalCount !== 0 || meta.nextCursor)) ||
+			(meta.totalCount === 0 && (order?.length || meta.nextCursor))
+		) {
+			context.addIssue({
+				code: 'custom',
+				path: ['list', 'elements', 'order'],
+				message: 'Order collection does not match the provider pagination metadata'
+			})
+		}
+	})
+	.transform((response) => ({
+		...response,
+		list: {
+			...response.list,
+			elements: { ...response.list.elements, order: response.list.elements?.order ?? [] }
+		}
+	}))
 
 const walmartItemsResponseFields = {
 	totalItems: z.int().nonnegative(),

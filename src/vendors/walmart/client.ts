@@ -61,12 +61,22 @@ function parseInput<TSchema extends ZodType>(schema: TSchema, input: unknown, me
 	return parsed.data
 }
 
-function parseResponse<TSchema extends ZodType>(schema: TSchema, data: unknown, message: string): output<TSchema> {
+function parseResponse<TSchema extends ZodType>(
+	schema: TSchema,
+	data: unknown,
+	message: string,
+	stage: 'token' | 'orders' | 'items' | 'returns' | 'reconciliation_dates'
+): output<TSchema> {
 	const parsed = schema.safeParse(data)
 	if (!parsed.success) {
+		const issues = parsed.error.issues.slice(0, 8)
 		throw new ToolError(message, {
 			code: 'upstream',
-			details: { issues: parsed.error.issues.map((issue) => issue.message) }
+			cause: new z.ZodError(issues),
+			details: {
+				issues: issues.map((issue) => issue.message),
+				issue_code: `walmart_${stage}_response_invalid`
+			}
 		})
 	}
 	return parsed.data
@@ -127,7 +137,8 @@ export class WalmartClient {
 		const token = parseResponse(
 			walmartTokenResponseSchema,
 			data,
-			'Walmart Marketplace returned an invalid token response'
+			'Walmart Marketplace returned an invalid token response',
+			'token'
 		)
 		this.#accessToken = token.access_token
 		this.#accessTokenExpiresAt = requestedAt + Math.max(0, token.expires_in * 1000 - 60_000)
@@ -203,7 +214,8 @@ export class WalmartClient {
 		const response = parseResponse(
 			walmartOrdersResponseSchema,
 			data,
-			'Walmart Marketplace returned an invalid orders page'
+			'Walmart Marketplace returned an invalid orders page',
+			'orders'
 		)
 		const nextCursor = response.list.meta.nextCursor ?? undefined
 		return {
@@ -247,7 +259,8 @@ export class WalmartClient {
 		const response = parseResponse(
 			walmartItemsResponseSchema,
 			data,
-			'Walmart Marketplace returned an invalid items page'
+			'Walmart Marketplace returned an invalid items page',
+			'items'
 		)
 		const nextOffset = offset + response.items.length
 		const truncated = nextOffset < response.total_items
@@ -306,7 +319,8 @@ export class WalmartClient {
 		const response = parseResponse(
 			walmartReturnsResponseSchema,
 			data,
-			'Walmart Marketplace returned an invalid returns page'
+			'Walmart Marketplace returned an invalid returns page',
+			'returns'
 		)
 		const nextCursor = response.meta.nextCursor ?? undefined
 		return {
@@ -328,7 +342,8 @@ export class WalmartClient {
 		const response = parseResponse(
 			walmartReconReportDatesResponseSchema,
 			data,
-			'Walmart Marketplace returned invalid recon report dates'
+			'Walmart Marketplace returned invalid recon report dates',
+			'reconciliation_dates'
 		)
 		return { dates: response.availableApReportDates }
 	}

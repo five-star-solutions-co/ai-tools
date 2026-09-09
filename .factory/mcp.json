@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"metamcp": {
+			"type": "http",
+			"url": "http://umbrel.local:12008/metamcp/5star/mcp",
+			"oauth": false,
+			"disabled": false,
+			"connectTimeout": 30000
+		}
+	}
+}

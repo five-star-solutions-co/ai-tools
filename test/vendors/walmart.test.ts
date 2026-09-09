@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { z } from 'zod'
 
 import { runTool, ToolError, validateModule, withAuth } from '../../src/core'
 import { WalmartClient, walmartModule } from '../../src/vendors/walmart'
@@ -35,6 +36,105 @@ describe('walmart', () => {
 
 	test('rejects invalid OAuth credentials', () => {
 		expect(() => new WalmartClient({ client_id: '', client_secret: '' })).toThrow(ToolError)
+	})
+
+	test.each([undefined, null, {}, { order: null }, { order: [] }])(
+		'accepts an explicitly empty orders page with elements %j',
+		async (elements) => {
+			const client = new WalmartClient(auth, {
+				fetch: async (input) => {
+					if (new URL(new Request(input).url).pathname === '/v3/token') return tokenResponse()
+					return Response.json({ list: { meta: { totalCount: 0, limit: 200 }, elements } })
+				}
+			})
+
+			expect(await client.listOrdersPage({ limit: 200 })).toEqual({
+				items: [],
+				total_count: 0,
+				limit: 200,
+				truncated: false
+			})
+		}
+	)
+
+	test('preserves an explicit terminal empty page with a nonzero query total', async () => {
+		const client = new WalmartClient(auth, {
+			fetch: async (input) => {
+				if (new URL(new Request(input).url).pathname === '/v3/token') return tokenResponse()
+				return Response.json({ list: { meta: { totalCount: 5, limit: 200 }, elements: { order: [] } } })
+			}
+		})
+		expect(await client.listOrdersPage({ cursor: '?nextCursor=terminal' })).toEqual({
+			items: [],
+			total_count: 5,
+			limit: 200,
+			truncated: false
+		})
+	})
+
+	test.each([
+		{ meta: { totalCount: 1, limit: 200 } },
+		{ meta: { totalCount: 1, limit: 200 }, elements: null },
+		{ meta: { totalCount: 1, limit: 200 }, elements: { order: null } },
+		{ meta: { totalCount: 0, limit: 200, nextCursor: '?nextCursor=more' }, elements: {} },
+		{ meta: { totalCount: 0, limit: 200 }, elements: { order: [{ purchaseOrderId: 'PO-1' }] } },
+		{ meta: { limit: 200 }, elements: {} },
+		{ meta: { totalCount: 0, limit: 200 }, elements: { order: [{}] } }
+	])('does not turn inconsistent or malformed orders into an empty page: %j', async (list) => {
+		const client = new WalmartClient(auth, {
+			fetch: async (input) => {
+				if (new URL(new Request(input).url).pathname === '/v3/token') return tokenResponse()
+				return Response.json({ list })
+			}
+		})
+
+		expect(await rejectionOf(client.listOrdersPage())).toMatchObject({ code: 'upstream', retryable: false })
+	})
+
+	test('preserves bounded validation paths and codes without including order content', async () => {
+		const client = new WalmartClient(auth, {
+			fetch: async (input) => {
+				if (new URL(new Request(input).url).pathname === '/v3/token') return tokenResponse()
+				return Response.json({
+					list: {
+						meta: { totalCount: 20, limit: 200 },
+						elements: {
+							order: Array.from({ length: 20 }, () => ({
+								purchaseOrderId: null,
+								customerOrderId: 'private-order-reference',
+								customerEmailId: 'private@example.invalid'
+							}))
+						}
+					}
+				})
+			}
+		})
+
+		const error = await rejectionOf(client.listOrdersPage())
+		expect(error.details).toMatchObject({ issue_code: 'walmart_orders_response_invalid' })
+		if (!(error.cause instanceof z.ZodError)) throw new Error('Expected structured validation cause')
+		expect(error.cause.issues).toHaveLength(8)
+		expect(error.cause.issues[0]).toMatchObject({
+			code: 'invalid_type',
+			path: ['list', 'elements', 'order', 0, 'purchaseOrderId']
+		})
+		const diagnostic = JSON.stringify({ details: error.details, cause: error.cause })
+		expect(diagnostic).not.toContain('private-order-reference')
+		expect(diagnostic).not.toContain('private@example.invalid')
+	})
+
+	test('identifies invalid token responses separately without including credentials', async () => {
+		const client = new WalmartClient(auth, {
+			fetch: async () => Response.json({ access_token: 'private-token', expires_in: 'invalid-expiry' })
+		})
+
+		const error = await rejectionOf(client.listOrdersPage())
+		expect(error.details).toMatchObject({ issue_code: 'walmart_token_response_invalid' })
+		if (!(error.cause instanceof z.ZodError)) throw new Error('Expected structured validation cause')
+		expect(error.cause.issues).toMatchObject([{ code: 'invalid_type', path: ['expires_in'] }])
+		const diagnostic = JSON.stringify({ details: error.details, cause: error.cause })
+		expect(diagnostic).not.toContain('private-token')
+		expect(diagnostic).not.toContain('invalid-expiry')
 	})
 
 	test('authenticates once, maps order filters, and follows the opaque provider cursor', async () => {
@@ -410,7 +510,7 @@ describe('walmart', () => {
 					if (url.pathname === '/v3/token') return tokenResponse()
 					return new Response(
 						JSON.stringify({
-							list: { meta: { totalCount: 0, limit: 1 }, elements: { order: [] } }
+							list: { meta: { totalCount: 0, limit: 1 }, elements: null }
 						}),
 						{ status: 200 }
 					)
