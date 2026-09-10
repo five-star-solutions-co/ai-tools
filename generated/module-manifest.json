@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-09-10T00:24:16.062Z",
+	"generatedAt": "2026-09-10T01:05:36.101Z",
 	"generator": "scripts/codegen",
 	"brain": [
 		{
@@ -2010,7 +2010,8 @@
 			"runtime": "both",
 			"nodeFormats": ["esm", "cjs"],
 			"moduleId": "sps-commerce",
-			"moduleIdSource": "src/vendors/sps-commerce/module.ts"
+			"moduleIdSource": "src/vendors/sps-commerce/module.ts",
+			"logo": "logos/sps-commerce.svg"
 		},
 		{
 			"key": "sqs",
