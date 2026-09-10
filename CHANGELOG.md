@@ -4,6 +4,12 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.13.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.12.0...v3.13.0) (2026-09-10)
+
+### Features
+
+* **core:** add sps-commerce logo ([3ed09b6](https://github.com/five-star-solutions-co/ai-tools/commit/3ed09b6457bab8f1c1020f0eeeeddd86798f52da))
+
 ## [3.12.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.11.2...v3.12.0) (2026-09-10)
 
 ### Features
