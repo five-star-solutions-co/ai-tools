@@ -4,6 +4,14 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.12.0](https://github.com/five-star-solutions-co/ai-tools/compare/v3.11.2...v3.12.0) (2026-09-10)
+
+### Features
+
+* **core:** improve wayfair and sps-commerce integrations ([533819a](https://github.com/five-star-solutions-co/ai-tools/commit/533819a7e5e199b948d00edf88cbeeba57403fca))
+* **wayfair:** add cancellation request lifecycle tools ([f7fa7e1](https://github.com/five-star-solutions-co/ai-tools/commit/f7fa7e164e6b89c235db282fb10be6f23e4f7b36))
+* **wayfair:** add dropship order lifecycle tools ([534b5e1](https://github.com/five-star-solutions-co/ai-tools/commit/534b5e16538c093563f1c61b5072b6bb2d5df83b))
+
 ## [3.11.2](https://github.com/five-star-solutions-co/ai-tools/compare/v3.11.1...v3.11.2) (2026-09-09)
 
 ### Styles
