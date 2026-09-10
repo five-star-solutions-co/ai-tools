@@ -34,6 +34,7 @@ export const moduleKeys = [
 	'shipstation',
 	'skills',
 	'slack',
+	'sps-commerce',
 	'sqs',
 	'supabase-vector',
 	'tasks',

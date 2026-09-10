@@ -163,7 +163,8 @@ defineTool / defineModule
 | `@5ss/ai-tools/amazon-sp-api` | orders + items, FBA inventory, reports + documents, catalog search | [amazon-sp-api](./docs/vendors/amazon-sp-api.md) |
 | `@5ss/ai-tools/shipstation` | paginated labels and shipments | [shipstation](./docs/vendors/shipstation.md) |
 | `@5ss/ai-tools/walmart` | orders, items, returns, recon dates + host report download | [walmart](./docs/vendors/walmart.md) |
-| `@5ss/ai-tools/wayfair` | supplier catalog, dropship fulfillment, and cancellation requests | [wayfair](./docs/vendors/wayfair.md) |
+| `@5ss/ai-tools/wayfair` | catalog, dropship/CastleGate fulfillment, inventory, shipping, and advertising | [wayfair](./docs/vendors/wayfair.md) |
+| `@5ss/ai-tools/sps-commerce` | transaction files, labels, packing slips, and trading-partner submissions | [sps-commerce](./docs/vendors/sps-commerce.md) |
 
 Auth fields are **snake_case** (`api_key`, `bot_token`, `access_key_id`, …).
 

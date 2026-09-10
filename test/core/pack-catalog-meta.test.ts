@@ -30,6 +30,7 @@ async function loadPackModule(key: string): Promise<{ id: string; categories: re
 		's3',
 		'shipstation',
 		'slack',
+		'sps-commerce',
 		'sqs',
 		'supabase-vector',
 		'teams',

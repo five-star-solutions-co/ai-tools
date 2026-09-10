@@ -178,6 +178,10 @@
 			"types": "./dist/vendors/slack/index.d.ts",
 			"default": "./dist/vendors/slack/index.js"
 		},
+		"./sps-commerce": {
+			"types": "./dist/vendors/sps-commerce/index.d.ts",
+			"default": "./dist/vendors/sps-commerce/index.js"
+		},
 		"./sqs": {
 			"types": "./dist/vendors/sqs/index.d.ts",
 			"default": "./dist/vendors/sqs/index.js"
