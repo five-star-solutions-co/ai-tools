@@ -281,7 +281,7 @@
 		"papaparse": "5.7.0",
 		"postal-mime": "3.0.0",
 		"sharp": "0.35.4",
-		"zod": "4.5.4"
+		"zod": "4.6.1"
 	},
 	"devDependencies": {
 		"@mastra/core": "1.65.0",
@@ -297,7 +297,7 @@
 		"@types/bun": "1.4.2",
 		"@types/html-to-text": "9.0.4",
 		"@types/papaparse": "5.5.2",
-		"ai": "7.0.96",
+		"ai": "7.0.97",
 		"conventional-changelog-conventionalcommits": "10.4.0",
 		"conventional-changelog-writer": "^9.2.1",
 		"lefthook": "2.1.12",
