@@ -1359,7 +1359,7 @@ describe('wayfair shipping tool binding', () => {
 
 	test('preserves object storage configuration in client options without forwarding Wayfair credentials', async () => {
 		const stored: Request[] = []
-		const signal = new AbortController().signal
+		const controller = new AbortController()
 		const client = new WayfairClient(auth, {
 			artifacts: {
 				provider: 'object',
@@ -1371,15 +1371,14 @@ describe('wayfair shipping tool binding', () => {
 					endpoint: 'https://storage.example.test'
 				}
 			},
-			signal,
+			signal: controller.signal,
 			fetch: async (input, init) => {
 				const request = new Request(input, init)
 				if (request.url === tokenUrl) return tokenResponse()
 				if (request.url === 'https://api.wayfair.com/v1/packing_slip/CS123') {
 					return new Response(pdf, { headers: { 'Content-Type': 'application/pdf' } })
 				}
-				expect(init?.signal).toBe(signal)
-				expect(new URL(request.url).origin).toBe('https://storage.example.test')
+				expect(request.url).toBe('https://storage.example.test/documents/document.pdf')
 				expect(request.method).toBe('PUT')
 				expect(request.headers.get('Authorization')).toContain('AWS4-HMAC-SHA256')
 				expect(request.headers.get('Authorization')).not.toContain('shipping-access-token')
@@ -1391,9 +1390,11 @@ describe('wayfair shipping tool binding', () => {
 		expect(
 			await client.downloadPackingSlip({ po_number: 'CS123', max_bytes: 100, output_key: 'document.pdf' })
 		).toMatchObject({
-			artifact: { store: 'object', bucket: 'documents', key: 'document.pdf', byte_length: pdf.byteLength }
+			artifact: { store: 'object', key: 'document.pdf', byte_length: pdf.byteLength }
 		})
 		expect(stored).toHaveLength(1)
+		controller.abort()
+		expect(stored[0]?.signal.aborted).toBe(true)
 	})
 
 	test('projects explicit write confirmation and read metadata without exposing byte-returning tools', () => {
