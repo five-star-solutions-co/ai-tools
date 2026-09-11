@@ -45,6 +45,23 @@ async function rejectionOf(promise: Promise<unknown>): Promise<ToolError> {
 }
 
 describe('wayfair', () => {
+	test('projects credential JSON Schema without overrides', () => {
+		if (wayfairModule.auth.type !== 'custom') throw new Error('expected custom Wayfair auth')
+
+		const schema = wayfairModule.auth.schema.toJSONSchema()
+		expect(schema).toMatchObject({
+			type: 'object',
+			required: ['client_id', 'client_secret', 'supplier_id'],
+			properties: {
+				client_id: { type: 'string' },
+				client_secret: { type: 'string' },
+				supplier_id: { type: 'integer' },
+				environment: { enum: ['production', 'sandbox'] }
+			}
+		})
+		expect(Object.keys(schema.properties ?? {})).toEqual(['client_id', 'client_secret', 'supplier_id', 'environment'])
+	})
+
 	test('module contracts and tool ids', () => {
 		expect(validateModule(wayfairModule).ok).toBe(true)
 		expect(wayfairModule.tools.map((tool) => tool.id).sort()).toEqual([

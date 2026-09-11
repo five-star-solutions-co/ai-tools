@@ -11,6 +11,8 @@ import { ToolError } from '../../core/errors'
 import { requireAuth } from '../../core/provider'
 import type { FetchLike, ToolContext } from '../../core/types'
 import { ArtifactsClient } from '../../modules/artifacts/client'
+import { artifactsAuthSchema } from '../../modules/artifacts/contracts'
+import type { ArtifactsAuth } from '../../modules/artifacts/contracts'
 import { bytesToBase64 } from '../../shared/bytes'
 import { HttpService } from '../../transport/http-service'
 import type { HttpServiceOptions } from '../../transport/http-service'
@@ -589,7 +591,9 @@ mutation UpdateCatalogItemGroups($input: UpdateMarketSpecificCatalogItemGroupsIn
  updateCatalogEntitiesMutations { updateMarketSpecificCatalogItemGroups(input: $input) { requestId } }
 }`
 
-export type WayfairClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'>
+export type WayfairClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'> & {
+	artifacts?: ArtifactsAuth | undefined
+}
 
 function parseInput<TSchema extends ZodType>(schema: TSchema, input: unknown, message: string): output<TSchema> {
 	const parsed = schema.safeParse(input)
@@ -708,7 +712,7 @@ export class WayfairClient {
 		// Prevent redirects from replaying mutations or moving authenticated requests to another origin.
 		const fetch = options.fetch ?? globalThis.fetch
 		const noRedirects: FetchLike = (input, init) => fetch(input, { ...init, redirect: 'error' })
-		const transport = { ...options, fetch: noRedirects }
+		const transport = { fetch: noRedirects, ...(options.signal && { signal: options.signal }) }
 		this.#tokenHttp = new HttpService({ ...transport, baseURL: WAYFAIR_TOKEN_BASE, label: 'Wayfair Supplier' })
 		this.#supplierHttp = new HttpService({
 			...transport,
@@ -720,14 +724,16 @@ export class WayfairClient {
 			baseURL: this.#auth.environment === 'sandbox' ? 'https://sandbox.api.wayfair.com' : WAYFAIR_ORDER_BASE,
 			label: 'Wayfair Supplier'
 		})
-		this.#artifacts = parsed.data.artifacts ? ArtifactsClient.fromAuth(parsed.data.artifacts, options) : undefined
+		this.#artifacts = options.artifacts ? ArtifactsClient.fromAuth(options.artifacts, options) : undefined
 	}
 
 	static fromContext(ctx: ToolContext): WayfairClient {
+		const artifacts = ctx.extras?.['artifacts']
 		const auth = requireAuth(ctx, wayfairAuthSchema)
 		return new WayfairClient(auth, {
 			...(ctx.fetch && { fetch: ctx.fetch }),
-			...(ctx.signal && { signal: ctx.signal })
+			...(ctx.signal && { signal: ctx.signal }),
+			...(artifacts !== undefined && { artifacts: requireAuth({ auth: artifacts }, artifactsAuthSchema) })
 		})
 	}
 

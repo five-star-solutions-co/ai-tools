@@ -1,13 +1,11 @@
 import { z } from 'zod'
-import { artifactsAuthSchema } from '../../modules/artifacts/contracts'
 import { artifactRefSchema } from '../../shared/artifact'
 
 export const wayfairAuthSchema = z.object({
 	client_id: z.string().min(1).describe('Wayfair Supplier OAuth client id'),
 	client_secret: z.string().min(1).describe('Wayfair Supplier OAuth client secret'),
 	supplier_id: z.coerce.number().int().positive().describe('Wayfair supplier id'),
-	environment: z.enum(['production', 'sandbox']).optional().describe('Wayfair environment; defaults to production'),
-	artifacts: artifactsAuthSchema.optional().describe('Optional host-bound artifact storage for document downloads')
+	environment: z.enum(['production', 'sandbox']).optional().describe('Wayfair environment; defaults to production')
 })
 
 export type WayfairAuth = z.infer<typeof wayfairAuthSchema>

@@ -1,9 +1,10 @@
 import { describe, expect, spyOn, test } from 'bun:test'
 import { z } from 'zod'
 
-import { runTool, ToolError, withAuth } from '../../src/core'
+import { bindModule, runTool, ToolError, withAuth } from '../../src/core'
 import type { ArtifactsCreateInput, HostArtifactsAuth } from '../../src/modules/artifacts/contracts'
 import { WayfairClient, wayfairModule } from '../../src/vendors/wayfair'
+import type { WayfairClientOptions } from '../../src/vendors/wayfair'
 import type {
 	WayfairAuth,
 	WayfairDownloadDocumentInput,
@@ -103,9 +104,14 @@ function tokenResponse(): Response {
 	return Response.json({ access_token: 'shipping-access-token', expires_in: 900 })
 }
 
-function mockClient(handler: (request: Request) => Response | Promise<Response>, binding: WayfairAuth = auth) {
+function mockClient(
+	handler: (request: Request) => Response | Promise<Response>,
+	options: WayfairClientOptions = {},
+	binding: WayfairAuth = auth
+) {
 	const requests: Request[] = []
 	const client = new WayfairClient(binding, {
+		...options,
 		fetch: async (input, init) => {
 			const request = new Request(input, init)
 			requests.push(request)
@@ -906,7 +912,7 @@ describe('wayfair document bytes and artifacts', () => {
 			const created: ArtifactsCreateInput[] = []
 			const { client, requests } = mockClient(
 				() => new Response(pdf, { headers: { 'Content-Type': 'application/pdf' } }),
-				{ ...auth, artifacts: hostStorage((input) => created.push(input)) }
+				{ artifacts: hostStorage((input) => created.push(input)) }
 			)
 			const result = await document.store(client, {
 				po_number: 'CS123',
@@ -958,7 +964,6 @@ describe('wayfair document bytes and artifacts', () => {
 						})
 					},
 					{
-						...auth,
 						artifacts: hostStorage(() => {
 							creates += 1
 						})
@@ -990,7 +995,6 @@ describe('wayfair document bytes and artifacts', () => {
 				const { client } = mockClient(
 					() => new Response('private-customer', { headers: { 'Content-Type': mediaType } }),
 					{
-						...auth,
 						artifacts: hostStorage(() => {
 							creates += 1
 						})
@@ -1019,7 +1023,6 @@ describe('wayfair document bytes and artifacts', () => {
 		test(`${document.name} rejects an empty successful document before artifact creation`, async () => {
 			let creates = 0
 			const { client } = mockClient(() => new Response(null, { headers: { 'Content-Type': 'application/pdf' } }), {
-				...auth,
 				artifacts: hostStorage(() => {
 					creates++
 				})
@@ -1054,7 +1057,6 @@ describe('wayfair document bytes and artifacts', () => {
 							headers: { 'Content-Type': 'text/html', 'Retry-After': '9' }
 						}),
 					{
-						...auth,
 						artifacts: hostStorage(() => {
 							creates += 1
 						})
@@ -1097,7 +1099,6 @@ describe('wayfair document bytes and artifacts', () => {
 		const { client, requests } = mockClient(
 			() => new Response(pdf, { headers: { 'Content-Type': 'application/pdf' } }),
 			{
-				...auth,
 				artifacts: hostStorage(() => {
 					creates += 1
 					throw new ToolError('Bound store unavailable', { code: 'upstream' })
@@ -1193,6 +1194,7 @@ describe('wayfair sandbox routing and token lifecycle', () => {
 				expect(body.variables.feedKind).toBe('TRUE_UP')
 				return Response.json({ data: { inventory: { save: transaction } } })
 			},
+			{},
 			{ ...auth, environment: 'sandbox' }
 		)
 		expect(await rejectionOf(client.saveInventory({ ...inventory, feed_kind: 'DIFFERENTIAL' }))).toMatchObject({
@@ -1315,6 +1317,85 @@ describe('wayfair sandbox routing and token lifecycle', () => {
 })
 
 describe('wayfair shipping tool binding', () => {
+	test('resolves artifact storage per invocation through the existing context binding', async () => {
+		let resolutions = 0
+		const created: Array<{ binding: number; key: string }> = []
+		const tool = bindModule(wayfairModule, {
+			resolveAuth: async () => auth,
+			resolveContext: async () => {
+				const binding = ++resolutions
+				return {
+					extras: {
+						artifacts: hostStorage((input) => created.push({ binding, key: input.key }))
+					}
+				}
+			}
+		}).tools.find((entry) => entry.id === 'wayfair-download-packing-slip')
+		if (!tool) throw new Error('missing document tool')
+
+		const signal = new AbortController().signal
+		for (const key of ['first.pdf', 'second.pdf']) {
+			await runTool(
+				tool,
+				{ po_number: 'CS123', max_bytes: 100, output_key: key },
+				{
+					signal,
+					fetch: async (input, init) => {
+						expect(init?.signal).toBe(signal)
+						const request = new Request(input, init)
+						if (request.url === tokenUrl) return tokenResponse()
+						expect(request.url).toBe('https://api.wayfair.com/v1/packing_slip/CS123')
+						return new Response(pdf, { headers: { 'Content-Type': 'application/pdf' } })
+					}
+				}
+			)
+		}
+		expect(created).toEqual([
+			{ binding: 1, key: 'first.pdf' },
+			{ binding: 2, key: 'second.pdf' }
+		])
+		expect(resolutions).toBe(2)
+	})
+
+	test('preserves object storage configuration in client options without forwarding Wayfair credentials', async () => {
+		const stored: Request[] = []
+		const signal = new AbortController().signal
+		const client = new WayfairClient(auth, {
+			artifacts: {
+				provider: 'object',
+				storage: {
+					access_key_id: 'storage-key',
+					secret_access_key: 'storage-secret',
+					region: 'auto',
+					bucket: 'documents',
+					endpoint: 'https://storage.example.test'
+				}
+			},
+			signal,
+			fetch: async (input, init) => {
+				const request = new Request(input, init)
+				if (request.url === tokenUrl) return tokenResponse()
+				if (request.url === 'https://api.wayfair.com/v1/packing_slip/CS123') {
+					return new Response(pdf, { headers: { 'Content-Type': 'application/pdf' } })
+				}
+				expect(init?.signal).toBe(signal)
+				expect(new URL(request.url).origin).toBe('https://storage.example.test')
+				expect(request.method).toBe('PUT')
+				expect(request.headers.get('Authorization')).toContain('AWS4-HMAC-SHA256')
+				expect(request.headers.get('Authorization')).not.toContain('shipping-access-token')
+				expect(new Uint8Array(await request.clone().arrayBuffer())).toEqual(pdf)
+				stored.push(request)
+				return new Response(null, { status: 200 })
+			}
+		})
+		expect(
+			await client.downloadPackingSlip({ po_number: 'CS123', max_bytes: 100, output_key: 'document.pdf' })
+		).toMatchObject({
+			artifact: { store: 'object', bucket: 'documents', key: 'document.pdf', byte_length: pdf.byteLength }
+		})
+		expect(stored).toHaveLength(1)
+	})
+
 	test('projects explicit write confirmation and read metadata without exposing byte-returning tools', () => {
 		for (const id of [
 			'wayfair-save-inventory',
@@ -1405,14 +1486,39 @@ describe('wayfair shipping tool binding', () => {
 	})
 
 	for (const document of documents) {
+		test(`${document.name} rejects missing or invalid runtime storage before HTTP`, async () => {
+			const tool = withAuth(wayfairModule, auth).tools.find((entry) => entry.id === document.toolId)
+			if (!tool) throw new Error('missing document tool')
+			let requests = 0
+			for (const artifacts of [
+				undefined,
+				null,
+				false,
+				{},
+				{ provider: 'host', backend: { create: 'not-a-function' } }
+			]) {
+				expect(
+					await rejectionOf(
+						runTool(
+							tool,
+							{ po_number: 'CS123', max_bytes: 100, output_key: 'document.pdf' },
+							{
+								extras: { artifacts },
+								fetch: async () => {
+									requests += 1
+									throw new Error('unexpected HTTP')
+								}
+							}
+						)
+					)
+				).toMatchObject({ code: 'bad_auth' })
+			}
+			expect(requests).toBe(0)
+		})
+
 		test(`${document.name} tool returns only a bound ArtifactRef and rejects caller-supplied document URLs`, async () => {
 			let creates = 0
-			const tool = withAuth(wayfairModule, {
-				...auth,
-				artifacts: hostStorage(() => {
-					creates += 1
-				})
-			}).tools.find((entry) => entry.id === document.toolId)
+			const tool = withAuth(wayfairModule, auth).tools.find((entry) => entry.id === document.toolId)
 			if (!tool) throw new Error('missing document tool')
 			const input = { po_number: 'CS123', max_bytes: 100, output_key: 'document.pdf' }
 			for (const extra of [
@@ -1435,6 +1541,11 @@ describe('wayfair shipping tool binding', () => {
 				).toMatchObject({ code: 'bad_input' })
 			}
 			const result = await runTool(tool, input, {
+				extras: {
+					artifacts: hostStorage(() => {
+						creates += 1
+					})
+				},
 				fetch: async (requestInput, init) => {
 					const request = new Request(requestInput, init)
 					if (request.url === tokenUrl) return tokenResponse()

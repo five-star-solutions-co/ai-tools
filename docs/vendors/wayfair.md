@@ -18,15 +18,31 @@ Wayfair Supplier access for catalog, dropship and CastleGate fulfillment, cancel
   client_secret: string
   supplier_id: number
   environment?: 'production' | 'sandbox'
-  artifacts?: ArtifactsAuth
 }
 ```
 
 The client exchanges these credentials at `https://sso.auth.wayfair.com/oauth/token`. The audience is `https://api.wayfair.com/` in production or `https://sandbox.api.wayfair.com/` in sandbox. Tokens are cached per client, refreshed before expiry, and concurrent refreshes are deduplicated. Auth remains host-owned and never appears in tool input. Reuse a client for host workflows that should share its token cache.
 
-Production defaults and existing method signatures remain compatible. Sandbox uses `https://sandbox.api.wayfair.com` for orders/documents and `https://api.wayfair.io/sandbox` for supplier APIs. The sandbox dropship detail query omits the production-only `isCancelled` field. Entitlements and account enablement still apply.
+Production defaults and tool inputs are unchanged. Sandbox uses `https://sandbox.api.wayfair.com` for orders/documents and `https://api.wayfair.io/sandbox` for supplier APIs. The sandbox dropship detail query omits the production-only `isCancelled` field. Entitlements and account enablement still apply.
 
-Optional nested `artifacts` uses the existing [artifact binding](../modules/artifacts.md). It is required only for methods returning stored documents; bounded host byte methods do not require it.
+The credential schema contains only JSON data and supports plain `wayfairModule.auth.schema.toJSONSchema()` after narrowing `auth.type` to `custom`. No schema overrides are needed.
+
+### Document storage binding
+
+Storage is runtime configuration, not Wayfair authentication. Pass the existing [artifact binding](../modules/artifacts.md) (`ArtifactsAuth`, object or host provider) through client options or `ToolContext.extras.artifacts`:
+
+```ts
+const client = new WayfairClient(auth, { artifacts })
+
+const bound = bindModule(wayfairModule, {
+  resolveAuth: async () => auth,
+  resolveContext: async () => ({ extras: { artifacts } }),
+})
+```
+
+`withAuth(wayfairModule, auth)` also works when the execution context supplies `extras.artifacts`. Storage is required only for methods returning stored documents; bounded host byte methods do not require it.
+
+**Binding API change:** move the previous `auth.artifacts` value to `options.artifacts` for direct clients or `extras.artifacts` for tools. Callbacks must not be stored with credentials or passed as tool inputs. Consuming apps must adopt a released SDK containing this change before regenerating their credential catalogs; a local SDK fix alone does not update an installed package.
 
 ## Tools and client methods
 
