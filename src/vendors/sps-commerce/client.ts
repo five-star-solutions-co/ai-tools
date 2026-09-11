@@ -19,9 +19,10 @@ import {
 	spsTransactionPath
 } from './domain'
 
-export type SpsCommerceClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'> & {
-	now?: (() => Date) | undefined
-}
+export type SpsCommerceClientOptions = Pick<HttpServiceOptions, 'fetch' | 'signal'> &
+	c.SpsCommerceRuntime & {
+		now?: (() => Date) | undefined
+	}
 export type SpsDocumentBytes = { bytes: Uint8Array; media_type: string }
 
 type TokenState = {
@@ -64,12 +65,15 @@ export class SpsCommerceClient {
 	readonly #oauth: HttpService
 	readonly #documents: HttpService
 	readonly #artifacts: ArtifactsClient | undefined
+	readonly #documentOrigins: readonly string[]
 	readonly #signal: AbortSignal | undefined
 	readonly #now: () => Date
 	#tokens: TokenState
 
 	constructor(auth: c.SpsCommerceAuth, options: SpsCommerceClientOptions = {}) {
 		this.#auth = parseSps(c.spsCommerceAuthSchema, auth, 'bad_auth')
+		const runtime = parseSps(c.spsCommerceRuntimeSchema, options, 'bad_auth')
+		this.#documentOrigins = runtime.document_origins ?? []
 		this.#signal = options.signal
 		this.#now = options.now ?? (() => new Date())
 		this.#tokens = tokenStateFor(auth, this.#auth, options.fetch)
@@ -85,17 +89,13 @@ export class SpsCommerceClient {
 			label: 'SPS authentication'
 		})
 		this.#documents = new HttpService({ ...transport, label: 'SPS document' })
-		this.#artifacts = this.#auth.artifacts
-			? ArtifactsClient.fromAuth(this.#auth.artifacts, {
-					...(options.fetch && { fetch: options.fetch }),
-					...(options.signal && { signal: options.signal })
-				})
-			: undefined
+		this.#artifacts = runtime.artifacts ? ArtifactsClient.fromAuth(runtime.artifacts, options) : undefined
 	}
 
 	static fromContext(ctx: ToolContext): SpsCommerceClient {
 		const auth = requireAuth(ctx, c.spsCommerceAuthSchema)
 		const client = new SpsCommerceClient(auth, {
+			...parseSps(c.spsCommerceRuntimeSchema, ctx.extras ?? {}, 'bad_auth'),
 			...(ctx.fetch && { fetch: ctx.fetch }),
 			...(ctx.signal && { signal: ctx.signal }),
 			...(ctx.now && { now: ctx.now })
@@ -382,7 +382,7 @@ export class SpsCommerceClient {
 		if (batch.status !== 'Completed' || !batch.resultURL) {
 			throw new ToolError('SPS label batch has no completed result', { code: 'bad_input' })
 		}
-		const url = spsDocumentUrl(batch.resultURL, this.#auth.document_origins ?? [])
+		const url = spsDocumentUrl(batch.resultURL, this.#documentOrigins)
 		// Separate transport has no SPS authorization or metadata headers.
 		const response = await protectSps(this.#documents.bytes('GET', url, { maxBytes: parsed.max_bytes }))
 		return { bytes: response.bytes, media_type: response.headers.get('content-type') ?? 'application/octet-stream' }

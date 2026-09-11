@@ -23,7 +23,14 @@ const page = await client.listTransactions({ path: '/out/', limit: 100 })
 // Request the next page explicitly with page.paging?.next?.cursor.
 ```
 
-Alternatively, bind `{ access_token: 'host-managed-token' }`. The two credential shapes are mutually exclusive. Tokens, client credentials, storage bindings, and download-origin permissions are never tool inputs.
+Alternatively, bind `{ access_token: 'host-managed-token' }`. The two credential shapes are mutually exclusive. Both serialize through plain `spsCommerceModule.auth.schema.toJSONSchema()` after narrowing `auth.type` to `custom`; hosts must support the resulting `anyOf` alternatives without replacing or flattening the schema. Tokens, client credentials, storage bindings, and download-origin permissions are never tool inputs.
+
+Artifact storage and download-origin permissions are runtime settings, separate from credentials.
+`SpsCommerceClientOptions` accepts `artifacts` and `document_origins`; tools read those same fields
+from `ToolContext.extras`. `spsCommerceRuntimeSchema` validates this runtime configuration.
+**Binding API change:** move previous `auth.artifacts` and `auth.document_origins` values to client
+options or execution-context extras. The strict credential schemas reject these fields inside auth.
+No browser OAuth flow, credential-schema override, or new tool input is introduced.
 
 Machine-to-machine authentication uses JSON `POST https://auth.spscommerce.com/oauth/token`, with `grant_type: "client_credentials"` and audience exactly `https://spscommerce.com`. Returned `expires_in` controls expiry, with a refresh margin of 10% of the lifetime capped at 60 seconds. Concurrent refreshes with the same abort signal are deduplicated; requests with different signals do not share an abortable refresh. Failed refreshes are not retained.
 
@@ -139,14 +146,14 @@ The success response retains every entry in `createdTradingPartners`; one submis
 
 ## Artifacts, limits, and failure behavior
 
-Model-facing transaction reads, sample PDFs, renders, and batch-result downloads return `{ artifact: ArtifactRef }`, not binary/base64 content or signed URLs. Transaction uploads take a source `ArtifactRef`. Supply optional nested `artifacts` with the existing artifacts module's `host` or `object` shape:
+Model-facing transaction reads, sample PDFs, renders, and batch-result downloads return `{ artifact: ArtifactRef }`, not binary/base64 content or signed URLs. Transaction uploads take a source `ArtifactRef`. Supply runtime `artifacts` with the existing artifacts module's `host` or `object` shape:
 
 ```ts
 // artifactsAuth is your existing ArtifactsAuth binding.
-const client = new SpsCommerceClient({
-	access_token: 'host-managed-token',
-	artifacts: artifactsAuth
-})
+const client = new SpsCommerceClient(
+	{ access_token: 'host-managed-token' },
+	{ artifacts: artifactsAuth }
+)
 
 const result = await client.readTransaction({
 	path: '/out/order.xml',
@@ -154,6 +161,11 @@ const result = await client.readTransaction({
 	max_bytes: 5_000_000
 })
 ```
+
+For agent tools, bind credentials with `withAuth` or `bindModule` and provide
+`extras: { artifacts: artifactsAuth, document_origins: approvedOrigins }` in the execution context.
+`bindModule.resolveContext` can supply these settings per invocation. Omit `document_origins`
+unless batch-document origins have been explicitly approved; the default remains an empty allowlist.
 
 `max_bytes` is explicit on every artifact/byte operation and must fit `MAX_ARTIFACT_READ_BYTES`; there is no unbounded download option. The transport cancels streams as soon as either declared or observed size exceeds the bound. Missing storage fails before rendering or downloading. Storage failure never triggers a second remote render/upload, deletion, or acknowledgment.
 
@@ -174,3 +186,8 @@ Artifact-producing tools have `sideEffect: "write"` because they create stored o
 - No live provider requests or account mutations were made. Tests use injected mocked fetch and host artifact backends.
 
 Validation belongs to `test/vendors/sps-commerce.test.ts`: exact routes and request options, token caching/expiry/deduplication, bound tools, full nested submission contracts, native pagination/nulls, asynchronous states, malformed responses, rate limits, no replay, path/header safety, cancellation, byte bounds, storage failure, and document-origin/auth isolation.
+
+Credential/runtime separation additionally covers plain JSON Schema projection, exclusive auth
+alternatives, rejection of runtime fields inside credentials, per-invocation storage for both
+authentication methods, and sanitized rejection of malformed runtime settings before HTTP.
+SDK release and consuming-application dependency updates remain separate from local verification.

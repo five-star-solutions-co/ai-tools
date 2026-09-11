@@ -11,7 +11,7 @@ const credential = z
 	.string()
 	.min(1)
 	.regex(/^[^\r\n]+$/)
-const authOptions = {
+export const spsCommerceRuntimeSchema = z.object({
 	artifacts: artifactsAuthSchema.optional().describe('Optional host-bound artifact backend'),
 	document_origins: z
 		.array(
@@ -25,13 +25,14 @@ const authOptions = {
 		)
 		.optional()
 		.describe('Host-approved origins for generated batch documents; no origins are allowed by default')
-}
+})
+export type SpsCommerceRuntime = z.infer<typeof spsCommerceRuntimeSchema>
+
 export const spsCommerceAuthSchema = z.union([
-	z.strictObject({ access_token: credential.describe('Host-managed SPS bearer token'), ...authOptions }),
+	z.strictObject({ access_token: credential.describe('Host-managed SPS bearer token') }),
 	z.strictObject({
 		client_id: credential.describe('SPS machine-to-machine client ID'),
-		client_secret: credential.describe('SPS machine-to-machine client secret'),
-		...authOptions
+		client_secret: credential.describe('SPS machine-to-machine client secret')
 	})
 ])
 export type SpsCommerceAuth = z.infer<typeof spsCommerceAuthSchema>

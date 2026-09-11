@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 
-import { isToolError, runTool, validateModule, withAuth } from '../../src/core'
+import { bindModule, isToolError, runTool, validateModule, withAuth } from '../../src/core'
 import type { ToolErrorCode } from '../../src/core/errors'
 import type { FetchLike } from '../../src/core/types'
 import type { ArtifactsAuth, ArtifactsCreateInput } from '../../src/modules/artifacts/contracts'
@@ -9,6 +9,7 @@ import { base64ToBytes, bytesToUtf8, toArrayBuffer, utf8ToBytes } from '../../sr
 import {
 	SpsCommerceClient,
 	SPS_RENDER_MAX_BYTES,
+	spsCommerceAuthSchema,
 	spsCommerceModule,
 	spsCreateTradingPartnersInputSchema,
 	spsFilePathSchema,
@@ -163,6 +164,105 @@ function submissionForm() {
 }
 
 describe('SPS public pack contracts', () => {
+	test('projects both credential alternatives to JSON Schema without overrides', () => {
+		if (spsCommerceModule.auth.type !== 'custom') throw new Error('Expected custom SPS auth')
+		const schema = spsCommerceModule.auth.schema.toJSONSchema()
+		expect(schema.anyOf).toHaveLength(2)
+		expect(schema.anyOf).toEqual([
+			expect.objectContaining({ required: ['access_token'], additionalProperties: false }),
+			expect.objectContaining({ required: ['client_id', 'client_secret'], additionalProperties: false })
+		])
+		expect(JSON.stringify(schema)).not.toMatch(/artifacts|document_origins/)
+	})
+
+	test('keeps credential alternatives exclusive and rejects runtime settings inside auth', () => {
+		for (const auth of [
+			{},
+			{ client_id: 'client' },
+			{ ...boundAuth, client_id: 'client', client_secret: 'secret' },
+			{ ...boundAuth, artifacts: artifactStorage().artifactsAuth },
+			{ client_id: 'client', client_secret: 'secret', document_origins: ['https://cdn.example.test'] }
+		]) {
+			expect(spsCommerceAuthSchema.safeParse(auth).success).toBe(false)
+		}
+		expect(spsCommerceAuthSchema.parse(boundAuth)).toEqual(boundAuth)
+		expect(spsCommerceAuthSchema.parse({ client_id: 'client', client_secret: 'secret' })).toEqual({
+			client_id: 'client',
+			client_secret: 'secret'
+		})
+	})
+
+	test('binds runtime artifact storage per invocation with either credential alternative', async () => {
+		const auths = [boundAuth, { client_id: 'client', client_secret: 'secret' }] satisfies SpsCommerceAuth[]
+		for (const auth of auths) {
+			const first = artifactStorage()
+			const second = artifactStorage()
+			const bound = bindModule(spsCommerceModule, {
+				resolveAuth: async () => auth,
+				resolveContext: async (ctx) => ({ extras: { artifacts: ctx.extras?.['storage'] } })
+			})
+			const read = bound.tools.find((item) => item.id === 'sps-commerce-read-transaction')
+			if (!read) throw new Error('Missing read tool')
+			const signal = new AbortController().signal
+			const fetch = mockFetch((url, init) => {
+				expect(init.signal).toBe(signal)
+				if (url.hostname === 'auth.spscommerce.com') {
+					expect(body(init)).toMatchObject({ grant_type: 'client_credentials', client_id: 'client' })
+					return response({ access_token: 'issued-token', expires_in: 3600 })
+				}
+				expect(init.method).toBe('GET')
+				expect(url.pathname).toBe('/transactions/v5/data/out/order.xml')
+				expect(new Headers(init.headers).get('Authorization')).toBe(
+					'access_token' in auth ? `Bearer ${auth.access_token}` : 'Bearer issued-token'
+				)
+				return new Response('<Order/>')
+			})
+			for (const storage of [first, second]) {
+				await runTool(
+					read,
+					{ path: '/out/order.xml', destination: 'order.xml', max_bytes: 100 },
+					{
+						extras: { storage: storage.artifactsAuth },
+						fetch,
+						signal
+					}
+				)
+			}
+			expect(first.writes).toHaveLength(1)
+			expect(second.writes).toHaveLength(1)
+		}
+	})
+
+	test('rejects invalid runtime settings without requests or exposing their values', async () => {
+		let requests = 0
+		const fetch = mockFetch(() => {
+			requests += 1
+			throw new Error('Unexpected HTTP')
+		})
+		for (const extras of [
+			{ artifacts: null },
+			{ artifacts: { provider: 'host', backend: { create: 'private-invalid-callback' } } },
+			{ document_origins: ['http://private.example.test'] },
+			{ document_origins: ['https://user:private-secret@cdn.example.test'] }
+		]) {
+			const error = await code(
+				runTool(
+					tool('read-transaction'),
+					{ path: '/out/order.xml', destination: 'x', max_bytes: 100 },
+					{
+						auth: boundAuth,
+						extras,
+						fetch
+					}
+				),
+				'bad_auth'
+			)
+			expect(JSON.stringify(error)).not.toContain('private')
+			expect(error.message).not.toContain('private')
+		}
+		expect(requests).toBe(0)
+	})
+
 	test('25 explicit model tools, correct metadata, no credential inputs', () => {
 		expect(validateModule(spsCommerceModule)).toMatchObject({ ok: true })
 		expect(spsCommerceModule.tools).toHaveLength(25)
@@ -396,19 +496,17 @@ describe('SPS Transaction v5', () => {
 	test('artifact upload resolves bounded bytes before sending', async () => {
 		const storage = artifactStorage()
 		let calls = 0
-		const client = new SpsCommerceClient(
-			{ ...boundAuth, artifacts: storage.artifactsAuth },
-			{
-				fetch: mockFetch((_url, init) => {
-					calls += 1
-					expect(init.body).toEqual(toArrayBuffer(utf8ToBytes('<Order/>')))
-					return response(
-						{ path: '/in/order.xml', url: 'https://api.spscommerce.com/transactions/v5/data/in/order.xml' },
-						201
-					)
-				})
-			}
-		)
+		const client = new SpsCommerceClient(boundAuth, {
+			artifacts: storage.artifactsAuth,
+			fetch: mockFetch((_url, init) => {
+				calls += 1
+				expect(init.body).toEqual(toArrayBuffer(utf8ToBytes('<Order/>')))
+				return response(
+					{ path: '/in/order.xml', url: 'https://api.spscommerce.com/transactions/v5/data/in/order.xml' },
+					201
+				)
+			})
+		})
 		await client.uploadTransaction({ path: 'in/order.xml', source: { store: 'host', key: 'source' }, max_bytes: 100 })
 		expect(calls).toBe(1)
 		await code(
@@ -421,15 +519,13 @@ describe('SPS Transaction v5', () => {
 	test('read stores an artifact and never deletes on read or storage failure', async () => {
 		const storage = artifactStorage()
 		const methods: string[] = []
-		const client = new SpsCommerceClient(
-			{ ...boundAuth, artifacts: storage.artifactsAuth },
-			{
-				fetch: mockFetch((_url, init) => {
-					methods.push(init.method ?? '')
-					return new Response('<Order/>', { headers: { 'Content-Type': 'application/xml' } })
-				})
-			}
-		)
+		const client = new SpsCommerceClient(boundAuth, {
+			artifacts: storage.artifactsAuth,
+			fetch: mockFetch((_url, init) => {
+				methods.push(init.method ?? '')
+				return new Response('<Order/>', { headers: { 'Content-Type': 'application/xml' } })
+			})
+		})
 		const result = await client.readTransaction({
 			path: '/out/order.xml',
 			destination: 'received/order.xml',
@@ -443,15 +539,13 @@ describe('SPS Transaction v5', () => {
 		failedStorage.artifactsAuth.backend.create = async () => {
 			throw new Error('private storage details')
 		}
-		const failing = new SpsCommerceClient(
-			{ ...boundAuth, artifacts: failedStorage.artifactsAuth },
-			{
-				fetch: mockFetch((_url, init) => {
-					methods.push(init.method ?? '')
-					return new Response('x')
-				})
-			}
-		)
+		const failing = new SpsCommerceClient(boundAuth, {
+			artifacts: failedStorage.artifactsAuth,
+			fetch: mockFetch((_url, init) => {
+				methods.push(init.method ?? '')
+				return new Response('x')
+			})
+		})
 		const error = await code(
 			failing.readTransaction({ path: '/out/order.xml', destination: 'x', max_bytes: 100 }),
 			'upstream'
@@ -809,10 +903,10 @@ describe('SPS labels and packing slips', () => {
 			expect(init.redirect).toBe('error')
 			return new Response('%PDF-batch', { headers: { 'Content-Type': 'application/pdf' } })
 		})
-		const client = new SpsCommerceClient(
-			{ ...boundAuth, document_origins: ['https://cdn.test.spsapps.net'] },
-			{ fetch }
-		)
+		const client = new SpsCommerceClient(boundAuth, {
+			document_origins: ['https://cdn.test.spsapps.net'],
+			fetch
+		})
 		expect(bytesToUtf8((await client.getLabelBatchResultBytes({ batch_id: 'b1', max_bytes: 100 })).bytes)).toBe(
 			'%PDF-batch'
 		)
@@ -826,15 +920,13 @@ describe('SPS labels and packing slips', () => {
 		'https://user:secret@cdn.test.spsapps.net/doc'
 	])('rejects unapproved or malformed result origin %s', async (resultURL) => {
 		let calls = 0
-		const client = new SpsCommerceClient(
-			{ ...boundAuth, document_origins: ['https://cdn.test.spsapps.net'] },
-			{
-				fetch: mockFetch(() => {
-					calls += 1
-					return response({ batchId: 'b1', status: 'Completed', resultURL })
-				})
-			}
-		)
+		const client = new SpsCommerceClient(boundAuth, {
+			document_origins: ['https://cdn.test.spsapps.net'],
+			fetch: mockFetch(() => {
+				calls += 1
+				return response({ batchId: 'b1', status: 'Completed', resultURL })
+			})
+		})
 		await code(client.getLabelBatchResultBytes({ batch_id: 'b1', max_bytes: 100 }), 'forbidden')
 		expect(calls).toBe(1)
 	})
@@ -870,8 +962,7 @@ describe('SPS labels and packing slips', () => {
 
 	test('all binary tools store artifacts rather than document bodies', async () => {
 		const storage = artifactStorage()
-		const auth: SpsCommerceAuth = {
-			...boundAuth,
+		const extras = {
 			artifacts: storage.artifactsAuth,
 			document_origins: ['https://cdn.test.spsapps.net']
 		}
@@ -890,7 +981,7 @@ describe('SPS labels and packing slips', () => {
 			['render-packing-slip-pdf', { ...base, data: {} }],
 			['get-label-batch-result', { batch_id: 'b1', max_bytes: 1000, destination: 'labels/batch' }]
 		] as const) {
-			const result = await runTool(tool(name), input, { auth, fetch })
+			const result = await runTool(tool(name), input, { auth: boundAuth, extras, fetch })
 			expect(result).toHaveProperty('artifact')
 			expect(JSON.stringify(result)).not.toContain('%PDF-private')
 			expect(JSON.stringify(result)).not.toContain('^XA')
@@ -1044,21 +1135,19 @@ describe('SPS safety and transport failure contracts', () => {
 
 	test('network failure sanitizes signed locations and has no nested cause', async () => {
 		let calls = 0
-		const client = new SpsCommerceClient(
-			{ ...boundAuth, document_origins: ['https://cdn.test.spsapps.net'] },
-			{
-				fetch: mockFetch((url) => {
-					calls += 1
-					if (url.hostname === 'api.spscommerce.com')
-						return response({
-							batchId: 'b1',
-							status: 'Completed',
-							resultURL: 'https://cdn.test.spsapps.net/file?Signature=private'
-						})
-					throw new Error(`Failure ${url.href} ${boundAuth.access_token}`)
-				})
-			}
-		)
+		const client = new SpsCommerceClient(boundAuth, {
+			document_origins: ['https://cdn.test.spsapps.net'],
+			fetch: mockFetch((url) => {
+				calls += 1
+				if (url.hostname === 'api.spscommerce.com')
+					return response({
+						batchId: 'b1',
+						status: 'Completed',
+						resultURL: 'https://cdn.test.spsapps.net/file?Signature=private'
+					})
+				throw new Error(`Failure ${url.href} ${boundAuth.access_token}`)
+			})
+		})
 		const error = await code(client.getLabelBatchResultBytes({ batch_id: 'b1', max_bytes: 100 }), 'upstream')
 		expect(error.cause).toBeUndefined()
 		expect(error.message).not.toContain('private')
