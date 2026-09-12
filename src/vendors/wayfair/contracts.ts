@@ -1637,7 +1637,7 @@ const wayfairCatalogItemBaseSchema = z.object({
 	marketContext: wayfairMarketContextSchema.extend({
 		channel: z.string().nullable(),
 		segment: z.string().nullable(),
-		location: z.string().nullable()
+		location: z.string().nullish()
 	}),
 	catalogItemStatus: z.enum(['LIVE', 'NOT_LIVE', 'LAUNCHING']).nullable(),
 	class: z.object({ classId: z.string(), className: z.string().nullable() }).nullable(),

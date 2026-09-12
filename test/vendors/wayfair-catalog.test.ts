@@ -187,6 +187,50 @@ describe('Wayfair verified catalog', () => {
 		expect(requests).toHaveLength(0)
 	})
 
+	test.each([{}, { location: null }, { location: 'Primary' }])(
+		'preserves omitted, null and string location in default and sales-channel contexts %#',
+		async (location) => {
+			const context = { locale: 'en-US', country: 'US', brand: 'WF', channel: 'ECM', segment: null, ...location }
+			const expected = {
+				...page,
+				catalogItems: [
+					{
+						...item,
+						marketContext: context,
+						salesChannels: item.salesChannels.map((channel) => ({ ...channel, marketContext: context }))
+					}
+				]
+			}
+			const { client, requests } = harness(catalogResponse(expected))
+			expect(await client.listCatalogItems({ pagination_options: {} })).toEqual(expected)
+			expect(queryOf(requests)).toContain('marketContext { locale country brand channel segment location }')
+			expect(requests).toHaveLength(1)
+		}
+	)
+
+	test.each([
+		{ location: 42 },
+		{ location: false },
+		{ location: ['private-location'] },
+		{ location: { private_key: 'private-location' } }
+	])('rejects invalid location types in either default or sales-channel context %#', async ({ location }) => {
+		for (const catalogItem of [
+			{ ...item, marketContext: { ...item.marketContext, location } },
+			{
+				...item,
+				salesChannels: item.salesChannels.map((channel) => ({
+					...channel,
+					marketContext: { ...channel.marketContext, location }
+				}))
+			}
+		]) {
+			const { client } = harness(catalogResponse({ ...page, catalogItems: [catalogItem] }))
+			const error = await rejection(client.listCatalogItems({ pagination_options: {} }))
+			expect(error.code).toBe('upstream')
+			expect(JSON.stringify(error)).not.toContain('private-')
+		}
+	})
+
 	test('preserves a valid empty page but rejects missing, malformed and wrong-supplier success', async () => {
 		const empty = {
 			...page,

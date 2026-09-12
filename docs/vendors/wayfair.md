@@ -285,6 +285,8 @@ Its production path is `/product-catalog-api/graphql`, without `/v1`. Sandbox us
 
 The bounded output contains native `paginationInfo`, supplier identity and `catalogItems` with part, market, state, class and listing IDs. Optional market context selects one additional `salesChannels` level. Undeclared rich insight/attribute-value leaf types are excluded rather than guessed. The in-data `SupplierCatalogItemsError` union, including partial-read failures, throws a sanitized error instead of returning an empty successful page.
 
+`marketContext.location` may be omitted, null, or a string in both the default item and its sales channels. User-run production diagnostics on September 12, 2026 confirmed that Wayfair omits this selected field. The client preserves absence rather than inventing a location or replacing it with null; numeric, boolean, array, and object values remain invalid. Other market-context fields retain their existing required/nullability contracts. Consuming apps need a released SDK containing this correction; changing this checkout does not update installed packages or switch legacy catalog callers to v2.
+
 Reference and update operations use the declared `/v1/product-catalog-api/graphql` route (with `/sandbox` in sandbox):
 
 - `listBrandAssociations` requires `market_context` and native `page_size`, with optional `page`. No undocumented default or upper bound is borrowed from other catalog operations. Nullable brand entries stay null.
