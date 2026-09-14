@@ -276,12 +276,12 @@
 		"mime": "4.1.0",
 		"mimetext": "3.0.28",
 		"ofetch": "1.5.1",
-		"p-map": "7.0.7",
+		"p-map": "7.0.8",
 		"p-retry": "8.0.1",
 		"papaparse": "5.7.0",
 		"postal-mime": "3.0.0",
 		"sharp": "0.35.4",
-		"zod": "4.6.2"
+		"zod": "4.6.5"
 	},
 	"devDependencies": {
 		"@mastra/core": "1.66.0",
@@ -297,7 +297,7 @@
 		"@types/bun": "1.4.2",
 		"@types/html-to-text": "9.0.4",
 		"@types/papaparse": "5.5.2",
-		"ai": "7.0.97",
+		"ai": "7.0.99",
 		"conventional-changelog-conventionalcommits": "10.4.0",
 		"conventional-changelog-writer": "^9.2.1",
 		"lefthook": "2.1.12",
