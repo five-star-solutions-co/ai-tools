@@ -4,6 +4,12 @@ All notable changes to `@5ss/ai-tools` are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are cut by [semantic-release](https://semantic-release.gitbook.io/) on every push to `main`.
 
+## [3.14.5](https://github.com/five-star-solutions-co/ai-tools/compare/v3.14.4...v3.14.5) (2026-09-14)
+
+### Code Refactoring
+
+* **core:** update dependencies ([a69f46f](https://github.com/five-star-solutions-co/ai-tools/commit/a69f46f7004dd7f2cf98874e2922e5b11851f70e))
+
 ## [3.14.4](https://github.com/five-star-solutions-co/ai-tools/compare/v3.14.3...v3.14.4) (2026-09-12)
 
 ### Code Refactoring
